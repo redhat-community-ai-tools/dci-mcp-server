@@ -255,7 +255,3 @@ mcp_server/
 2. Create a new tool file in `mcp_server/tools/`
 3. Register the tools in `mcp_server/main.py`
 4. Update this README with documentation
-
-## License
-
-[Add your license information here]
