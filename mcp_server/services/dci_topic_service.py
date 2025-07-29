@@ -10,7 +10,7 @@ from .dci_base_service import DCIBaseService
 class DCITopicService(DCIBaseService):
     """Service class for DCI topic operations."""
 
-    def get_topic(self, topic_id: str) -> dict[str, Any] | None:
+    def get_topic(self, topic_id: str) -> Any:
         """
         Get a specific topic by ID.
 
@@ -23,6 +23,8 @@ class DCITopicService(DCIBaseService):
         try:
             context = self._get_dci_context()
             result = topic.get(context, topic_id)
+            if hasattr(result, "json"):
+                return result.json()
             return result
         except Exception as e:
             print(f"Error getting topic {topic_id}: {e}")
@@ -34,7 +36,7 @@ class DCITopicService(DCIBaseService):
         offset: int | None = None,
         where: str | None = None,
         sort: str | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> list:
         """
         List topics with optional filtering and pagination.
 
@@ -58,12 +60,15 @@ class DCITopicService(DCIBaseService):
             result = topic.list(
                 context, limit=limit, offset=offset, where=where, sort=sort
             )
-            return result
+            if hasattr(result, "json"):
+                data = result.json()
+                return data.get("topics", []) if isinstance(data, dict) else []
+            return result if isinstance(result, list) else []
         except Exception as e:
             print(f"Error listing topics: {e}")
             return []
 
-    def get_topic_components(self, topic_id: str) -> list[dict[str, Any]]:
+    def get_topic_components(self, topic_id: str) -> Any:
         """
         Get components associated with a specific topic.
 
@@ -76,12 +81,15 @@ class DCITopicService(DCIBaseService):
         try:
             context = self._get_dci_context()
             result = topic.list_components(context, topic_id)
-            return result
+            if hasattr(result, "json"):
+                data = result.json()
+                return data.get("components", []) if isinstance(data, dict) else []
+            return result if isinstance(result, list) else []
         except Exception as e:
             print(f"Error getting components for topic {topic_id}: {e}")
             return []
 
-    def get_topic_jobs_from_components(self, topic_id: str) -> list[dict[str, Any]]:
+    def get_topic_jobs_from_components(self, topic_id: str) -> Any:
         """
         Get jobs from components associated with a specific topic.
 
@@ -94,7 +102,10 @@ class DCITopicService(DCIBaseService):
         try:
             context = self._get_dci_context()
             result = topic.get_jobs_from_components(context, topic_id)
-            return result
+            if hasattr(result, "json"):
+                data = result.json()
+                return data.get("jobs", []) if isinstance(data, dict) else []
+            return result if isinstance(result, list) else []
         except Exception as e:
             print(f"Error getting jobs from components for topic {topic_id}: {e}")
             return []

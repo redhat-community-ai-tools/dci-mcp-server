@@ -45,7 +45,9 @@ def extract_pr_info(
                     # We can't determine PR number from job name alone
                     # This will require getting it from the actual file paths available
                     return True, org_repo, None
-    except Exception:
+    except (KeyError, TypeError, ValueError):
+        # Expected failures when parsing job spec or name
+        # These are non-critical parsing errors that should be handled gracefully
         pass
 
     return False, None, None

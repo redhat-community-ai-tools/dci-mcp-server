@@ -10,7 +10,7 @@ from .dci_base_service import DCIBaseService
 class DCITeamService(DCIBaseService):
     """Service class for DCI team operations."""
 
-    def get_team(self, team_id: str) -> dict[str, Any] | None:
+    def get_team(self, team_id: str) -> Any:
         """
         Get a specific team by ID.
 
@@ -23,6 +23,8 @@ class DCITeamService(DCIBaseService):
         try:
             context = self._get_dci_context()
             result = team.get(context, team_id)
+            if hasattr(result, "json"):
+                return result.json()
             return result
         except Exception as e:
             print(f"Error getting team {team_id}: {e}")
@@ -34,7 +36,7 @@ class DCITeamService(DCIBaseService):
         offset: int | None = None,
         where: str | None = None,
         sort: str | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> list:
         """
         List teams with optional filtering and pagination.
 
@@ -58,7 +60,10 @@ class DCITeamService(DCIBaseService):
             result = team.list(
                 context, limit=limit, offset=offset, where=where, sort=sort
             )
-            return result
+            if hasattr(result, "json"):
+                data = result.json()
+                return data.get("teams", []) if isinstance(data, dict) else []
+            return result if isinstance(result, list) else []
         except Exception as e:
             print(f"Error listing teams: {e}")
             return []

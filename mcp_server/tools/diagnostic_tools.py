@@ -1,6 +1,7 @@
 """MCP tools for comprehensive diagnostic analysis."""
 
 import json
+from typing import Any
 
 from fastmcp import FastMCP
 
@@ -161,7 +162,7 @@ def register_diagnostic_tools(mcp: FastMCP) -> None:
                 if job_name.lower() in job.get("name", "").lower()
             ]
 
-            diagnostic_info = {
+            diagnostic_info: dict[str, Any] = {
                 "pr_number": pr_number,
                 "job_name": job_name,
                 "timestamp": (

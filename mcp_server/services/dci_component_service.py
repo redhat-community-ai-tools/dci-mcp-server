@@ -10,7 +10,7 @@ from .dci_base_service import DCIBaseService
 class DCIComponentService(DCIBaseService):
     """Service class for DCI component operations."""
 
-    def get_component(self, component_id: str) -> dict[str, Any] | None:
+    def get_component(self, component_id: str) -> Any:
         """
         Get a specific component by ID.
 
@@ -23,6 +23,8 @@ class DCIComponentService(DCIBaseService):
         try:
             context = self._get_dci_context()
             result = component.get(context, component_id)
+            if hasattr(result, "json"):
+                return result.json()
             return result
         except Exception as e:
             print(f"Error getting component {component_id}: {e}")
@@ -34,7 +36,7 @@ class DCIComponentService(DCIBaseService):
         offset: int | None = None,
         where: str | None = None,
         sort: str | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> list:
         """
         List components with optional filtering and pagination.
 
@@ -63,7 +65,10 @@ class DCIComponentService(DCIBaseService):
                 where=where,
                 sort=sort,
             )
-            return result
+            if hasattr(result, "json"):
+                data = result.json()
+                return data.get("components", []) if isinstance(data, dict) else []
+            return result if isinstance(result, list) else []
         except Exception as e:
             print(f"Error listing components: {e}")
             return []

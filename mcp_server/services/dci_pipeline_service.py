@@ -10,7 +10,7 @@ from .dci_base_service import DCIBaseService
 class DCIPipelineService(DCIBaseService):
     """Service class for DCI pipeline operations."""
 
-    def get_pipeline(self, pipeline_id: str) -> dict[str, Any] | None:
+    def get_pipeline(self, pipeline_id: str) -> Any:
         """
         Get a specific pipeline by ID.
 
@@ -23,6 +23,8 @@ class DCIPipelineService(DCIBaseService):
         try:
             context = self._get_dci_context()
             result = pipeline.get(context, pipeline_id)
+            if hasattr(result, "json"):
+                return result.json()
             return result
         except Exception as e:
             print(f"Error getting pipeline {pipeline_id}: {e}")
@@ -34,7 +36,7 @@ class DCIPipelineService(DCIBaseService):
         offset: int | None = None,
         where: str | None = None,
         sort: str | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> list:
         """
         List pipelines with optional filtering and pagination.
 
@@ -58,12 +60,15 @@ class DCIPipelineService(DCIBaseService):
             result = pipeline.list(
                 context, limit=limit, offset=offset, where=where, sort=sort
             )
-            return result
+            if hasattr(result, "json"):
+                data = result.json()
+                return data.get("pipelines", []) if isinstance(data, dict) else []
+            return result if isinstance(result, list) else []
         except Exception as e:
             print(f"Error listing pipelines: {e}")
             return []
 
-    def get_pipeline_jobs(self, pipeline_id: str) -> list[dict[str, Any]]:
+    def get_pipeline_jobs(self, pipeline_id: str) -> Any:
         """
         Get jobs associated with a specific pipeline.
 
@@ -76,7 +81,10 @@ class DCIPipelineService(DCIBaseService):
         try:
             context = self._get_dci_context()
             result = pipeline.get_jobs(context, pipeline_id)
-            return result
+            if hasattr(result, "json"):
+                data = result.json()
+                return data.get("jobs", []) if isinstance(data, dict) else []
+            return result if isinstance(result, list) else []
         except Exception as e:
             print(f"Error getting jobs for pipeline {pipeline_id}: {e}")
             return []

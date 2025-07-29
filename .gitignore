@@ -212,3 +212,6 @@ secrets.json
 # Local development files
 .local/
 local/
+
+# bandit generated file
+bandit-report.json

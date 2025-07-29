@@ -106,7 +106,13 @@ class DCILogService:
                         response = await client.get(endpoint)
                         if response.status_code == 200:
                             return response.text
-                    except Exception:
+                    except (
+                        httpx.ConnectError,
+                        httpx.TimeoutException,
+                        httpx.HTTPStatusError,
+                    ):
+                        # Expected failures when trying alternative log endpoints
+                        # Continue to try next endpoint
                         continue
 
                 return None

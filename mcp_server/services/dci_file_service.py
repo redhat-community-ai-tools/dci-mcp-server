@@ -11,7 +11,7 @@ from .dci_base_service import DCIBaseService
 class DCIFileService(DCIBaseService):
     """Service class for DCI file operations."""
 
-    def get_file(self, file_id: str) -> dict[str, Any] | None:
+    def get_file(self, file_id: str) -> Any:
         """
         Get a specific file by ID.
 
@@ -24,6 +24,8 @@ class DCIFileService(DCIBaseService):
         try:
             context = self._get_dci_context()
             result = dci_file.get(context, file_id)
+            if hasattr(result, "json"):
+                return result.json()
             return result
         except Exception as e:
             print(f"Error getting file {file_id}: {e}")
@@ -35,7 +37,7 @@ class DCIFileService(DCIBaseService):
         offset: int | None = None,
         where: str | None = None,
         sort: str | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> list:
         """
         List files with optional filtering and pagination.
 
@@ -59,7 +61,10 @@ class DCIFileService(DCIBaseService):
             result = dci_file.list(
                 context, limit=limit, offset=offset, where=where, sort=sort
             )
-            return result
+            if hasattr(result, "json"):
+                data = result.json()
+                return data.get("files", []) if isinstance(data, dict) else []
+            return result if isinstance(result, list) else []
         except Exception as e:
             print(f"Error listing files: {e}")
             return []
@@ -88,7 +93,7 @@ class DCIFileService(DCIBaseService):
             print(f"Error downloading file {file_id} to {output_path}: {e}")
             return False
 
-    def get_file_content(self, file_id: str) -> str | None:
+    def get_file_content(self, file_id: str) -> Any:
         """
         Get the content of a file as a string.
 
@@ -101,7 +106,9 @@ class DCIFileService(DCIBaseService):
         try:
             context = self._get_dci_context()
             result = dci_file.content(context, file_id)
-            return result
+            if hasattr(result, "text"):
+                return result.text
+            return str(result) if result is not None else None
         except Exception as e:
             print(f"Error getting content for file {file_id}: {e}")
             return None

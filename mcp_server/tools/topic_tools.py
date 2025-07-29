@@ -81,7 +81,8 @@ def register_topic_tools(mcp: FastMCP) -> None:
                 result = service.list_topics(
                     limit=50, offset=0, where=where_filter, sort=sort_criteria
                 )
-
+                if not isinstance(result, list):
+                    result = []
                 return json.dumps(
                     {
                         "topics": result,

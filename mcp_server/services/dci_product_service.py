@@ -10,7 +10,7 @@ from .dci_base_service import DCIBaseService
 class DCIProductService(DCIBaseService):
     """Service class for DCI product operations."""
 
-    def get_product(self, product_id: str) -> dict[str, Any] | None:
+    def get_product(self, product_id: str) -> Any:
         """
         Get a specific product by ID.
 
@@ -23,6 +23,8 @@ class DCIProductService(DCIBaseService):
         try:
             context = self._get_dci_context()
             result = product.get(context, product_id)
+            if hasattr(result, "json"):
+                return result.json()
             return result
         except Exception as e:
             print(f"Error getting product {product_id}: {e}")
@@ -34,7 +36,7 @@ class DCIProductService(DCIBaseService):
         offset: int | None = None,
         where: str | None = None,
         sort: str | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> list:
         """
         List products with optional filtering and pagination.
 
@@ -58,12 +60,15 @@ class DCIProductService(DCIBaseService):
             result = product.list(
                 context, limit=limit, offset=offset, where=where, sort=sort
             )
-            return result
+            if hasattr(result, "json"):
+                data = result.json()
+                return data.get("products", []) if isinstance(data, dict) else []
+            return result if isinstance(result, list) else []
         except Exception as e:
             print(f"Error listing products: {e}")
             return []
 
-    def list_product_teams(self, product_id: str) -> list[dict[str, Any]]:
+    def list_product_teams(self, product_id: str) -> Any:
         """
         Get teams associated with a specific product.
 
@@ -76,7 +81,10 @@ class DCIProductService(DCIBaseService):
         try:
             context = self._get_dci_context()
             result = product.list_teams(context, product_id)
-            return result
+            if hasattr(result, "json"):
+                data = result.json()
+                return data.get("teams", []) if isinstance(data, dict) else []
+            return result if isinstance(result, list) else []
         except Exception as e:
             print(f"Error getting teams for product {product_id}: {e}")
             return []

@@ -10,7 +10,7 @@ from .dci_base_service import DCIBaseService
 class DCIJobService(DCIBaseService):
     """Service class for DCI job operations."""
 
-    def get_job(self, job_id: str) -> dict[str, Any] | None:
+    def get_job(self, job_id: str) -> Any:
         """
         Get a specific job by ID.
 
@@ -23,6 +23,8 @@ class DCIJobService(DCIBaseService):
         try:
             context = self._get_dci_context()
             result = job.get(context, job_id)
+            if hasattr(result, "json"):
+                return result.json()
             return result
         except Exception as e:
             print(f"Error getting job {job_id}: {e}")
@@ -34,7 +36,7 @@ class DCIJobService(DCIBaseService):
         offset: int | None = None,
         where: str | None = None,
         sort: str | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> list:
         """
         List jobs with optional filtering and pagination.
 
@@ -58,12 +60,15 @@ class DCIJobService(DCIBaseService):
             result = job.list(
                 context, limit=limit, offset=offset, where=where, sort=sort
             )
-            return result
+            if hasattr(result, "json"):
+                data = result.json()
+                return data.get("jobs", []) if isinstance(data, dict) else []
+            return result if isinstance(result, list) else []
         except Exception as e:
             print(f"Error listing jobs: {e}")
             return []
 
-    def list_job_files(self, job_id: str) -> list[dict[str, Any]]:
+    def list_job_files(self, job_id: str) -> Any:
         """
         List files associated with a specific job.
 
@@ -76,12 +81,15 @@ class DCIJobService(DCIBaseService):
         try:
             context = self._get_dci_context()
             result = job.list_files(context, job_id)
-            return result
+            if hasattr(result, "json"):
+                data = result.json()
+                return data.get("files", []) if isinstance(data, dict) else []
+            return result if isinstance(result, list) else []
         except Exception as e:
             print(f"Error listing files for job {job_id}: {e}")
             return []
 
-    def list_job_results(self, job_id: str) -> list[dict[str, Any]]:
+    def list_job_results(self, job_id: str) -> Any:
         """
         List results associated with a specific job.
 
@@ -94,7 +102,10 @@ class DCIJobService(DCIBaseService):
         try:
             context = self._get_dci_context()
             result = job.list_results(context, job_id)
-            return result
+            if hasattr(result, "json"):
+                data = result.json()
+                return data.get("results", []) if isinstance(data, dict) else []
+            return result if isinstance(result, list) else []
         except Exception as e:
             print(f"Error listing results for job {job_id}: {e}")
             return []

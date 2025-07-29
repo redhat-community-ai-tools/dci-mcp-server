@@ -5,7 +5,11 @@ from typing import Any
 
 
 def fetch_all_pages(
-    list_function: Callable, *args, page_size: int = 50, max_pages: int = 100, **kwargs
+    list_function: Callable[..., Any],
+    *args: Any,
+    page_size: int = 50,
+    max_pages: int = 100,
+    **kwargs: Any,
 ) -> list[dict[str, Any]]:
     """
     Fetch all pages of results from a paginated API call.
@@ -75,7 +79,11 @@ def fetch_all_pages(
 
 
 def fetch_all_with_progress(
-    list_function: Callable, *args, page_size: int = 50, max_pages: int = 100, **kwargs
+    list_function: Callable[..., Any],
+    *args: Any,
+    page_size: int = 50,
+    max_pages: int = 100,
+    **kwargs: Any,
 ) -> dict[str, Any]:
     """
     Fetch all pages with progress information.

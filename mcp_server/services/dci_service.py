@@ -91,7 +91,7 @@ class DCIService:
 
         return matching_jobs
 
-    async def get_latest_job_for_name(self, job_name: str) -> ProwJob | None:
+    async def get_latest_job_for_name(self, job_name: str) -> Any:
         """Get the latest job for a specific job name.
 
         Args:
@@ -103,7 +103,7 @@ class DCIService:
         jobs = await self.get_jobs_by_name(job_name)
         return jobs[0] if jobs else None
 
-    async def get_job_by_id(self, job_id: str) -> ProwJob | None:
+    async def get_job_by_id(self, job_id: str) -> Any:
         """Get a specific job by its ID.
 
         Args:
@@ -147,7 +147,7 @@ class DCIService:
 
         return pr_jobs
 
-    def _convert_dci_to_prow_job(self, dci_job: dict[str, Any]) -> ProwJob | None:
+    def _convert_dci_to_prow_job(self, dci_job: dict[str, Any]) -> Any:
         """Convert DCI job format to ProwJob format for compatibility.
 
         Args:

@@ -12,7 +12,9 @@ if __name__ == "__main__":
     if transport == "sse":
         # Set default host to allow external connections (like the article)
         if not os.environ.get("MCP_HOST"):
-            os.environ["MCP_HOST"] = "0.0.0.0"
+            os.environ["MCP_HOST"] = (
+                "127.0.0.1"  # Use localhost instead of all interfaces
+            )
 
         # Set default port for SSE
         if not os.environ.get("MCP_PORT"):

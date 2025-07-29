@@ -9,7 +9,7 @@ from ..config import get_dci_api_key
 
 async def make_request(
     url: str, method: str = "GET", data: dict[str, Any] | None = None
-) -> dict[str, Any] | None:
+) -> Any:
     """
     Make an HTTP request with optional authentication.
 
