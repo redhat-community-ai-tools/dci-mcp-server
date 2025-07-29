@@ -76,7 +76,7 @@ def register_pr_tools(mcp: FastMCP) -> None:
 
         Args:
             pr_url: The GitHub PR number (e.g., "https://myorg/myrepo/pull/123")
-            job_name: The DCI job name sub-string (can be None to match any job)
+            job_name: The DCI job name (optional to match any jobs)
             limit: Maximum number of jobs to return (default: 50)
 
         Returns:
@@ -87,18 +87,13 @@ def register_pr_tools(mcp: FastMCP) -> None:
 
             # Get the job details
             job_service = DCIJobService()
-            query = f"eq(url,{pr_url})"
-            if job_name:
-                query = f"and({query},ilike(name,%{job_name}%))"
-            jobs = job_service.list_jobs_advanced(
-                query=query,
+            jobs = job_service.list_jobs(
+                where=f"url:{pr_url}" + (f",name:{job_name}" if job_name else ""),
                 sort="-created_at",
                 limit=limit,
             )
 
-            print(jobs)  # Debugging output
-
-            if jobs and jobs.get("success"):
+            if isinstance(jobs, list):
                 return json.dumps(jobs, indent=2)
             else:
                 return json.dumps(

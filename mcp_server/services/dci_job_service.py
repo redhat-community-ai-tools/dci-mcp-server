@@ -74,7 +74,7 @@ class DCIJobService(DCIBaseService):
         List jobs using the advanced query syntax.
 
         Args:
-            where: query criteria (e.g., "and(eq(state,active),contains(tags,build:ga))")
+            where: query criteria (e.g., "and(ilike(name,ptp),contains(tags,build:ga))")
             limit: Maximum number of jobs to return (default: 50)
             offset: Number of jobs to skip (default: 0)
             sort: Sort criteria (e.g., "-created_at")
@@ -84,16 +84,12 @@ class DCIJobService(DCIBaseService):
         """
         try:
             context = self._get_dci_context()
-            # Provide default values for required parameters
-
-            print(f"{query=}")
             result = job.list(
                 context, limit=limit, offset=offset, query=query, sort=sort
             )
             if hasattr(result, "json"):
                 data = result.json()
-                print(f"{data=}")
-                return data.get("jobs", []) if isinstance(data, dict) else []
+                return data.get("jobs", []) if isinstance(data, dict) else data
             return result if isinstance(result, list) else []
         except Exception as e:
             print(f"Error listing jobs: {e}")

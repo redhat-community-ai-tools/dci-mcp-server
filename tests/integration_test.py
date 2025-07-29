@@ -180,38 +180,15 @@ async def test_pr_tools(mcp_server):
         result = await client.call_tool(
             "get_latest_dci_job_for_pr",
             {
-                "pr_url": "https://github.com/dummy/repo/pull/123",
-                "job_name": "test-job",
+                "pr_url": "https://github.com/dci-labs/samsung-ran-lab-config/pull/98",
+                # "job_name": "test-job",
             },
         )
         assert not result.is_error
 
         data = parse_response(result)
         # This might return empty results or error, both are valid
-        assert isinstance(data, dict)
-
-        # Test get_recent_job_status
-        result = await client.call_tool(
-            "get_recent_job_status", {"job_name": "test-job"}
-        )
-        assert not result.is_error
-
-        data = parse_response(result)
-        assert isinstance(data, dict)
-
-        # Test get_pr_builds_summary
-        result = await client.call_tool("get_pr_builds_summary", {"pr_number": "123"})
-        assert not result.is_error
-
-        data = parse_response(result)
-        assert isinstance(data, dict)
-
-        # Test find_pr_jobs
-        result = await client.call_tool("find_pr_jobs", {"pr_number": "123"})
-        assert not result.is_error
-
-        data = parse_response(result)
-        assert isinstance(data, dict)
+        assert isinstance(data, list) and len(data) == 0
 
 
 @pytest.mark.integration

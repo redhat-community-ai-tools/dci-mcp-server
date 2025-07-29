@@ -189,6 +189,10 @@ What's the current status of my team's DCI jobs and what are the main issues we 
 Show me the logs from the last 3 failed DCI jobs to identify common failure patterns
 ```
 
+```
+What was the last DCI job testing <PR URL>?
+```
+
 ### **For Management:**
 
 ```
