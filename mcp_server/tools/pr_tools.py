@@ -68,33 +68,48 @@ def register_pr_tools(mcp: FastMCP) -> None:
             return json.dumps({"error": str(e)}, indent=2)
 
     @mcp.tool()
-    async def get_latest_dci_build_for_pr(pr_number: str, job_name: str) -> str:
+    async def get_latest_dci_job_for_pr(
+        pr_url: str, job_name: str | None, limit: int = 50
+    ) -> str:
         """
-        Get the latest DCI build for a specific GitHub PR.
+        Get the latest DCI jobs for a specific GitHub PR URL.
 
         Args:
-            pr_number: The GitHub PR number (e.g., "3191")
-            job_name: The DCI job name pattern
+            pr_url: The GitHub PR number (e.g., "https://myorg/myrepo/pull/123")
+            job_name: The DCI job name pattern (can be None to match any job)
+            limit: Maximum number of jobs to return (default: 50)
 
         Returns:
-            JSON string with build information including build_id, job_name, pr_number,
-            etc.
+            JSON string with build information including job_id, job_name, etc.
         """
         try:
-            finder = PRFinder()
-            result = finder.get_latest_pr_build(pr_number, job_name)
+            from ..services.dci_job_service import DCIJobService
 
-            if result and result.get("success"):
-                return json.dumps(result, indent=2)
+            # Get the job details
+            job_service = DCIJobService()
+            encoded_pr_url = pr_url.replace("/", "%2F").replace(":", "%3A")
+            query = f"eq(url,{encoded_pr_url})"
+            if job_name:
+                query = f"and({query},eq(name,{job_name}))"
+            jobs = job_service.list_jobs_advanced(
+                query=query,
+                sort="-created_at",
+                limit=limit,
+            )
+
+            print(jobs)  # Debugging output
+
+            if jobs and jobs.get("success"):
+                return json.dumps(jobs, indent=2)
             else:
                 return json.dumps(
                     {
                         "success": False,
-                        "pr_number": pr_number,
+                        "pr_url": pr_url,
                         "job_name": job_name,
-                        "error": "No matching builds found",
+                        "error": "No matching jobs found",
                         "suggestions": [
-                            f"Verify PR {pr_number} exists and has CI runs",
+                            f"Verify PR {pr_url} exists and has DCI runs",
                             "Check if the job name pattern is correct",
                             "The build might be very old and archived",
                             "Try searching manually in the DCI dashboard",

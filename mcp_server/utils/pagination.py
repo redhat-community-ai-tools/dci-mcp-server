@@ -3,12 +3,15 @@
 from collections.abc import Callable
 from typing import Any
 
+PAGE_SIZE_DEFAULT = 50
+MAX_PAGES_DEFAULT = 100
+
 
 def fetch_all_pages(
     list_function: Callable[..., Any],
     *args: Any,
-    page_size: int = 50,
-    max_pages: int = 100,
+    page_size: int = PAGE_SIZE_DEFAULT,
+    max_pages: int = MAX_PAGES_DEFAULT,
     **kwargs: Any,
 ) -> list[dict[str, Any]]:
     """

@@ -13,95 +13,11 @@ It allows AI models to interact with [DCI](https://doc.distributed-ci.io/) for c
 - 📝 **Easy Configuration**: Support for .env files for simple setup
 - ✅ **Code Quality**: Comprehensive pre-commit checks and linting
 
-## Available Tools
-
-The server provides comprehensive tools for interacting with DCI API components:
-
-### Component Tools
-- `get_dci_component(component_id)`: Get a specific component by ID
-- `list_dci_components(limit, offset, where, sort)`: List components with filtering and pagination
-
-### Job Tools
-- `get_dci_job(job_id)`: Get a specific job by ID
-- `list_dci_jobs(limit, offset, where, sort)`: List jobs with filtering and pagination
-- `list_job_files(job_id)`: List files associated with a job
-- `list_job_results(job_id)`: List results associated with a job
-
-### File Tools
-- `get_dci_file(file_id)`: Get a specific file by ID
-- `list_dci_files(limit, offset, where, sort)`: List files with filtering and pagination
-- `download_dci_file(file_id, output_path)`: Download a file to local path
-- `get_file_content(file_id)`: Get file content as string
-
-### Pipeline Tools
-- `get_dci_pipeline(pipeline_id)`: Get a specific pipeline by ID
-- `list_dci_pipelines(limit, offset, where, sort)`: List pipelines with filtering and pagination
-- `get_pipeline_jobs(pipeline_id)`: Get jobs associated with a pipeline
-
-### Product Tools
-- `get_dci_product(product_id)`: Get a specific product by ID
-- `list_dci_products(limit, offset, where, sort)`: List products with filtering and pagination
-- `get_product_teams(product_id)`: Get teams associated with a product
-
-### Team Tools
-- `get_dci_team(team_id)`: Get a specific team by ID
-- `list_dci_teams(limit, offset, where, sort)`: List teams with filtering and pagination
-
-### Topic Tools
-- `get_dci_topic(topic_id)`: Get a specific topic by ID
-- `list_dci_topics(limit, offset, where, sort)`: List topics with filtering and pagination
-- `get_topic_components(topic_id)`: Get components associated with a topic
-- `get_topic_jobs_from_components(topic_id)`: Get jobs from topic components
-
-### Log Tools
-- `get_dci_job_logs(job_id)`: Get logs for a specific job
-- `get_dci_job_artifacts(job_id)`: Get artifacts for a specific job
-
-### PR Tools (Smart PR Detection)
-- `get_pr_by_job_id(job_id)`: Extract PR information from job URL
-- `get_latest_dci_build_for_pr(pr_number, job_name)`: Get latest build for a PR using URL analysis
-- `get_recent_job_status(job_name)`: Get recent job status for a job pattern
-- `get_pr_builds_summary(pr_number)`: Get comprehensive summary of all PR builds
-- `find_pr_jobs(pr_number, limit)`: Find all jobs related to a PR by analyzing URLs and metadata
-
-### Diagnostic Tools
-- `diagnose_pr_failures(pr_number, job_name)`: Analyze PR failure patterns using URL-based detection
-- `diagnose_pr_build_status(pr_number, job_name)`: Comprehensive PR build diagnosis
-- `get_test_failures_from_artifacts(pr_number, job_name)`: Extract test failures from artifacts
-
-## Smart PR Detection
-
-The server includes advanced PR detection capabilities that analyze job URLs and metadata:
-
-### URL Analysis
-The PR finder service extracts PR numbers from various URL formats:
-- GitHub PR URLs: `github.com/org/repo/pull/123`
-- GitHub Issue URLs: `github.com/org/repo/issues/123`
-- Short PR patterns: `/pull/123`, `pr/123`, `PR-123`, `#123`
-
-### Detection Methods
-1. **Job URL Analysis**: Extracts PR numbers from job URL fields
-2. **Job Name Patterns**: Searches for PR patterns in job names
-3. **Metadata Analysis**: Checks job metadata for PR information
-4. **Comprehensive Matching**: Combines multiple detection methods for accuracy
-
-### Example Usage
-```python
-# Find latest build for PR 1234
-result = await get_latest_dci_build_for_pr("1234", "e2e-tests")
-
-# Get all jobs for PR 5678
-result = await find_pr_jobs("5678", limit=50)
-
-# Extract PR from job URL
-result = await get_pr_by_job_id("job-abc123")
-```
-
 ## Installation
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/redhat-ai-tools/dci-mcp-server
 cd dci-mcp-server
 
 # Install dependencies
@@ -184,9 +100,53 @@ For web applications or services that need HTTP-based communication:
 
 > **Note**: Make sure to start the SSE server separately with `MCP_TRANSPORT=sse uv run main.py` before using this configuration.
 
-### Example Tool Usage
+## Prompts
 
-TBD
+You can then use [prompts](PROMPTS.md) to explore the DCI data.
+
+## Available Tools exposed by the MCP server
+
+The server provides comprehensive tools for interacting with DCI API components:
+
+### Component Tools
+- `get_dci_component(component_id)`: Get a specific component by ID
+- `list_dci_components(limit, offset, where, sort)`: List components with filtering and pagination
+
+### Job Tools
+- `get_dci_job(job_id)`: Get a specific job by ID
+- `list_dci_jobs(limit, offset, where, sort)`: List jobs with filtering and pagination
+- `list_job_files(job_id)`: List files associated with a job
+- `list_job_results(job_id)`: List results associated with a job
+
+### File Tools
+- `get_dci_file(file_id)`: Get a specific file by ID
+- `list_dci_files(limit, offset, where, sort)`: List files with filtering and pagination
+- `download_dci_file(file_id, output_path)`: Download a file to local path
+- `get_file_content(file_id)`: Get file content as string
+
+### Pipeline Tools
+- `get_dci_pipeline(pipeline_id)`: Get a specific pipeline by ID
+- `list_dci_pipelines(limit, offset, where, sort)`: List pipelines with filtering and pagination
+- `get_pipeline_jobs(pipeline_id)`: Get jobs associated with a pipeline
+
+### Product Tools
+- `get_dci_product(product_id)`: Get a specific product by ID
+- `list_dci_products(limit, offset, where, sort)`: List products with filtering and pagination
+- `get_product_teams(product_id)`: Get teams associated with a product
+
+### Team Tools
+- `get_dci_team(team_id)`: Get a specific team by ID
+- `list_dci_teams(limit, offset, where, sort)`: List teams with filtering and pagination
+
+### Topic Tools
+- `get_dci_topic(topic_id)`: Get a specific topic by ID
+- `list_dci_topics(limit, offset, where, sort)`: List topics with filtering and pagination
+- `get_topic_components(topic_id)`: Get components associated with a topic
+- `get_topic_jobs_from_components(topic_id)`: Get jobs from topic components
+
+### Log Tools
+- `get_dci_job_logs(job_id)`: Get logs for a specific job
+- `get_dci_job_artifacts(job_id)`: Get artifacts for a specific job
 
 ## Code Quality Checks
 

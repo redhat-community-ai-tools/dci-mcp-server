@@ -5,7 +5,11 @@ import json
 from fastmcp import FastMCP
 
 from ..services.dci_job_service import DCIJobService
-from ..utils.pagination import fetch_all_with_progress
+from ..utils.pagination import (
+    MAX_PAGES_DEFAULT,
+    PAGE_SIZE_DEFAULT,
+    fetch_all_with_progress,
+)
 
 
 def register_job_tools(mcp: FastMCP) -> None:
@@ -42,7 +46,8 @@ def register_job_tools(mcp: FastMCP) -> None:
 
         Args:
             fetch_all: Whether to fetch all jobs (default: True)
-            where: Filter criteria (e.g., "state:eq:active")
+            where: Filter criteria (e.g., "state:active",
+                "team_id:615a5fb0-d6ac-4a5f-93de-99ffb73c7473")
             sort: Sort criteria (e.g., "created_at:desc")
 
         Returns:
@@ -61,8 +66,8 @@ def register_job_tools(mcp: FastMCP) -> None:
                     service.list_jobs,
                     where=where_filter,
                     sort=sort_criteria,
-                    page_size=50,
-                    max_pages=100,
+                    page_size=PAGE_SIZE_DEFAULT,
+                    max_pages=MAX_PAGES_DEFAULT,
                 )
 
                 return json.dumps(
@@ -87,7 +92,7 @@ def register_job_tools(mcp: FastMCP) -> None:
                     {
                         "jobs": result,
                         "count": len(result),
-                        "limit": 50,
+                        "limit": PAGE_SIZE_DEFAULT,
                         "offset": 0,
                         "note": "First page only. Use fetch_all=True for all results.",
                     },

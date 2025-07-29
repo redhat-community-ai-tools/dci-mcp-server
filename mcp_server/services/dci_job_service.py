@@ -32,19 +32,52 @@ class DCIJobService(DCIBaseService):
 
     def list_jobs(
         self,
-        limit: int | None = None,
-        offset: int | None = None,
         where: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
         sort: str | None = None,
     ) -> list:
         """
         List jobs with optional filtering and pagination.
 
         Args:
-            limit: Maximum number of jobs to return
-            offset: Number of jobs to skip
-            where: Filter criteria (e.g., "state:eq:active")
-            sort: Sort criteria (e.g., "created_at:desc")
+            where: Filter criteria (e.g., "state:active")
+            limit: Maximum number of jobs to return (default: 50)
+            offset: Number of jobs to skip (default: 0)
+            sort: Sort criteria (e.g., "-created_at")
+
+        Returns:
+            List of job dictionaries
+        """
+        try:
+            context = self._get_dci_context()
+
+            result = job.list(
+                context, limit=limit, offset=offset, where=where, sort=sort
+            )
+            if hasattr(result, "json"):
+                data = result.json()
+                return data.get("jobs", []) if isinstance(data, dict) else []
+            return result if isinstance(result, list) else []
+        except Exception as e:
+            print(f"Error listing jobs: {e}")
+            return []
+
+    def list_jobs_advanced(
+        self,
+        query: str,
+        limit: int = 50,
+        offset: int = 0,
+        sort: str | None = None,
+    ) -> list:
+        """
+        List jobs using the advanced query syntax.
+
+        Args:
+            where: query criteria (e.g., "and(eq(state,active),contains(tags,build:ga))")
+            limit: Maximum number of jobs to return (default: 50)
+            offset: Number of jobs to skip (default: 0)
+            sort: Sort criteria (e.g., "-created_at")
 
         Returns:
             List of job dictionaries
@@ -52,16 +85,14 @@ class DCIJobService(DCIBaseService):
         try:
             context = self._get_dci_context()
             # Provide default values for required parameters
-            if limit is None:
-                limit = 50
-            if offset is None:
-                offset = 0
 
+            print(f"{query=}")
             result = job.list(
-                context, limit=limit, offset=offset, where=where, sort=sort
+                context, limit=limit, offset=offset, query=query, sort=sort
             )
             if hasattr(result, "json"):
                 data = result.json()
+                print(f"{data=}")
                 return data.get("jobs", []) if isinstance(data, dict) else []
             return result if isinstance(result, list) else []
         except Exception as e:
