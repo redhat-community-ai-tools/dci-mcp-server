@@ -1,0 +1,34 @@
+{
+  "mcpServers": {
+    "prow-container": {
+      "command": "podman",
+      "args": ["run", "-i", "--rm", "localhost/prow-mcp:latest"],
+      "env": {
+        "DEFAULT_ORG_REPO": "redhat-developer_rhdh",
+        "DEFAULT_JOB_NAME": "pull-ci-redhat-developer-rhdh-main-e2e-tests"
+      }
+    },
+    "prow-stdio": {
+      "command": "uv",
+      "args": [
+        "run",
+        "/Users/akundu/Desktop/LlamaStack/prow-mcp-server/.venv/bin/python",
+        "/Users/akundu/Desktop/LlamaStack/prow-mcp-server/main.py"
+      ],
+      "description": "MCP server for Prow CI/CD integration",
+      "env": {
+        "DEFAULT_ORG_REPO": "redhat-developer_rhdh",
+        "DEFAULT_JOB_NAME": "pull-ci-redhat-developer-rhdh-main-e2e-tests"
+      }
+    },
+    "prow-sse": {
+      "url": "http://0.0.0.0:8000/sse/",
+      "description": "MCP server for Prow CI/CD integration with direct SSE",
+      "env": {
+        "MCP_TRANSPORT": "sse",
+        "DEFAULT_ORG_REPO": "redhat-developer_rhdh",
+        "DEFAULT_JOB_NAME": "pull-ci-redhat-developer-rhdh-main-e2e-tests"
+      }
+    }
+  }
+}

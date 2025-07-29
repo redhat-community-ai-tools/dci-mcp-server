@@ -1,0 +1,76 @@
+"""DCI product service for managing products."""
+
+from typing import Any
+
+from dciclient.v1.api import product
+
+from .dci_base_service import DCIBaseService
+
+
+class DCIProductService(DCIBaseService):
+    """Service class for DCI product operations."""
+
+    def get_product(self, product_id: str) -> dict[str, Any] | None:
+        """
+        Get a specific product by ID.
+
+        Args:
+            product_id: The ID of the product to retrieve
+
+        Returns:
+            Product data as dictionary, or None if not found
+        """
+        try:
+            context = self._get_dci_context()
+            result = product.get(context, product_id)
+            return result
+        except Exception as e:
+            print(f"Error getting product {product_id}: {e}")
+            return None
+
+    def list_products(
+        self,
+        limit: int | None = None,
+        offset: int | None = None,
+        where: str | None = None,
+        sort: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """
+        List products with optional filtering and pagination.
+
+        Args:
+            limit: Maximum number of products to return
+            offset: Number of products to skip
+            where: Filter criteria (e.g., "name:like:rhel")
+            sort: Sort criteria (e.g., "created_at:desc")
+
+        Returns:
+            List of product dictionaries
+        """
+        try:
+            context = self._get_dci_context()
+            result = product.list(
+                context, limit=limit, offset=offset, where=where, sort=sort
+            )
+            return result
+        except Exception as e:
+            print(f"Error listing products: {e}")
+            return []
+
+    def list_product_teams(self, product_id: str) -> list[dict[str, Any]]:
+        """
+        Get teams associated with a specific product.
+
+        Args:
+            product_id: The ID of the product
+
+        Returns:
+            List of team dictionaries
+        """
+        try:
+            context = self._get_dci_context()
+            result = product.list_teams(context, product_id)
+            return result
+        except Exception as e:
+            print(f"Error getting teams for product {product_id}: {e}")
+            return []
