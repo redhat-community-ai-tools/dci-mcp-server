@@ -22,6 +22,15 @@ class DCIBaseService:
                 "DCI_USER_ID+DCI_USER_SECRET"
             )
 
+        # Set environment variables expected by dciclient
+        import os
+
+        if self.user_id and self.user_secret:
+            os.environ["DCI_LOGIN"] = self.user_id
+            os.environ["DCI_PASSWORD"] = self.user_secret
+        if not os.environ.get("DCI_CS_URL"):
+            os.environ["DCI_CS_URL"] = "https://api.distributed-ci.io"
+
     def _get_dci_context(self) -> Any:
         """Get DCI context for API calls."""
 
@@ -29,6 +38,6 @@ class DCIBaseService:
             return build_dci_context(api_key=self.api_key)
         else:
             return build_dci_context(
-                user_id=self.user_id,
-                user_secret=self.user_secret,
+                dci_login=self.user_id,
+                dci_password=self.user_secret,
             )

@@ -49,6 +49,12 @@ class DCITopicService(DCIBaseService):
         """
         try:
             context = self._get_dci_context()
+            # Provide default values for required parameters
+            if limit is None:
+                limit = 50
+            if offset is None:
+                offset = 0
+
             result = topic.list(
                 context, limit=limit, offset=offset, where=where, sort=sort
             )

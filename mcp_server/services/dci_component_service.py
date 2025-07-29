@@ -49,8 +49,19 @@ class DCIComponentService(DCIBaseService):
         """
         try:
             context = self._get_dci_context()
-            result = component.list(
-                context, limit=limit, offset=offset, where=where, sort=sort
+            # Provide default values for required parameters
+            if limit is None:
+                limit = 50
+            if offset is None:
+                offset = 0
+
+            result = component.base.list(
+                context,
+                component.RESOURCE,
+                limit=limit,
+                offset=offset,
+                where=where,
+                sort=sort,
             )
             return result
         except Exception as e:
