@@ -42,8 +42,8 @@ def register_file_tools(mcp: FastMCP) -> None:
 
         Args:
             fetch_all: Whether to fetch all files (default: True)
-            where: Filter criteria (e.g., "name:like:log")
-            sort: Sort criteria (e.g., "created_at:desc")
+            where: Filter criteria (e.g., "name:ansible.log")
+            sort: Sort criteria (e.g., "-created_at")
 
         Returns:
             JSON string with list of files and pagination info

@@ -153,7 +153,7 @@ def register_diagnostic_tools(mcp: FastMCP) -> None:
 
             # Get recent jobs for comparison
             job_service = DCIJobService()
-            recent_jobs = job_service.list_jobs(limit=20, sort="created_at:desc")
+            recent_jobs = job_service.list_jobs(limit=20, sort="-created_at")
 
             # Filter recent jobs by name pattern
             matching_recent_jobs = [

@@ -44,7 +44,7 @@ class DCITeamService(DCIBaseService):
             limit: Maximum number of teams to return
             offset: Number of teams to skip
             where: Filter criteria (e.g., "name:like:qa")
-            sort: Sort criteria (e.g., "created_at:desc")
+            sort: Sort criteria (e.g., "-created_at")
 
         Returns:
             List of team dictionaries

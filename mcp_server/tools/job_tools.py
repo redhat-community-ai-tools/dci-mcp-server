@@ -48,7 +48,7 @@ def register_job_tools(mcp: FastMCP) -> None:
             fetch_all: Whether to fetch all jobs (default: True)
             where: Filter criteria (e.g., "state:active",
                 "team_id:615a5fb0-d6ac-4a5f-93de-99ffb73c7473")
-            sort: Sort criteria (e.g., "created_at:desc")
+            sort: Sort criteria (e.g., "-created_at")
 
         Returns:
             JSON string with list of jobs and pagination info

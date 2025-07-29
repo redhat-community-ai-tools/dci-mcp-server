@@ -42,8 +42,8 @@ def register_topic_tools(mcp: FastMCP) -> None:
 
         Args:
             fetch_all: Whether to fetch all topics (default: True)
-            where: Filter criteria (e.g., "name:like:kernel")
-            sort: Sort criteria (e.g., "created_at:desc")
+            where: Filter criteria (e.g., "name:OCP-4.20")
+            sort: Sort criteria (e.g., "-created_at")
 
         Returns:
             JSON string with list of topics and pagination info

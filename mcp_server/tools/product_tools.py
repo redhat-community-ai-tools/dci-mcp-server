@@ -44,8 +44,8 @@ def register_product_tools(mcp: FastMCP) -> None:
 
         Args:
             fetch_all: Whether to fetch all products (default: True)
-            where: Filter criteria (e.g., "name:like:rhel")
-            sort: Sort criteria (e.g., "created_at:desc")
+            where: Filter criteria (e.g., "name:OpenShift")
+            sort: Sort criteria (e.g., "-created_at")
 
         Returns:
             JSON string with list of products and pagination info

@@ -44,8 +44,8 @@ def register_pipeline_tools(mcp: FastMCP) -> None:
 
         Args:
             fetch_all: Whether to fetch all pipelines (default: True)
-            where: Filter criteria (e.g., "name:like:test")
-            sort: Sort criteria (e.g., "created_at:desc")
+            where: Filter criteria (e.g., "name:test")
+            sort: Sort criteria (e.g., "-created_at")
 
         Returns:
             JSON string with list of pipelines and pagination info

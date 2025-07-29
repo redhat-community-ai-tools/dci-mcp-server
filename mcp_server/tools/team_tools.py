@@ -42,8 +42,8 @@ def register_team_tools(mcp: FastMCP) -> None:
 
         Args:
             fetch_all: Whether to fetch all teams (default: True)
-            where: Filter criteria (e.g., "name:like:qa")
-            sort: Sort criteria (e.g., "created_at:desc")
+            where: Filter criteria (e.g., "name:DCI")
+            sort: Sort criteria (e.g., "-created_at")
 
         Returns:
             JSON string with list of teams and pagination info

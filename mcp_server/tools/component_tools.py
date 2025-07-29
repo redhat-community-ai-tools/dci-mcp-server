@@ -44,8 +44,8 @@ def register_component_tools(mcp: FastMCP) -> None:
 
         Args:
             fetch_all: Whether to fetch all components (default: True)
-            where: Filter criteria (e.g., "name:like:kernel")
-            sort: Sort criteria (e.g., "created_at:desc")
+            where: Filter criteria (e.g., "type:ocp")
+            sort: Sort criteria (e.g., "-created_at")
 
         Returns:
             JSON string with list of components and pagination info

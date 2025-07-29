@@ -43,8 +43,8 @@ class DCIProductService(DCIBaseService):
         Args:
             limit: Maximum number of products to return
             offset: Number of products to skip
-            where: Filter criteria (e.g., "name:like:rhel")
-            sort: Sort criteria (e.g., "created_at:desc")
+            where: Filter criteria (e.g., "name:RHEL")
+            sort: Sort criteria (e.g., "-created_at")
 
         Returns:
             List of product dictionaries

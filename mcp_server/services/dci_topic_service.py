@@ -43,8 +43,8 @@ class DCITopicService(DCIBaseService):
         Args:
             limit: Maximum number of topics to return
             offset: Number of topics to skip
-            where: Filter criteria (e.g., "name:like:kernel")
-            sort: Sort criteria (e.g., "created_at:desc")
+            where: Filter criteria (e.g., "name:OCP-4.18")
+            sort: Sort criteria (e.g., "-created_at")
 
         Returns:
             List of topic dictionaries

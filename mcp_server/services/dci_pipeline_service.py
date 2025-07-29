@@ -43,8 +43,8 @@ class DCIPipelineService(DCIBaseService):
         Args:
             limit: Maximum number of pipelines to return
             offset: Number of pipelines to skip
-            where: Filter criteria (e.g., "name:like:test")
-            sort: Sort criteria (e.g., "created_at:desc")
+            where: Filter criteria (e.g., "name:test")
+            sort: Sort criteria (e.g., "-created_at")
 
         Returns:
             List of pipeline dictionaries

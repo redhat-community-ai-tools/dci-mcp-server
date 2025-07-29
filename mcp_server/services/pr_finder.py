@@ -100,7 +100,7 @@ class PRFinder:
         """
         try:
             # Get recent jobs
-            jobs = self.job_service.list_jobs(limit=limit, sort="created_at:desc")
+            jobs = self.job_service.list_jobs(limit=limit, sort="-created_at")
 
             pr_jobs = []
             for job in jobs:

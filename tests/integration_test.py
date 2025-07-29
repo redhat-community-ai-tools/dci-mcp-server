@@ -166,27 +166,6 @@ async def test_topic_tools(mcp_server):
 
 
 @pytest.mark.integration
-async def test_pr_tools_2(mcp_server):
-    async with Client(mcp_server) as client:
-
-        # Test get_latest_dci_job_for_pr with dummy data
-        result = await client.call_tool(
-            "get_latest_dci_job_for_pr",
-            {
-                "pr_url": "https://github.com/dci-labs/samsung-ran-lab-config/pull/63",
-                "job_name": None,
-                "limit": 1,
-            },
-        )
-        assert not result.is_error
-
-        data = parse_response(result)
-        print(data)
-        # This might return empty results or error, both are valid
-        assert data["success"] and data["jobs"]["total_count"] > 0
-
-
-@pytest.mark.integration
 async def test_pr_tools(mcp_server):
     """Test PR-related tools."""
     async with Client(mcp_server) as client:

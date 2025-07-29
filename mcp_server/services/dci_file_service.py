@@ -44,8 +44,8 @@ class DCIFileService(DCIBaseService):
         Args:
             limit: Maximum number of files to return
             offset: Number of files to skip
-            where: Filter criteria (e.g., "name:like:log")
-            sort: Sort criteria (e.g., "created_at:desc")
+            where: Filter criteria (e.g., "name:ansible.log")
+            sort: Sort criteria (e.g., "-created_at")
 
         Returns:
             List of file dictionaries
