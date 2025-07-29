@@ -144,40 +144,49 @@ DCI_API_KEY=your-dci-api-key-here
 # DCI_USER_SECRET=your-dci-user-secret-here
 ```
 
-## Usage
+### MCP Configuration
 
-### Running the Server
+#### Cursor IDE (stdio transport)
 
-```bash
-# Start the server with stdio transport (default)
-python main.py
+Add to your `~/.cursor/mcp.json`:
 
-# Or with TCP transport
-MCP_TRANSPORT=tcp MCP_HOST=localhost MCP_PORT=8000 python main.py
+```json
+{
+  "mcpServers": {
+    "dci": {
+      "command": "uv",
+      "args": ["run", "/path/to/dci-mcp-server/.venv/bin/python", "/path/to/dci-mcp-server/main.py"],
+      "description": "MCP server for DCI integration"
+    }
+  }
+}
 ```
+
+#### Web-based Integration (SSE transport)
+
+For web applications or services that need HTTP-based communication:
+
+```json
+{
+  "mcpServers": {
+    "dci": {
+      "url": "http://0.0.0.0:8000/sse/",
+      "description": "MCP server for DCI integration with direct SSE",
+      "env": {
+        "MCP_TRANSPORT": "sse"
+      }
+    }
+  }
+}
+```
+
+**SSE Endpoint**: `http://0.0.0.0:8000/sse/`
+
+> **Note**: Make sure to start the SSE server separately with `MCP_TRANSPORT=sse uv run main.py` before using this configuration.
 
 ### Example Tool Usage
 
-```python
-# Get a specific component
-result = await get_dci_component("component-123")
-
-# List jobs with filtering
-result = await list_dci_jobs(
-    limit=10, 
-    where="state:eq:active", 
-    sort="created_at:desc"
-)
-
-# Download a file
-result = await download_dci_file("file-456", "/tmp/downloaded_file.log")
-
-# Get pipeline jobs
-result = await get_pipeline_jobs("pipeline-789")
-
-# Find PR builds using smart detection
-result = await get_latest_dci_build_for_pr("1234", "e2e-tests")
-```
+TBD
 
 ## Code Quality Checks
 
