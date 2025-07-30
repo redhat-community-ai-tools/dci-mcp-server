@@ -24,7 +24,7 @@ def register_job_tools(mcp: FastMCP) -> None:
         limit: Annotated[
             int,
             Field(
-                description="Maximum number of results to return for pagination (default 20, max 200)",
+                description="Maximum number of results to return for pagination (default 20, max 200). Use limit=1 to get count from metadata.",
                 ge=1,
                 le=200,
             ),
@@ -86,6 +86,27 @@ def register_job_tools(mcp: FastMCP) -> None:
 
             - configuration: the configuration of this job (which configuration was used in the lab)
 
+        **Counting Jobs**: To get the total count of jobs matching a query, set `limit=1` and read the `count` field in the `_meta` section of the response.
+
+        **Example for counting MyTeam jobs**:
+        ```json
+        {
+          "query": "eq(team_id,615a5fb1-d6ac-4a5f-93de-99ffb73c7473)",
+          "limit": 1
+        }
+        ```
+        This will return a response like:
+        ```json
+        {
+          "jobs": [...],
+          "_meta": {"count": 880},
+          ...
+        }
+        ```
+        The total count is 880 jobs.
+
+        If an URL is needed for a job, returns https://www.distributed-ci.io/jobs/<id>.
+
         Returns:
             JSON string with list of jobs and pagination info
         """
@@ -95,19 +116,7 @@ def register_job_tools(mcp: FastMCP) -> None:
             result = service.list_jobs_advanced(
                 query=query, sort=sort, limit=limit, offset=offset
             )
-
-            # Add pagination info to the response
-            response = {
-                "jobs": result,
-                "pagination": {
-                    "limit": limit,
-                    "offset": offset,
-                    "has_more": (
-                        len(result) == limit if isinstance(result, list) else False
-                    ),
-                },
-            }
-            return json.dumps(response, indent=2)
+            return json.dumps(result, indent=2)
         except Exception as e:
             return json.dumps({"error": str(e)}, indent=2)
 
