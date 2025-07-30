@@ -18,7 +18,15 @@ from .tools.topic_tools import register_topic_tools
 
 def create_server() -> FastMCP:
     """Create and configure the MCP server."""
-    mcp: FastMCP = FastMCP("dci-mcp-server")
+    mcp: FastMCP = FastMCP(
+        name="dci-mcp-server",
+        instructions="""
+        This server provides tools for managing DCI (Distributed CI) jobs,
+        pipelines, logs, teams, and components.
+
+        Daily jobs refer to DCI jobs with a tag "daily" in the list of tags.
+        """,
+    )
 
     # Register all tools
     register_component_tools(mcp)

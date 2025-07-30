@@ -69,7 +69,7 @@ def register_pr_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def get_latest_dci_job_for_pr(
-        pr_url: str, job_name: str | None, limit: int = 50
+        pr_url: str, job_name: str | None, limit: int = 50, offset: int = 0
     ) -> str:
         """
         Get the latest DCI jobs for a specific GitHub PR URL.
@@ -78,7 +78,7 @@ def register_pr_tools(mcp: FastMCP) -> None:
             pr_url: The GitHub PR number (e.g., "https://myorg/myrepo/pull/123")
             job_name: The DCI job name (optional to match any jobs)
             limit: Maximum number of jobs to return (default: 50)
-
+            offset: Number of jobs to skip (default: 0)
         Returns:
             JSON string with build information including job_id, job_name, etc.
         """
@@ -87,30 +87,16 @@ def register_pr_tools(mcp: FastMCP) -> None:
 
             # Get the job details
             job_service = DCIJobService()
-            jobs = job_service.list_jobs(
-                where=f"url:{pr_url}" + (f",name:{job_name}" if job_name else ""),
+            query = f"eq(url,{pr_url})"
+            if job_name:
+                query += f"and({query},ilike(name,%{job_name}%))"
+            jobs = job_service.list_jobs_advanced(
+                query=query,
                 sort="-created_at",
                 limit=limit,
             )
 
-            if isinstance(jobs, list):
-                return json.dumps(jobs, indent=2)
-            else:
-                return json.dumps(
-                    {
-                        "success": False,
-                        "pr_url": pr_url,
-                        "job_name": job_name,
-                        "error": "No matching jobs found",
-                        "suggestions": [
-                            f"Verify PR {pr_url} exists and has DCI runs",
-                            "Check if the job name pattern is correct",
-                            "The build might be very old and archived",
-                            "Try searching manually in the DCI dashboard",
-                        ],
-                    },
-                    indent=2,
-                )
+            return json.dumps(jobs, indent=2)
         except Exception as e:
             return json.dumps({"error": str(e)}, indent=2)
 

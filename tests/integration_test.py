@@ -47,24 +47,13 @@ async def test_job_tools(mcp_server):
     """Test job-related tools."""
     async with Client(mcp_server) as client:
         # Test list_dci_jobs with a simple filter (no limit parameter)
-        result = await client.call_tool("list_dci_jobs", {"fetch_all": False})
-        assert not result.is_error
-
-        data = parse_response(result)
-        assert "jobs" in data or "error" in data
-
-        # Test list_dci_jobs with team filter
         result = await client.call_tool(
-            "list_dci_jobs",
-            {
-                "where": "team_id:615a5fb0-d6ac-4a5f-93de-99ffb73c7473",
-                "fetch_all": False,
-            },
+            "query_dci_jobs", {"query": "contains(tags,daily)"}
         )
         assert not result.is_error
 
         data = parse_response(result)
-        assert "jobs" in data or "error" in data
+        assert "jobs" in data and len(data["jobs"]) > 0
 
 
 @pytest.mark.integration
@@ -180,15 +169,15 @@ async def test_pr_tools(mcp_server):
         result = await client.call_tool(
             "get_latest_dci_job_for_pr",
             {
-                "pr_url": "https://github.com/dci-labs/samsung-ran-lab-config/pull/98",
-                # "job_name": "test-job",
+                "pr_url": "https://github.com/my-org/my-repo/pull/42",
+                "job_name": "test-job",
             },
         )
         assert not result.is_error
 
         data = parse_response(result)
         # This might return empty results or error, both are valid
-        assert isinstance(data, list) and len(data) == 0
+        assert isinstance(data, dict) and "jobs" in data and len(data["jobs"]) == 0
 
 
 @pytest.mark.integration

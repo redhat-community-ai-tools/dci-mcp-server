@@ -88,6 +88,7 @@ ignore = [
     "B008",  # do not perform function calls in argument defaults
     "B006",  # do not use mutable data structures for argument defaults
     "C901",  # too complex
+    "E501",  # line too long
 ]
 
 [tool.ruff.lint.per-file-ignores]
