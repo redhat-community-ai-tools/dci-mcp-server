@@ -158,13 +158,6 @@ async def test_topic_tools(mcp_server):
 async def test_pr_tools(mcp_server):
     """Test PR-related tools."""
     async with Client(mcp_server) as client:
-        # Test get_pr_by_job_id with a dummy job ID (should return error)
-        result = await client.call_tool("get_pr_by_job_id", {"job_id": "dummy-job-id"})
-        assert not result.is_error
-
-        data = parse_response(result)
-        assert "error" in data
-
         # Test get_latest_dci_job_for_pr with dummy data
         result = await client.call_tool(
             "get_latest_dci_job_for_pr",

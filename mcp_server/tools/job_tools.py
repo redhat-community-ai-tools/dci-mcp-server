@@ -7,10 +7,6 @@ from fastmcp import FastMCP
 from pydantic import Field
 
 from ..services.dci_job_service import DCIJobService
-from ..utils.pagination import (
-    MAX_PAGES_DEFAULT,
-    PAGE_SIZE_DEFAULT,
-)
 
 
 def register_job_tools(mcp: FastMCP) -> None:
@@ -26,11 +22,14 @@ def register_job_tools(mcp: FastMCP) -> None:
         ],
         sort: Annotated[str, Field(description="Sort criteria")] = "-created_at",
         limit: Annotated[
-            int, Field(description="Maximum number of results to return", ge=1, le=100)
-        ] = PAGE_SIZE_DEFAULT,
-        offset: Annotated[
-            int, Field(description="Offset for pagination", ge=0)
-        ] = MAX_PAGES_DEFAULT,
+            int,
+            Field(
+                description="Maximum number of results to return for pagination (default 20, max 200)",
+                ge=1,
+                le=200,
+            ),
+        ] = 20,
+        offset: Annotated[int, Field(description="Offset for pagination", ge=0)] = 0,
     ) -> str:
         """
         Lookup DCI jobs with an advanced query language.
@@ -59,7 +58,7 @@ def register_job_tools(mcp: FastMCP) -> None:
 
             - name: name of the job
 
-            - status: The current state  (new, running, success, failure, error, killed)
+            - status: The current state  (new, running, success, failure, error, killed). Finished jobs have a status of killed, success, failure, or error.
 
             - created_at: The creation timestamp
 
@@ -96,7 +95,19 @@ def register_job_tools(mcp: FastMCP) -> None:
             result = service.list_jobs_advanced(
                 query=query, sort=sort, limit=limit, offset=offset
             )
-            return json.dumps(result, indent=2)
+
+            # Add pagination info to the response
+            response = {
+                "jobs": result,
+                "pagination": {
+                    "limit": limit,
+                    "offset": offset,
+                    "has_more": (
+                        len(result) == limit if isinstance(result, list) else False
+                    ),
+                },
+            }
+            return json.dumps(response, indent=2)
         except Exception as e:
             return json.dumps({"error": str(e)}, indent=2)
 

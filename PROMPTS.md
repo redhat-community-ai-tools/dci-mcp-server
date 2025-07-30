@@ -15,6 +15,10 @@ Show me the last 10 DCI jobs from any team
 ```
 
 ```
+Can you list the last finished 20 DCI daily jobs?
+```
+
+```
 What's the current status of DCI jobs for the MyTeam team?
 ```
 
