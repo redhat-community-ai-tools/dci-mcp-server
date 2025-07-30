@@ -5,10 +5,8 @@ import os
 from fastmcp import FastMCP
 
 from .tools.component_tools import register_component_tools
-from .tools.diagnostic_tools import register_diagnostic_tools
 from .tools.file_tools import register_file_tools
 from .tools.job_tools import register_job_tools
-from .tools.log_tools import register_log_tools
 from .tools.pipeline_tools import register_pipeline_tools
 from .tools.pr_tools import register_pr_tools
 from .tools.product_tools import register_product_tools
@@ -41,9 +39,7 @@ def create_server() -> FastMCP:
     register_product_tools(mcp)
     register_team_tools(mcp)
     register_topic_tools(mcp)
-    register_log_tools(mcp)
     register_pr_tools(mcp)
-    register_diagnostic_tools(mcp)
 
     return mcp
 

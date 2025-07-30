@@ -144,9 +144,6 @@ The server provides comprehensive tools for interacting with DCI API components:
 - `get_topic_components(topic_id)`: Get components associated with a topic
 - `get_topic_jobs_from_components(topic_id)`: Get jobs from topic components
 
-### Log Tools
-- `get_dci_job_logs(job_id)`: Get logs for a specific job
-- `get_dci_job_artifacts(job_id)`: Get artifacts for a specific job
 
 ## Code Quality Checks
 
@@ -190,9 +187,7 @@ mcp_server/
 │   ├── dci_pipeline_service.py
 │   ├── dci_product_service.py
 │   ├── dci_team_service.py
-│   ├── dci_topic_service.py
-│   ├── dci_log_service.py
-│   └── pr_finder.py      # Smart PR detection service
+│   └── dci_topic_service.py
 ├── tools/                # MCP tools
 │   ├── component_tools.py
 │   ├── job_tools.py
@@ -200,13 +195,9 @@ mcp_server/
 │   ├── pipeline_tools.py
 │   ├── product_tools.py
 │   ├── team_tools.py
-│   ├── topic_tools.py
-│   ├── log_tools.py
-│   ├── pr_tools.py       # PR detection tools
-│   └── diagnostic_tools.py
+│   └── topic_tools.py
 └── utils/                # Utility functions
-    ├── http_client.py
-    └── pr_parser.py
+    └── http_client.py
 ```
 
 ### Adding New Tools
