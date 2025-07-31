@@ -5,6 +5,7 @@ import os
 from fastmcp import FastMCP
 
 from .tools.component_tools import register_component_tools
+from .tools.date_tools import register_date_tools
 from .tools.file_tools import register_file_tools
 from .tools.job_tools import register_job_tools
 from .tools.pipeline_tools import register_pipeline_tools
@@ -33,6 +34,7 @@ def create_server() -> FastMCP:
 
     # Register all tools
     register_component_tools(mcp)
+    register_date_tools(mcp)
     register_job_tools(mcp)
     register_file_tools(mcp)
     register_pipeline_tools(mcp)

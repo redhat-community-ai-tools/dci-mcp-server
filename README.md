@@ -32,6 +32,7 @@ source .venv/bin/activate
 The server supports multiple ways to configure DCI authentication:
 
 #### Option 1: Environment Variables
+
 ```bash
 # DCI Authentication (choose one method)
 export DCI_API_KEY="your-dci-api-key"
@@ -51,6 +52,7 @@ cp env.example .env
 ```
 
 Example `.env` file:
+
 ```bash
 # DCI Authentication (choose one method)
 DCI_API_KEY=your-dci-api-key-here
@@ -109,36 +111,44 @@ You can then use [prompts](PROMPTS.md) to explore the DCI data.
 The server provides comprehensive tools for interacting with DCI API components:
 
 ### Component Tools
+
 - `get_dci_component(component_id)`: Get a specific component by ID
 - `list_dci_components(limit, offset, where, sort)`: List components with filtering and pagination
 
+### Date tools
+
+- `today`: returns today's date.
+
 ### Job Tools
-- `get_dci_job(job_id)`: Get a specific job by ID
-- `list_dci_jobs(limit, offset, where, sort)`: List jobs with filtering and pagination
-- `list_job_files(job_id)`: List files associated with a job
-- `list_job_results(job_id)`: List results associated with a job
+
+- `query_dci_jobs(query, limit, offset, sort)`: Query jobs with pagination.
 
 ### File Tools
+
 - `get_dci_file(file_id)`: Get a specific file by ID
 - `list_dci_files(limit, offset, where, sort)`: List files with filtering and pagination
 - `download_dci_file(file_id, output_path)`: Download a file to local path
 - `get_file_content(file_id)`: Get file content as string
 
 ### Pipeline Tools
+
 - `get_dci_pipeline(pipeline_id)`: Get a specific pipeline by ID
 - `list_dci_pipelines(limit, offset, where, sort)`: List pipelines with filtering and pagination
 - `get_pipeline_jobs(pipeline_id)`: Get jobs associated with a pipeline
 
 ### Product Tools
+
 - `get_dci_product(product_id)`: Get a specific product by ID
 - `list_dci_products(limit, offset, where, sort)`: List products with filtering and pagination
 - `get_product_teams(product_id)`: Get teams associated with a product
 
 ### Team Tools
+
 - `get_dci_team(team_id)`: Get a specific team by ID
 - `list_dci_teams(limit, offset, where, sort)`: List teams with filtering and pagination
 
 ### Topic Tools
+
 - `get_dci_topic(topic_id)`: Get a specific topic by ID
 - `list_dci_topics(limit, offset, where, sort)`: List topics with filtering and pagination
 - `get_topic_components(topic_id)`: Get components associated with a topic
@@ -190,6 +200,7 @@ mcp_server/
 │   └── dci_topic_service.py
 ├── tools/                # MCP tools
 │   ├── component_tools.py
+│   ├── date_tools.py
 │   ├── job_tools.py
 │   ├── file_tools.py
 │   ├── pipeline_tools.py

@@ -60,9 +60,9 @@ def register_job_tools(mcp: FastMCP) -> None:
 
             - status: The current state  (new, running, success, failure, error, killed). Finished jobs have a status of killed, success, failure, or error.
 
-            - created_at: The creation timestamp
+            - created_at: The creation timestamp. Use `today` tool to compute relative dates.
 
-            - updated_at: The last update timestamp
+            - updated_at: The last update timestamp. Use `today` tool to compute relative dates.
 
             - team_id: The ID of the team associated with the job
 
