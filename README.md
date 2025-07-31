@@ -127,7 +127,7 @@ The server provides comprehensive tools for interacting with DCI API components:
 
 - `get_dci_file(file_id)`: Get a specific file by ID
 - `list_dci_files(limit, offset, where, sort)`: List files with filtering and pagination
-- `download_dci_file(file_id, output_path)`: Download a file to local path
+- `download_dci_file(job_id, file_id, output_path)`: Download a file to local path
 - `get_file_content(file_id)`: Get file content as string
 
 ### Pipeline Tools
@@ -150,7 +150,7 @@ The server provides comprehensive tools for interacting with DCI API components:
 ### Topic Tools
 
 - `get_dci_topic(topic_id)`: Get a specific topic by ID
-- `list_dci_topics(limit, offset, where, sort)`: List topics with filtering and pagination
+- `query_dci_topics(query, limit, offset, sort)`: Query topics with pagination
 - `get_topic_components(topic_id)`: Get components associated with a topic
 - `get_topic_jobs_from_components(topic_id)`: Get jobs from topic components
 

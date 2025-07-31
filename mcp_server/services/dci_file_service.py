@@ -1,3 +1,18 @@
+#
+# Copyright (C) 2025 Red Hat, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
 """DCI file service for managing files."""
 
 import os
@@ -69,11 +84,12 @@ class DCIFileService(DCIBaseService):
             print(f"Error listing files: {e}")
             return []
 
-    def download_file(self, file_id: str, output_path: str) -> bool:
+    def download_file(self, job_id: str, file_id: str, output_path: str) -> bool:
         """
         Download a file to a local path.
 
         Args:
+            job_id: The ID of the job associated with the file
             file_id: The ID of the file to download
             output_path: Local path where to save the file
 
@@ -87,7 +103,8 @@ class DCIFileService(DCIBaseService):
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
             # Download the file
-            dci_file.download(context, file_id, output_path)
+            res = dci_file.download(context, job_id, file_id, output_path)
+            print(f"{res=}")
             return True
         except Exception as e:
             print(f"Error downloading file {file_id} to {output_path}: {e}")

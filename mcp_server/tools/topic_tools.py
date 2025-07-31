@@ -1,98 +1,82 @@
+#
+# Copyright (C) 2025 Red Hat, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
 """MCP tools for DCI topic operations."""
 
 import json
+from typing import Annotated
 
 from fastmcp import FastMCP
+from pydantic import Field
 
 from ..services.dci_topic_service import DCITopicService
-from ..utils.pagination import fetch_all_with_progress
 
 
 def register_topic_tools(mcp: FastMCP) -> None:
     """Register topic-related tools with the MCP server."""
 
     @mcp.tool()
-    async def get_dci_topic(topic_id: str) -> str:
-        """
-        Get a specific DCI topic by ID.
-
-        Args:
-            topic_id: The ID of the topic to retrieve
-
-        Returns:
-            JSON string with topic information
-        """
-        try:
-            service = DCITopicService()
-            result = service.get_topic(topic_id)
-
-            if result:
-                return json.dumps(result, indent=2)
-            else:
-                return json.dumps({"error": f"Topic {topic_id} not found"}, indent=2)
-        except Exception as e:
-            return json.dumps({"error": str(e)}, indent=2)
-
-    @mcp.tool()
-    async def list_dci_topics(
-        fetch_all: bool = True, where: str = "", sort: str = ""
+    async def query_dci_topics(
+        query: Annotated[
+            str,
+            Field(
+                description="search criteria (e.g., and(ilike(name,ptp),contains(tags,build:ga))"
+            ),
+        ] = "",
+        sort: Annotated[str, Field(description="Sort criteria")] = "-created_at",
+        limit: Annotated[
+            int,
+            Field(
+                description="Maximum number of results to return for pagination (default 20, max 200). Use limit=1 to get count from metadata.",
+                ge=1,
+                le=200,
+            ),
+        ] = 20,
+        offset: Annotated[int, Field(description="Offset for pagination", ge=0)] = 0,
     ) -> str:
         """
-        List DCI topics with optional filtering and automatic pagination.
+        Lookup DCI topics with an advanced query language.
 
-        Args:
-            fetch_all: Whether to fetch all topics (default: True)
-            where: Filter criteria (e.g., "name:OCP-4.20")
-            sort: Sort criteria (e.g., "-created_at")
+        Uses the same query language as `query_dci_jobs`.
+
+        Here are the fields of a DCI topic you can use in your query:
+
+        - id: The unique identifier of the topic
+
+        - name: The name of the topic
+
+        - created_at: The creation date of the topic. Use the `today` tool if you need relative dates.
+
+        - updated_at: The last update date of the topic. Use the `today` tool if you need relative dates.
+        - product_id: The ID of the product associated with the topic. Use the `query_dci_products` tool to find product IDs.
+
+        - next_topic_id: The ID of the next topic in the sequence. This is useful for knowing which topic to upgrade to.
+
+        - export_control: boolean indicating if the topic is export controlled.
+
+        - state: The state of the topic, which can be one of the following: active or inactive.
 
         Returns:
             JSON string with list of topics and pagination info
         """
         try:
             service = DCITopicService()
-
-            # Convert empty strings to None for optional parameters
-            where_filter = where if where else None
-            sort_criteria = sort if sort else None
-
-            if fetch_all:
-                # Fetch all topics with pagination
-                result = fetch_all_with_progress(
-                    service.list_topics,
-                    where=where_filter,
-                    sort=sort_criteria,
-                    page_size=50,
-                    max_pages=100,
-                )
-
-                return json.dumps(
-                    {
-                        "topics": result["results"],
-                        "total_count": result["total_count"],
-                        "pages_fetched": result["pages_fetched"],
-                        "page_size": result["page_size"],
-                        "reached_end": result["reached_end"],
-                        "pagination_info": result,
-                    },
-                    indent=2,
-                )
-            else:
-                # Fetch just the first page
-                result = service.list_topics(
-                    limit=50, offset=0, where=where_filter, sort=sort_criteria
-                )
-                if not isinstance(result, list):
-                    result = []
-                return json.dumps(
-                    {
-                        "topics": result,
-                        "count": len(result),
-                        "limit": 50,
-                        "offset": 0,
-                        "note": "First page only. Use fetch_all=True for all results.",
-                    },
-                    indent=2,
-                )
+            result = service.query_topics(
+                query=query, sort=sort, limit=limit, offset=offset
+            )
+            return json.dumps(result, indent=2)
         except Exception as e:
             return json.dumps({"error": str(e)}, indent=2)
 

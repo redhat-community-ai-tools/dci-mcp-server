@@ -1,3 +1,18 @@
+#
+# Copyright (C) 2025 Red Hat, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
 """MCP tools for DCI file operations."""
 
 import json
@@ -97,11 +112,12 @@ def register_file_tools(mcp: FastMCP) -> None:
             return json.dumps({"error": str(e)}, indent=2)
 
     @mcp.tool()
-    async def download_dci_file(file_id: str, output_path: str) -> str:
+    async def download_dci_file(job_id: str, file_id: str, output_path: str) -> str:
         """
         Download a DCI file to a local path.
 
         Args:
+            job_id: The ID of the job associated with the file
             file_id: The ID of the file to download
             output_path: Local path where to save the file
 
@@ -110,7 +126,7 @@ def register_file_tools(mcp: FastMCP) -> None:
         """
         try:
             service = DCIFileService()
-            success = service.download_file(file_id, output_path)
+            success = service.download_file(job_id, file_id, output_path)
 
             if success:
                 return json.dumps(

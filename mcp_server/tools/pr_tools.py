@@ -53,7 +53,7 @@ def register_pr_tools(mcp: FastMCP) -> None:
             if job_name and job_name.strip():
                 query = f"and({query},ilike(name,%{job_name.strip()}%))"
 
-            jobs = job_service.list_jobs_advanced(
+            jobs = job_service.query_jobs(
                 query=query,
                 sort="-created_at",
                 limit=limit,

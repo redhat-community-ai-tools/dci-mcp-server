@@ -13,6 +13,11 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+"""
+Integration tests. They need a valid .env at the root of the
+project with credentials to access the DCI CS.
+"""
+
 import datetime
 import json
 
@@ -167,20 +172,14 @@ async def test_product_tools(mcp_server):
 async def test_topic_tools(mcp_server):
     """Test topic-related tools."""
     async with Client(mcp_server) as client:
-        # Test list_dci_topics
-        result = await client.call_tool("list_dci_topics", {"fetch_all": False})
+        # Test query_dci_topics
+        result = await client.call_tool(
+            "query_dci_topics", {"query": "like(name,OCP-%)"}
+        )
         assert not result.is_error
 
         data = parse_response(result)
         assert "topics" in data and len(data["topics"]) > 0
-        topic_id = data["topics"][0]["id"]
-
-        # Test get_dci_topic with a dummy ID (should return error)
-        result = await client.call_tool("get_dci_topic", {"topic_id": topic_id})
-        assert not result.is_error
-
-        data = parse_response(result)
-        assert data["topic"]["id"] == topic_id
 
 
 @pytest.mark.integration
@@ -228,7 +227,11 @@ async def test_file_download_tools(mcp_server):
         # Test download_dci_file with a dummy file ID (returns error structure)
         result = await client.call_tool(
             "download_dci_file",
-            {"file_id": "dummy-file-id", "output_path": "/tmp/test"},
+            {
+                "job_id": "dummy-job-id",
+                "file_id": "dummy-file-id",
+                "output_path": "/tmp/test",
+            },
         )
         assert not result.is_error
 

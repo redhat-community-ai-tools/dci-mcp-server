@@ -1,3 +1,18 @@
+#
+# Copyright (C) 2025 Red Hat, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
 """MCP tools for DCI job operations."""
 
 import json
@@ -42,7 +57,8 @@ def register_job_tools(mcp: FastMCP) -> None:
             lt (less than) or le (less or equal) using the same syntax as eq: <op>(<field>,<value>).
 
             like(<field>,<value with percent>) and ilike(<field>,<value with percent>)
-            to lookup a field with a SQL glob like way.
+            to lookup a field with a SQL glob like way. For example, to get the jobs
+            with a CILAB- jira ticket number, use like(comment,CILAB-%).
 
             contains(<field>,<value1>,...) and not_contains(<field>,<value1>,...)
             to lookup elements in an array. This is useful mainly for tags.
@@ -58,31 +74,31 @@ def register_job_tools(mcp: FastMCP) -> None:
 
             - name: name of the job
 
-            - status: The current state  (new, running, success, failure, error, killed). Finished jobs have a status of killed, success, failure, or error.
+            - status: The current state  (new, running, success, failure, error, killed). Finished jobs have a status of killed, success, failure, or error. Failing jobs have a status of failure or error.
 
             - created_at: The creation timestamp. Use `today` tool to compute relative dates.
 
             - updated_at: The last update timestamp. Use `today` tool to compute relative dates.
 
-            - team_id: The ID of the team associated with the job
+            - team_id: The ID of the team associated with the job. Use the `list_dci_teams` tool to get it.
 
-            - topic_id: The ID of the topic associated with the job
+            - topic_id: The ID of the topic associated with the job. Use the `list_dci_topics` tool to get it.
 
-            - remoteci_id: The ID of the remote CI associated with the job. It represents the lab.
+            - remoteci_id: The ID of the remote CI associated with the job. It represents the lab. Use the `list_dci_remotecis` tool to get it.
 
-            - product_id: The ID of the product associated with the job
+            - product_id: The ID of the product associated with the job. Use the `list_dci_products` tool to get it.
 
-            - pipeline_id: The ID of the pipeline associated with the job
+            - pipeline_id: The ID of the pipeline associated with the job. Use the `list_dci_pipelines` tool to get it.
 
-            - previous_job_id: The ID of the previous job in the pipeline
+            - previous_job_id: The ID of the previous job in the pipeline.
 
             - tags: list of tags associated with the job. Daily jobs refers to a daily tag.
 
-            - status_reason: The reason for the current status
+            - status_reason: explanation of the failed job. It is a free text field.
 
             - comment: free text. Can contain a JIRA ticket number.
 
-            - url: The URL associated with the job can be a GitHub URL or a Gerrit URL
+            - url: The URL associated with the job can be a GitHub PR URL or a Gerrit change URL
 
             - configuration: the configuration of this job (which configuration was used in the lab)
 
@@ -113,7 +129,7 @@ def register_job_tools(mcp: FastMCP) -> None:
         try:
             service = DCIJobService()
 
-            result = service.list_jobs_advanced(
+            result = service.query_jobs(
                 query=query, sort=sort, limit=limit, offset=offset
             )
             return json.dumps(result, indent=2)
@@ -161,3 +177,6 @@ def register_job_tools(mcp: FastMCP) -> None:
             )
         except Exception as e:
             return json.dumps({"error": str(e)}, indent=2)
+
+
+# job_tools.py ends here

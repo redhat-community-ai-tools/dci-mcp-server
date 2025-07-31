@@ -1,3 +1,18 @@
+#
+# Copyright (C) 2025 Red Hat, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
 """DCI topic service for managing topics."""
 
 from typing import Any
@@ -10,40 +25,20 @@ from .dci_base_service import DCIBaseService
 class DCITopicService(DCIBaseService):
     """Service class for DCI topic operations."""
 
-    def get_topic(self, topic_id: str) -> Any:
-        """
-        Get a specific topic by ID.
-
-        Args:
-            topic_id: The ID of the topic to retrieve
-
-        Returns:
-            Topic data as dictionary, or None if not found
-        """
-        try:
-            context = self._get_dci_context()
-            result = topic.get(context, topic_id)
-            if hasattr(result, "json"):
-                return result.json()
-            return result
-        except Exception as e:
-            print(f"Error getting topic {topic_id}: {e}")
-            return None
-
-    def list_topics(
+    def query_topics(
         self,
         limit: int | None = None,
         offset: int | None = None,
-        where: str | None = None,
+        query: str | None = None,
         sort: str | None = None,
     ) -> list:
         """
-        List topics with optional filtering and pagination.
+        Query topics with optional filtering, sorting, and pagination.
 
         Args:
             limit: Maximum number of topics to return
             offset: Number of topics to skip
-            where: Filter criteria (e.g., "name:OCP-4.18")
+            query: Filter criteria (e.g., "eq(name,DCI)")
             sort: Sort criteria (e.g., "-created_at")
 
         Returns:
@@ -57,13 +52,9 @@ class DCITopicService(DCIBaseService):
             if offset is None:
                 offset = 0
 
-            result = topic.list(
-                context, limit=limit, offset=offset, where=where, sort=sort
-            )
-            if hasattr(result, "json"):
-                data = result.json()
-                return data.get("topics", []) if isinstance(data, dict) else []
-            return result if isinstance(result, list) else []
+            return topic.list(
+                context, limit=limit, offset=offset, query=query, sort=sort
+            ).json()
         except Exception as e:
             print(f"Error listing topics: {e}")
             return []
