@@ -54,12 +54,13 @@ cp env.example .env
 Example `.env` file:
 
 ```bash
-# DCI Authentication (choose one method)
-DCI_API_KEY=your-dci-api-key-here
+# Method 1: API Key Authentication
+DCI_CLIENT_ID=<client_type>/<client_id>
+DCI_API_SECRET=<api_secret>
 
-# OR use User ID/Secret authentication
-# DCI_USER_ID=your-dci-user-id-here
-# DCI_USER_SECRET=your-dci-user-secret-here
+# Method 2: User ID/Password (alternative to API key)
+# DCI_LOGIN=foo
+# DCI_PASSWORD=bar
 ```
 
 ### MCP Configuration

@@ -29,9 +29,11 @@ def register_prompts(mcp):
         Returns:
             A prompt message with instructions on how to perform RCA.
         """
-        content = f"""Conduct this root cause analysis (RCA) on the following DCI job: {dci_job_id}. Store all the downloaded files at /tmp/dci/<job id>, so as not to download them twice. Always download events.txt if it is available to understand the timeline. Create a report with your findings at /tmp/dci/rca-<job id>.md. Be sure to include details about the timeline of events and the DCI job information in the report, such as the components, the topic, and the pipeline name. If there is CILAB-<num> comment, replace it by https://issues.redhat.com/browse/CILAB-<num>. Include an hyperlink each time you refer to the DCI job id.
+        content = f"""Conduct a root cause analysis (RCA) on the following DCI job: {dci_job_id}. Store all the downloaded files at /tmp/dci/<job id>, so as not to download them twice. Always download events.txt if it is available to understand the timeline. Create a report with your findings at /tmp/dci/rca-<job id>.md. Be sure to include details about the timeline of events and the DCI job information in the report, such as the components, the topic, and the pipeline name. If there is CILAB-<num> comment, replace it by https://issues.redhat.com/browse/CILAB-<num>. Include an hyperlink each time you refer to the DCI job id.
 
-You can review the logjuicer.txt (for regular files) and logjuicer_omg.txt (for must_gather) files that compare the logs from a previous successful run. If you need to use a must-gather file, you can use the omc utility to manipulate it.
+        You can review the logjuicer.txt (for regular files) and logjuicer_omg.txt (for must_gather) files that compare the logs from a previous successful run.
+
+        If you need to use a must-gather file, you can use the omc utility to manipulate it.
 """
         return PromptMessage(
             role="user", content=TextContent(type="text", text=content)
