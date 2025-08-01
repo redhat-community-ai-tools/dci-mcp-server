@@ -106,6 +106,10 @@ For web applications or services that need HTTP-based communication:
 
 You can then use [prompts](PROMPTS.md) to explore the DCI data.
 
+There are also parameterized prompts defined in the MCP server:
+
+- `/dci/rca <job id>` conducts a Root Cause Analysis of the problem in the job. Storing the downloaded files under `/tmp/dci/<job id>` and generating a report at `/tmp/dci/rca-<job id>.md`.
+
 ## Available Tools exposed by the MCP server
 
 The server provides comprehensive tools for interacting with DCI API components:

@@ -1,9 +1,25 @@
+#
+# Copyright (C) 2025 Red Hat, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
 """Main entry point for the DCI MCP server."""
 
 import os
 
 from fastmcp import FastMCP
 
+from .prompts.prompts import register_prompts
 from .tools.component_tools import register_component_tools
 from .tools.date_tools import register_date_tools
 from .tools.file_tools import register_file_tools
@@ -42,6 +58,9 @@ def create_server() -> FastMCP:
     register_team_tools(mcp)
     register_topic_tools(mcp)
     register_pr_tools(mcp)
+
+    # Register prompts for user interaction
+    register_prompts(mcp)
 
     return mcp
 
