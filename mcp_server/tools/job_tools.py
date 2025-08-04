@@ -45,6 +45,12 @@ def register_job_tools(mcp: FastMCP) -> None:
             ),
         ] = 20,
         offset: Annotated[int, Field(description="Offset for pagination", ge=0)] = 0,
+        only_fields: Annotated[
+            list[str] | None,
+            Field(
+                description="List of fields to return, empty list means all fields, None means no data. Fields are the one listed in the query description plus components.",
+            ),
+        ] = [],
     ) -> str:
         """
         Lookup DCI jobs with an advanced query language.
@@ -108,13 +114,15 @@ def register_job_tools(mcp: FastMCP) -> None:
         ```json
         {
           "query": "eq(team_id,615a5fb1-d6ac-4a5f-93de-99ffb73c7473)",
-          "limit": 1
+          "limit": 1,
+          "offset": 0,
+          "only_fields": null
         }
         ```
         This will return a response like:
         ```json
         {
-          "jobs": [...],
+          "jobs": [],
           "_meta": {"count": 880},
           ...
         }
@@ -132,6 +140,18 @@ def register_job_tools(mcp: FastMCP) -> None:
             result = service.query_jobs(
                 query=query, sort=sort, limit=limit, offset=offset
             )
+
+            if isinstance(only_fields, list) and only_fields:
+                # Filter the result to only include specified fields
+                if "jobs" in result:
+                    filtered_result = [
+                        {field: job.get(field) for field in only_fields}
+                        for job in result["jobs"]
+                    ]
+                    result["jobs"] = filtered_result
+            elif only_fields is None:
+                result["jobs"] = []
+
             return json.dumps(result, indent=2)
         except Exception as e:
             return json.dumps({"error": str(e)}, indent=2)

@@ -82,7 +82,8 @@ async def test_job_tools(mcp_server):
     async with Client(mcp_server) as client:
         # Test list_dci_jobs with a simple filter (no limit parameter)
         result = await client.call_tool(
-            "query_dci_jobs", {"query": "contains(tags,daily)"}
+            "query_dci_jobs",
+            {"query": "contains(tags,daily)", "only_fields": ["team_id"]},
         )
         assert not result.is_error
 

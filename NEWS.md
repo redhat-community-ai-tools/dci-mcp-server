@@ -1,5 +1,11 @@
 # DCI MCP Server - Change Log
 
+## [2025-08-04]
+
+### Improvements
+
+- `query_dci_jobs` MCP tool can now filter non needed fields.
+
 ## [2025-07-29]
 
 ### Tests
