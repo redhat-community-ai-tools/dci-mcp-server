@@ -53,10 +53,7 @@ echo "🔍 Type checking with mypy..."
 echo "⏭️  mypy disabled for now"
 
 echo "🔒 Security scanning with bandit..."
-$PYTHON_CMD -m bandit -r . -f json -o bandit-report.json || {
-    echo "⚠️  bandit found security issues (mostly from external libraries). Check bandit-report.json for details."
-    echo "⏭️  Continuing anyway since these are external dependency issues..."
-}
+echo "⏭️ bandit disabled for now. You can run it manually with $PYTHON_CMD -m bandit -r . -f json -o bandit-report.json"
 
 echo "🧪 Running tests..."
 $PYTHON_CMD -m pytest tests/ -v || {

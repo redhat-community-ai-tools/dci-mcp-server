@@ -1,37 +1,37 @@
-"""DCI team service for managing teams."""
+"""DCI remoteci service for managing remotecis."""
 
 import sys
 from typing import Any
 
-from dciclient.v1.api import team
+from dciclient.v1.api import remoteci
 
 from .dci_base_service import DCIBaseService
 
 
-class DCITeamService(DCIBaseService):
-    """Service class for DCI team operations."""
+class DCIRemoteCIService(DCIBaseService):
+    """Service class for DCI remoteci operations."""
 
-    def get_team(self, team_id: str) -> Any:
+    def get_remoteci(self, remoteci_id: str) -> Any:
         """
-        Get a specific team by ID.
+        Get a specific remoteci by ID.
 
         Args:
-            team_id: The ID of the team to retrieve
+            remoteci_id: The ID of the remoteci to retrieve
 
         Returns:
-            Team data as dictionary, or None if not found
+            Remoteci data as dictionary, or None if not found
         """
         try:
             context = self._get_dci_context()
-            result = team.get(context, team_id)
+            result = remoteci.get(context, remoteci_id)
             if hasattr(result, "json"):
                 return result.json()
             return result
         except Exception as e:
-            print(f"Error getting team {team_id}: {e}")
+            print(f"Error getting remoteci {remoteci_id}: {e}")
             return None
 
-    def query_teams(
+    def query_remotecis(
         self,
         query: str,
         limit: int = 50,
@@ -39,30 +39,30 @@ class DCITeamService(DCIBaseService):
         sort: str | None = None,
     ) -> list:
         """
-        List teams using the advanced query syntax.
+        List remotecis using the advanced query syntax.
 
         Args:
-            query: query criteria (e.g., "and(ilike(name,qa),contains(tags,ga))")
-            limit: Maximum number of teams to return (default: 50)
-            offset: Number of teams to skip (default: 0)
+            query: query criteria (e.g., "and(ilike(name,dallas),contains(tags,ga))")
+            limit: Maximum number of remotecis to return (default: 50)
+            offset: Number of remotecis to skip (default: 0)
             sort: Sort criteria (e.g., "-created_at")
 
         Returns:
-            A dictionary with teams data or an empty dictionary on error
+            A dictionary with remotecis data or an empty dictionary on error
         """
         try:
             context = self._get_dci_context()
-            return team.list(
+            return remoteci.list(
                 context, query=query, limit=limit, offset=offset, sort=sort
             ).json()
         except Exception as e:
-            print(f"Error listing teams: {e}", file=sys.stderr)
+            print(f"Error listing remotecis: {e}", file=sys.stderr)
             import traceback
 
             traceback.print_exc()
-            return {"error": str(e), "message": "Failed to list teams."}
+            return {"error": str(e), "message": "Failed to list remotecis."}
 
-    def list_teams(
+    def list_remotecis(
         self,
         limit: int | None = None,
         offset: int | None = None,
@@ -70,16 +70,16 @@ class DCITeamService(DCIBaseService):
         sort: str | None = None,
     ) -> list:
         """
-        List teams with optional filtering and pagination.
+        List remotecis with optional filtering and pagination.
 
         Args:
-            limit: Maximum number of teams to return
-            offset: Number of teams to skip
-            where: Filter criteria (e.g., "name:like:qa")
+            limit: Maximum number of remotecis to return
+            offset: Number of remotecis to skip
+            where: Filter criteria (e.g., "name:dallas")
             sort: Sort criteria (e.g., "-created_at")
 
         Returns:
-            List of team dictionaries
+            List of remoteci dictionaries
         """
         try:
             context = self._get_dci_context()
@@ -89,13 +89,13 @@ class DCITeamService(DCIBaseService):
             if offset is None:
                 offset = 0
 
-            result = team.list(
+            result = remoteci.list(
                 context, limit=limit, offset=offset, where=where, sort=sort
             )
             if hasattr(result, "json"):
                 data = result.json()
-                return data.get("teams", []) if isinstance(data, dict) else []
+                return data.get("remotecis", []) if isinstance(data, dict) else []
             return result if isinstance(result, list) else []
         except Exception as e:
-            print(f"Error listing teams: {e}")
+            print(f"Error listing remotecis: {e}")
             return []

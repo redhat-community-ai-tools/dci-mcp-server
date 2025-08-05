@@ -118,7 +118,7 @@ The server provides comprehensive tools for interacting with DCI API components:
 ### Component Tools
 
 - `get_dci_component(component_id)`: Get a specific component by ID
-- `list_dci_components(limit, offset, where, sort)`: List components with filtering and pagination
+- `query_dci_components(query, limit, offset, sort)`: Query components with advanced query language and pagination
 
 ### Date tools
 
@@ -130,34 +130,31 @@ The server provides comprehensive tools for interacting with DCI API components:
 
 ### File Tools
 
-- `get_dci_file(file_id)`: Get a specific file by ID
-- `list_dci_files(limit, offset, where, sort)`: List files with filtering and pagination
+- `query_dci_files(query, limit, offset, sort)`: Query files with advanced query language and pagination
 - `download_dci_file(job_id, file_id, output_path)`: Download a file to local path
 - `get_file_content(file_id)`: Get file content as string
 
 ### Pipeline Tools
 
-- `get_dci_pipeline(pipeline_id)`: Get a specific pipeline by ID
-- `list_dci_pipelines(limit, offset, where, sort)`: List pipelines with filtering and pagination
+- `query_dci_pipelines(query, limit, offset, sort)`: Query pipelines with advanced query language and pagination
 - `get_pipeline_jobs(pipeline_id)`: Get jobs associated with a pipeline
+
+### RemoteCI Tools
+
+- `query_dci_remotecis(query, limit, offset, sort)`: Query remotecis with advanced query language and pagination
 
 ### Product Tools
 
-- `get_dci_product(product_id)`: Get a specific product by ID
-- `list_dci_products(limit, offset, where, sort)`: List products with filtering and pagination
+- `query_dci_products(query, limit, offset, sort)`: Query products with advanced query language and pagination
 - `get_product_teams(product_id)`: Get teams associated with a product
 
 ### Team Tools
 
-- `get_dci_team(team_id)`: Get a specific team by ID
-- `list_dci_teams(limit, offset, where, sort)`: List teams with filtering and pagination
+- `query_dci_teams(query, limit, offset, sort)`: Query teams with advanced query language and pagination
 
 ### Topic Tools
 
-- `get_dci_topic(topic_id)`: Get a specific topic by ID
-- `query_dci_topics(query, limit, offset, sort)`: Query topics with pagination
-- `get_topic_components(topic_id)`: Get components associated with a topic
-- `get_topic_jobs_from_components(topic_id)`: Get jobs from topic components
+- `query_dci_topics(query, limit, offset, sort)`: Query topics with advanced query language and pagination
 
 
 ## Code Quality Checks
@@ -192,7 +189,7 @@ bash scripts/run-checks.sh
 
 ```
 mcp_server/
-├── config.py              # Configuration and authentication
+├── config.py             # Configuration and authentication
 ├── main.py               # Server entry point
 ├── services/             # DCI API services
 │   ├── dci_base_service.py
@@ -202,7 +199,10 @@ mcp_server/
 │   ├── dci_pipeline_service.py
 │   ├── dci_product_service.py
 │   ├── dci_team_service.py
+│   ├── dci_remoteci_service.py
 │   └── dci_topic_service.py
+├── promps/               # Templatized prompts
+│   └── prompts.py
 ├── tools/                # MCP tools
 │   ├── component_tools.py
 │   ├── date_tools.py
@@ -210,6 +210,7 @@ mcp_server/
 │   ├── file_tools.py
 │   ├── pipeline_tools.py
 │   ├── product_tools.py
+│   ├── remoteci_tools.py
 │   ├── team_tools.py
 │   └── topic_tools.py
 └── utils/                # Utility functions

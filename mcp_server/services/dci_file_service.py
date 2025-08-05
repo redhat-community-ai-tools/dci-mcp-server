@@ -16,6 +16,7 @@
 """DCI file service for managing files."""
 
 import os
+import sys
 from typing import Any
 
 from dciclient.v1.api import file as dci_file
@@ -45,6 +46,37 @@ class DCIFileService(DCIBaseService):
         except Exception as e:
             print(f"Error getting file {file_id}: {e}")
             return None
+
+    def query_files(
+        self,
+        query: str,
+        limit: int = 50,
+        offset: int = 0,
+        sort: str | None = None,
+    ) -> list:
+        """
+        List files using the advanced query syntax.
+
+        Args:
+            query: query criteria (e.g., "and(ilike(name,ansible),contains(tags,ga))")
+            limit: Maximum number of files to return (default: 50)
+            offset: Number of files to skip (default: 0)
+            sort: Sort criteria (e.g., "-created_at")
+
+        Returns:
+            A dictionary with files data or an empty dictionary on error
+        """
+        try:
+            context = self._get_dci_context()
+            return dci_file.list(
+                context, query=query, limit=limit, offset=offset, sort=sort
+            ).json()
+        except Exception as e:
+            print(f"Error listing files: {e}", file=sys.stderr)
+            import traceback
+
+            traceback.print_exc()
+            return {"error": str(e), "message": "Failed to list files."}
 
     def list_files(
         self,

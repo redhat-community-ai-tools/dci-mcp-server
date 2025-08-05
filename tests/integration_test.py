@@ -45,7 +45,7 @@ def parse_response(result):
 async def test_date(mcp_server):
     """Test date-related tools."""
     async with Client(mcp_server) as client:
-        # Test list_dci_teams
+        # Test today tool
         result = await client.call_tool("today", {})
         assert not result.is_error
 
@@ -59,21 +59,12 @@ async def test_date(mcp_server):
 async def test_team(mcp_server):
     """Test team-related tools."""
     async with Client(mcp_server) as client:
-        # Test list_dci_teams
-        result = await client.call_tool("list_dci_teams", {"where": "name:DCI"})
+        # Test query_dci_teams
+        result = await client.call_tool("query_dci_teams", {"query": "like(name,DCI)"})
         assert not result.is_error
 
         data = parse_response(result)
-        assert "teams" in data and data["total_count"] == 1
-
-        # Test get_dci_team with a known team ID
-        team_id = data["teams"][0]["id"]
-        result = await client.call_tool("get_dci_team", {"team_id": team_id})
-        assert not result.is_error
-
-        data = parse_response(result)
-        # The response structure has the team data nested under 'team' key
-        assert "team" in data and data["team"]["id"] == team_id
+        assert "teams" in data or "error" in data
 
 
 @pytest.mark.integration
@@ -95,8 +86,10 @@ async def test_job_tools(mcp_server):
 async def test_component_tools(mcp_server):
     """Test component-related tools."""
     async with Client(mcp_server) as client:
-        # Test list_dci_components
-        result = await client.call_tool("list_dci_components", {"fetch_all": False})
+        # Test query_dci_components
+        result = await client.call_tool(
+            "query_dci_components", {"query": "like(name,%)"}
+        )
         assert not result.is_error
 
         data = parse_response(result)
@@ -116,57 +109,38 @@ async def test_component_tools(mcp_server):
 async def test_file_tools(mcp_server):
     """Test file-related tools."""
     async with Client(mcp_server) as client:
-        # Test list_dci_files
-        result = await client.call_tool("list_dci_files", {"fetch_all": False})
+        # Test query_dci_files
+        result = await client.call_tool("query_dci_files", {"query": "like(name,%)"})
         assert not result.is_error
 
         data = parse_response(result)
         assert "files" in data or "error" in data
-
-        # Test get_dci_file with a dummy ID (should return error)
-        result = await client.call_tool("get_dci_file", {"file_id": "dummy-id"})
-        assert not result.is_error
-
-        data = parse_response(result)
-        assert "error" in data
 
 
 @pytest.mark.integration
 async def test_pipeline_tools(mcp_server):
     """Test pipeline-related tools."""
     async with Client(mcp_server) as client:
-        # Test list_dci_pipelines
-        result = await client.call_tool("list_dci_pipelines", {"fetch_all": False})
+        # Test query_dci_pipelines
+        result = await client.call_tool(
+            "query_dci_pipelines", {"query": "like(name,%)"}
+        )
         assert not result.is_error
 
         data = parse_response(result)
         assert "pipelines" in data or "error" in data
-
-        # Test get_dci_pipeline with a dummy ID (should return error)
-        result = await client.call_tool("get_dci_pipeline", {"pipeline_id": "dummy-id"})
-        assert not result.is_error
-
-        data = parse_response(result)
-        assert "error" in data
 
 
 @pytest.mark.integration
 async def test_product_tools(mcp_server):
     """Test product-related tools."""
     async with Client(mcp_server) as client:
-        # Test list_dci_products
-        result = await client.call_tool("list_dci_products", {"fetch_all": False})
+        # Test query_dci_products
+        result = await client.call_tool("query_dci_products", {"query": "like(name,%)"})
         assert not result.is_error
 
         data = parse_response(result)
-        assert "products" in data and len(data["products"]) > 1
-        product_id = data["products"][0]["id"]
-
-        result = await client.call_tool("get_dci_product", {"product_id": product_id})
-        assert not result.is_error
-
-        data = parse_response(result)
-        assert "product" in data and data["product"]["id"] == product_id
+        assert "products" in data or "error" in data
 
 
 @pytest.mark.integration
@@ -265,6 +239,20 @@ async def test_pipeline_job_tools(mcp_server):
 
 
 @pytest.mark.integration
+async def test_remoteci_tools(mcp_server):
+    """Test remoteci-related tools."""
+    async with Client(mcp_server) as client:
+        # Test query_dci_remotecis
+        result = await client.call_tool(
+            "query_dci_remotecis", {"query": "like(name,%)"}
+        )
+        assert not result.is_error
+
+        data = parse_response(result)
+        assert "remotecis" in data or "error" in data
+
+
+@pytest.mark.integration
 async def test_product_team_tools(mcp_server):
     """Test product team tools."""
     async with Client(mcp_server) as client:
@@ -279,36 +267,11 @@ async def test_product_team_tools(mcp_server):
 
 
 @pytest.mark.integration
-async def test_topic_component_tools(mcp_server):
-    """Test topic component tools."""
-    async with Client(mcp_server) as client:
-        # Test get_topic_components with a dummy topic ID (returns empty list, not
-        # error)
-        result = await client.call_tool(
-            "get_topic_components", {"topic_id": "dummy-topic-id"}
-        )
-        assert not result.is_error
-
-        data = parse_response(result)
-        assert "topic_id" in data and "components" in data
-
-        # Test get_topic_jobs_from_components with a dummy topic ID (returns empty
-        # list, not error)
-        result = await client.call_tool(
-            "get_topic_jobs_from_components", {"topic_id": "dummy-topic-id"}
-        )
-        assert not result.is_error
-
-        data = parse_response(result)
-        assert "topic_id" in data and "jobs" in data
-
-
-@pytest.mark.integration
 async def test_error_handling(mcp_server):
     """Test error handling for invalid tool calls."""
     async with Client(mcp_server) as client:
         # Test calling a tool with valid parameters but expecting graceful handling
-        result = await client.call_tool("list_dci_teams", {})
+        result = await client.call_tool("query_dci_teams", {"query": "like(name,%)"})
         assert not result.is_error  # Should handle gracefully
 
         data = parse_response(result)

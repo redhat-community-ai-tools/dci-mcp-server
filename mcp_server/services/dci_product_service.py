@@ -1,5 +1,6 @@
 """DCI product service for managing products."""
 
+import sys
 from typing import Any
 
 from dciclient.v1.api import product
@@ -29,6 +30,37 @@ class DCIProductService(DCIBaseService):
         except Exception as e:
             print(f"Error getting product {product_id}: {e}")
             return None
+
+    def query_products(
+        self,
+        query: str,
+        limit: int = 50,
+        offset: int = 0,
+        sort: str | None = None,
+    ) -> list:
+        """
+        List products using the advanced query syntax.
+
+        Args:
+            query: query criteria (e.g., "and(ilike(name,ocp),contains(tags,ga))")
+            limit: Maximum number of products to return (default: 50)
+            offset: Number of products to skip (default: 0)
+            sort: Sort criteria (e.g., "-created_at")
+
+        Returns:
+            A dictionary with products data or an empty dictionary on error
+        """
+        try:
+            context = self._get_dci_context()
+            return product.list(
+                context, query=query, limit=limit, offset=offset, sort=sort
+            ).json()
+        except Exception as e:
+            print(f"Error listing products: {e}", file=sys.stderr)
+            import traceback
+
+            traceback.print_exc()
+            return {"error": str(e), "message": "Failed to list products."}
 
     def list_products(
         self,

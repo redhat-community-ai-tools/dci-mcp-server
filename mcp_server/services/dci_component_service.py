@@ -1,5 +1,6 @@
 """DCI component service for managing components."""
 
+import sys
 from typing import Any
 
 from dciclient.v1.api import component
@@ -29,6 +30,37 @@ class DCIComponentService(DCIBaseService):
         except Exception as e:
             print(f"Error getting component {component_id}: {e}")
             return None
+
+    def query_components(
+        self,
+        query: str,
+        limit: int = 50,
+        offset: int = 0,
+        sort: str | None = None,
+    ) -> list:
+        """
+        List components using the advanced query syntax.
+
+        Args:
+            query: query criteria (e.g., "and(ilike(name,ocp),contains(tags,ga))")
+            limit: Maximum number of components to return (default: 50)
+            offset: Number of components to skip (default: 0)
+            sort: Sort criteria (e.g., "-created_at")
+
+        Returns:
+            A dictionary with components data or an empty dictionary on error
+        """
+        try:
+            context = self._get_dci_context()
+            return component.list(
+                context, query=query, limit=limit, offset=offset, sort=sort
+            ).json()
+        except Exception as e:
+            print(f"Error listing components: {e}", file=sys.stderr)
+            import traceback
+
+            traceback.print_exc()
+            return {"error": str(e), "message": "Failed to list components."}
 
     def list_components(
         self,

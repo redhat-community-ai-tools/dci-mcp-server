@@ -86,15 +86,15 @@ def register_job_tools(mcp: FastMCP) -> None:
 
             - updated_at: The last update timestamp. Use `today` tool to compute relative dates.
 
-            - team_id: The ID of the team associated with the job. Use the `list_dci_teams` tool to get it.
+            - team_id: The ID of the team associated with the job. Use the `query_dci_teams` tool to get it.
 
-            - topic_id: The ID of the topic associated with the job. Use the `list_dci_topics` tool to get it.
+            - topic_id: The ID of the topic associated with the job. Use the `query_dci_topics` tool to get it.
 
-            - remoteci_id: The ID of the remote CI associated with the job. It represents the lab. Use the `list_dci_remotecis` tool to get it.
+            - remoteci_id: The ID of the remote CI associated with the job. It represents the lab. Use the `query_dci_remotecis` tool to get it.
 
-            - product_id: The ID of the product associated with the job. Use the `list_dci_products` tool to get it.
+            - product_id: The ID of the product associated with the job. Use the `query_dci_products` tool to get it.
 
-            - pipeline_id: The ID of the pipeline associated with the job. Use the `list_dci_pipelines` tool to get it.
+            - pipeline_id: The ID of the pipeline associated with the job. Use the `query_dci_pipelines` tool to get it.
 
             - previous_job_id: The ID of the previous job in the pipeline.
 

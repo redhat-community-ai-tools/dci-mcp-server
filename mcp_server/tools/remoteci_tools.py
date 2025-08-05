@@ -1,4 +1,4 @@
-"""MCP tools for DCI team operations."""
+"""MCP tools for DCI remoteci operations."""
 
 import json
 from typing import Annotated
@@ -6,18 +6,18 @@ from typing import Annotated
 from fastmcp import FastMCP
 from pydantic import Field
 
-from ..services.dci_team_service import DCITeamService
+from ..services.dci_remoteci_service import DCIRemoteCIService
 
 
-def register_team_tools(mcp: FastMCP) -> None:
-    """Register team-related tools with the MCP server."""
+def register_remoteci_tools(mcp: FastMCP) -> None:
+    """Register remoteci-related tools with the MCP server."""
 
     @mcp.tool()
-    async def query_dci_teams(
+    async def query_dci_remotecis(
         query: Annotated[
             str,
             Field(
-                description="search criteria (e.g., and(ilike(name,qa),contains(tags,ga))"
+                description="search criteria (e.g., and(ilike(name,dallas),contains(tags,ga))"
             ),
         ],
         sort: Annotated[str, Field(description="Sort criteria")] = "-created_at",
@@ -38,7 +38,7 @@ def register_team_tools(mcp: FastMCP) -> None:
         ] = [],
     ) -> str:
         """
-        Lookup DCI teams with an advanced query language.
+        Lookup DCI remotecis with an advanced query language.
 
         The query language is based on this DSL:
 
@@ -48,8 +48,8 @@ def register_team_tools(mcp: FastMCP) -> None:
             lt (less than) or le (less or equal) using the same syntax as eq: <op>(<field>,<value>).
 
             like(<field>,<value with percent>) and ilike(<field>,<value with percent>)
-            to lookup a field with a SQL glob like way. For example, to get the teams
-            with a specific name pattern, use like(name,qa-%).
+            to lookup a field with a SQL glob like way. For example, to get the remotecis
+            with a specific name pattern, use like(name,dallas-%).
 
             contains(<field>,<value1>,...) and not_contains(<field>,<value1>,...)
             to lookup elements in an array. This is useful mainly for tags.
@@ -59,24 +59,24 @@ def register_team_tools(mcp: FastMCP) -> None:
 
             null(<field>) to lookup resources with a field having a NULL value.
 
-        Here are all the fields of a DCI team that can be used in the query:
+        Here are all the fields of a DCI remoteci that can be used in the query:
 
             - id: unique identifier
 
-            - name: name of the team
+            - name: name of the remoteci (lab)
 
             - created_at: The creation timestamp. Use `today` tool to compute relative dates.
 
             - updated_at: The last update timestamp. Use `today` tool to compute relative dates.
 
-            - tags: list of tags associated with the team.
+            - tags: list of tags associated with the remoteci.
 
-        **Counting Teams**: To get the total count of teams matching a query, set `limit=1` and read the `count` field in the `_meta` section of the response.
+        **Counting Remotecis**: To get the total count of remotecis matching a query, set `limit=1` and read the `count` field in the `_meta` section of the response.
 
-        **Example for counting teams by name**:
+        **Example for counting remotecis by name**:
         ```json
         {
-          "query": "eq(name,DCI)",
+          "query": "eq(name,dallas)",
           "limit": 1,
           "offset": 0,
           "only_fields": null
@@ -85,33 +85,33 @@ def register_team_tools(mcp: FastMCP) -> None:
         This will return a response like:
         ```json
         {
-          "teams": [],
-          "_meta": {"count": 10},
+          "remotecis": [],
+          "_meta": {"count": 2},
           ...
         }
         ```
-        The total count is 10 teams.
+        The total count is 2 remotecis.
 
         Returns:
-            JSON string with list of teams and pagination info
+            JSON string with list of remotecis and pagination info
         """
         try:
-            service = DCITeamService()
+            service = DCIRemoteCIService()
 
-            result = service.query_teams(
+            result = service.query_remotecis(
                 query=query, sort=sort, limit=limit, offset=offset
             )
 
             if isinstance(only_fields, list) and only_fields:
                 # Filter the result to only include specified fields
-                if "teams" in result:
+                if "remotecis" in result:
                     filtered_result = [
-                        {field: team.get(field) for field in only_fields}
-                        for team in result["teams"]
+                        {field: remoteci.get(field) for field in only_fields}
+                        for remoteci in result["remotecis"]
                     ]
-                    result["teams"] = filtered_result
+                    result["remotecis"] = filtered_result
             elif only_fields is None:
-                result["teams"] = []
+                result["remotecis"] = []
 
             return json.dumps(result, indent=2)
         except Exception as e:

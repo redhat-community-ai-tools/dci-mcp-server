@@ -45,6 +45,12 @@ def register_topic_tools(mcp: FastMCP) -> None:
             ),
         ] = 20,
         offset: Annotated[int, Field(description="Offset for pagination", ge=0)] = 0,
+        only_fields: Annotated[
+            list[str] | None,
+            Field(
+                description="List of fields to return, empty list means all fields, None means no data. Fields are the one listed in the query description plus components.",
+            ),
+        ] = [],
     ) -> str:
         """
         Lookup DCI topics with an advanced query language.
@@ -76,49 +82,18 @@ def register_topic_tools(mcp: FastMCP) -> None:
             result = service.query_topics(
                 query=query, sort=sort, limit=limit, offset=offset
             )
+
+            if isinstance(only_fields, list) and only_fields:
+                # Filter the result to only include specified fields
+                if "topics" in result:
+                    filtered_result = [
+                        {field: topic.get(field) for field in only_fields}
+                        for topic in result["topics"]
+                    ]
+                    result["topics"] = filtered_result
+            elif only_fields is None:
+                result["topics"] = []
+
             return json.dumps(result, indent=2)
-        except Exception as e:
-            return json.dumps({"error": str(e)}, indent=2)
-
-    @mcp.tool()
-    async def get_topic_components(topic_id: str) -> str:
-        """
-        Get components associated with a specific DCI topic.
-
-        Args:
-            topic_id: The ID of the topic
-
-        Returns:
-            JSON string with list of topic components
-        """
-        try:
-            service = DCITopicService()
-            result = service.get_topic_components(topic_id)
-
-            return json.dumps(
-                {"topic_id": topic_id, "components": result, "count": len(result)},
-                indent=2,
-            )
-        except Exception as e:
-            return json.dumps({"error": str(e)}, indent=2)
-
-    @mcp.tool()
-    async def get_topic_jobs_from_components(topic_id: str) -> str:
-        """
-        Get jobs from components associated with a specific DCI topic.
-
-        Args:
-            topic_id: The ID of the topic
-
-        Returns:
-            JSON string with list of jobs from topic components
-        """
-        try:
-            service = DCITopicService()
-            result = service.get_topic_jobs_from_components(topic_id)
-
-            return json.dumps(
-                {"topic_id": topic_id, "jobs": result, "count": len(result)}, indent=2
-            )
         except Exception as e:
             return json.dumps({"error": str(e)}, indent=2)

@@ -1,5 +1,6 @@
 """DCI pipeline service for managing pipelines."""
 
+import sys
 from typing import Any
 
 from dciclient.v1.api import pipeline
@@ -29,6 +30,37 @@ class DCIPipelineService(DCIBaseService):
         except Exception as e:
             print(f"Error getting pipeline {pipeline_id}: {e}")
             return None
+
+    def query_pipelines(
+        self,
+        query: str,
+        limit: int = 50,
+        offset: int = 0,
+        sort: str | None = None,
+    ) -> list:
+        """
+        List pipelines using the advanced query syntax.
+
+        Args:
+            query: query criteria (e.g., "and(ilike(name,test),contains(tags,ga))")
+            limit: Maximum number of pipelines to return (default: 50)
+            offset: Number of pipelines to skip (default: 0)
+            sort: Sort criteria (e.g., "-created_at")
+
+        Returns:
+            A dictionary with pipelines data or an empty dictionary on error
+        """
+        try:
+            context = self._get_dci_context()
+            return pipeline.list(
+                context, query=query, limit=limit, offset=offset, sort=sort
+            ).json()
+        except Exception as e:
+            print(f"Error listing pipelines: {e}", file=sys.stderr)
+            import traceback
+
+            traceback.print_exc()
+            return {"error": str(e), "message": "Failed to list pipelines."}
 
     def list_pipelines(
         self,
