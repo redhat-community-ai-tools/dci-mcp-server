@@ -52,9 +52,18 @@ class DCIComponentService(DCIBaseService):
         """
         try:
             context = self._get_dci_context()
-            return component.list(
-                context, query=query, limit=limit, offset=offset, sort=sort
-            ).json()
+            # Use the base.list method which is available
+            result = component.base.list(
+                context,
+                component.RESOURCE,
+                limit=limit,
+                offset=offset,
+                query=query,
+                sort=sort,
+            )
+            if hasattr(result, "json"):
+                return result.json()
+            return result
         except Exception as e:
             print(f"Error listing components: {e}", file=sys.stderr)
             import traceback

@@ -108,6 +108,10 @@ def register_job_tools(mcp: FastMCP) -> None:
 
             - configuration: the configuration of this job (which configuration was used in the lab)
 
+        These fields are reported in responses but not usable in the query:
+
+            - components: list of components associated with the job.
+
         **Counting Jobs**: To get the total count of jobs matching a query, set `limit=1` and read the `count` field in the `_meta` section of the response.
 
         **Example for counting MyTeam jobs**:

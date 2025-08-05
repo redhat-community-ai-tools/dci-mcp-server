@@ -95,14 +95,15 @@ async def test_component_tools(mcp_server):
         data = parse_response(result)
         assert "components" in data or "error" in data
 
-        # Test get_dci_component with a dummy ID (should return error)
+        # Test query_dci_components with a specific component query
         result = await client.call_tool(
-            "get_dci_component", {"component_id": "dummy-id"}
+            "query_dci_components", {"query": "eq(id,dummy-id)"}
         )
         assert not result.is_error
 
         data = parse_response(result)
-        assert "error" in data
+        # Should return empty results or error/message, both are valid
+        assert "components" in data or "error" in data or "message" in data
 
 
 @pytest.mark.integration

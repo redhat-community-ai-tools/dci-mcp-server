@@ -65,15 +65,19 @@ def register_component_tools(mcp: FastMCP) -> None:
 
             - name: name of the component
 
-            - type: type of the component
+            - type: type of the component. `ocp` is the type of component for OpenShift release components.
 
-            - created_at: The creation timestamp. Use `today` tool to compute relative dates.
+            - team_id: The ID of the team that owns the component. Use the `query_dci_teams` tool to get it.
 
-            - updated_at: The last update timestamp. Use `today` tool to compute relative dates.
+            - released_at: The release timestamp. Use `today` tool to compute relative dates.
 
-            - topic_id: The ID of the topic associated with the component. Use the `list_dci_topics` tool to get it.
+            - topic_id: The ID of the topic associated with the component. Use the `query_dci_topics` tool to get it.
 
-            - tags: list of tags associated with the component.
+            - state: The current state of the component (active, inactive, etc.).
+
+            - url: The URL of the component, if applicable.
+
+            - tags: list of tags associated with the component. For components of type ocp, it has a build status tag like `build:dev` (also called engineering candidate or ec), `build:candidate` (also called release candidate or rc), `build:ga` or `build:nightly`.
 
         **Counting Components**: To get the total count of components matching a query, set `limit=1` and read the `count` field in the `_meta` section of the response.
 
@@ -116,30 +120,6 @@ def register_component_tools(mcp: FastMCP) -> None:
                     result["components"] = filtered_result
             elif only_fields is None:
                 result["components"] = []
-
-            return json.dumps(result, indent=2)
-        except Exception as e:
-            return json.dumps({"error": str(e)}, indent=2)
-
-    @mcp.tool()
-    async def get_dci_component(component_id: str) -> str:
-        """
-        Get a specific DCI component by ID.
-
-        Args:
-            component_id: The ID of the component to retrieve
-
-        Returns:
-            JSON string with component information
-        """
-        try:
-            service = DCIComponentService()
-            result = service.get_component(component_id)
-
-            if result is None:
-                return json.dumps(
-                    {"error": f"Component {component_id} not found"}, indent=2
-                )
 
             return json.dumps(result, indent=2)
         except Exception as e:
