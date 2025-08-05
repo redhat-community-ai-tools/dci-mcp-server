@@ -6,30 +6,12 @@ import httpx
 
 from ..config import (
     DEFAULT_TIMEOUT,
-    get_dci_api_key,
-    get_dci_user_id,
-    get_dci_user_secret,
 )
 from ..models.types import LogResult
 
 
 class DCILogService:
     """Service class for DCI log retrieval."""
-
-    def __init__(self) -> None:
-        """Initialize the DCI log service with authentication."""
-        self.api_key = get_dci_api_key()
-        self.user_id = get_dci_user_id()
-        self.user_secret = get_dci_user_secret()
-
-        # Set base URL for DCI API
-        self.base_url = "https://api.distributed-ci.io/v1"
-
-        if not self.api_key and not (self.user_id and self.user_secret):
-            raise ValueError(
-                "DCI authentication not configured. Set either DCI_API_KEY or "
-                "DCI_USER_ID+DCI_USER_SECRET"
-            )
 
     async def get_job_logs(self, job_id: str) -> LogResult:
         """Get logs for a specific DCI job.

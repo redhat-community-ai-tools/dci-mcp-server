@@ -5,62 +5,46 @@ import sys
 from pathlib import Path
 
 # Load environment variables from .env file if it exists
-try:
-    from dotenv import load_dotenv
+from dotenv import load_dotenv
 
-    # Look for .env file in the project root
-    project_root = Path(__file__).parent
-    env_file = project_root / ".env"
-    if env_file.exists():
-        load_dotenv(env_file)
-    else:
-        # Also try loading from current directory
-        load_dotenv()
-except ImportError:
-    # dotenv not installed, continue without it
-    pass
+# Look for .env file in the project root
+project_root = Path(__file__).parent.parent
+env_file = project_root / ".env"
 
-# DCI API URL
-DCI_CS_URL = "https://api.distributed-ci.io"
+load_dotenv(env_file, verbose=True, override=True)
 
 # HTTP client configuration
 DEFAULT_TIMEOUT = 30.0
-EXTENDED_TIMEOUT = 60.0
 
 
-# DCI API configuration
-def get_dci_api_key() -> str | None:
-    """Get DCI API key from environment, returning None if not set or is placeholder."""
-    api_key = os.environ.get("DCI_API_KEY")
-    if api_key and api_key != "your-dci-api-key":  # Ignore placeholder values
-        return api_key
-    return None
-
-
-def get_dci_user_id() -> str | None:
-    """Get DCI user ID from environment."""
-    return os.environ.get("DCI_USER_ID")
-
-
-def get_dci_user_secret() -> str | None:
-    """Get DCI user secret from environment."""
-    return os.environ.get("DCI_USER_SECRET")
-
-
-def validate_required_config() -> None:
+def validate_required_config() -> bool:
     """Validate that DCI authentication is configured."""
+    # set DCI_CS_URL=https://api.distributed-ci.io in the environment if not set
+    if "DCI_CS_URL" not in os.environ:
+        os.environ["DCI_CS_URL"] = "https://api.distributed-ci.io"
+
+    print(
+        f"Validating DCI authentication configuration...from {env_file}",
+        file=sys.stderr,
+    )
     # Check for DCI authentication
-    if not get_dci_api_key() and not (get_dci_user_id() and get_dci_user_secret()):
-        print(
-            "WARNING: DCI authentication not configured. Set either DCI_API_KEY or "
-            "DCI_USER_ID+DCI_USER_SECRET",
-            file=sys.stderr,
-        )
-        print(
-            "You can create a .env file in the project root with your DCI credentials:",
-            file=sys.stderr,
-        )
-        print("DCI_API_KEY=your-dci-api-key", file=sys.stderr)
-        print("# OR", file=sys.stderr)
-        print("DCI_USER_ID=your-dci-user-id", file=sys.stderr)
-        print("DCI_USER_SECRET=your-dci-user-secret", file=sys.stderr)
+    if ("DCI_CLIENT_ID" in os.environ and "DCI_API_SECRET" in os.environ) or (
+        "DCI_LOGIN" in os.environ and "DCI_PASSWORD" in os.environ
+    ):
+        return True
+
+    print(
+        "WARNING: DCI authentication not configured. Set either DCI_CLIENT_ID+DCI_API_SECRET or "
+        "DCI_LOGIN+DCI_PASSWORD",
+        file=sys.stderr,
+    )
+    print(
+        "You can create a .env file in the project root with your DCI credentials:",
+        file=sys.stderr,
+    )
+    print("DCI_CLIENT_ID=your-dci-ckient-id", file=sys.stderr)
+    print("DCI_API_SECRET=your-dci-api-secret", file=sys.stderr)
+    print("# OR", file=sys.stderr)
+    print("DCI_LOGIN=your-login", file=sys.stderr)
+    print("DCI_PASSWORD=your-passwod", file=sys.stderr)
+    return False

@@ -31,19 +31,6 @@ source .venv/bin/activate
 
 The server supports multiple ways to configure DCI authentication:
 
-#### Option 1: Environment Variables
-
-```bash
-# DCI Authentication (choose one method)
-export DCI_API_KEY="your-dci-api-key"
-
-# OR
-
-export DCI_USER_ID="your-dci-user-id"
-export DCI_USER_SECRET="your-dci-user-secret"
-```
-
-#### Option 2: .env File (Recommended)
 Copy the example file and customize it:
 
 ```bash

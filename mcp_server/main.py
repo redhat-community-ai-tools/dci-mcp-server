@@ -19,6 +19,7 @@ import os
 
 from fastmcp import FastMCP
 
+from .config import validate_required_config
 from .prompts.prompts import register_prompts
 from .tools.component_tools import register_component_tools
 from .tools.date_tools import register_date_tools
@@ -34,6 +35,10 @@ from .tools.topic_tools import register_topic_tools
 
 def create_server() -> FastMCP:
     """Create and configure the MCP server."""
+
+    if not validate_required_config():
+        raise ValueError("Required configuration is missing or invalid.")
+
     mcp: FastMCP = FastMCP(
         name="dci-mcp-server",
         instructions="""

@@ -26,6 +26,7 @@ import tempfile
 import pytest
 from fastmcp import Client
 
+from mcp_server.config import validate_required_config
 from mcp_server.main import create_server
 
 
@@ -42,6 +43,11 @@ def parse_response(result):
         return json.loads(content_text)
     else:
         pytest.fail("No content returned from tool")
+
+
+def test_config():
+    """Test configuration validation."""
+    assert validate_required_config()
 
 
 async def test_date(mcp_server):
