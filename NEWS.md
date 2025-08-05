@@ -5,6 +5,9 @@
 ### Bug Fixes
 
 - Fixed `query_dci_components` tool by using the correct `component.base.list` method instead of the non-existent `component.list` method.
+- Fixed `query_dci_files` tool by using the correct `job.list_files()` method instead of `dci_file.list()` to properly query files for a specific job.
+- Fixed JSON parsing errors in `query_dci_files` tool by improving error handling and response structure validation.
+- Fixed `test_file_download_tools` integration test to correctly access file ID from the response structure.
 
 ### Improvements
 

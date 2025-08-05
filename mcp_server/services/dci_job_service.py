@@ -15,7 +15,6 @@
 
 """DCI job service for managing jobs."""
 
-import sys
 from typing import Any
 
 from dciclient.v1.api import job
@@ -48,13 +47,13 @@ class DCIJobService(DCIBaseService):
         try:
             context = self._get_dci_context()
             return job.list(
-                context, query=query, limit=limit, offset=offset, sort=sort
+                context,
+                query=query,
+                limit=limit,
+                offset=offset,
+                sort=sort,
             ).json()
         except Exception as e:
-            print(f"Error listing jobs: {e}", file=sys.stderr)
-            import traceback
-
-            traceback.print_exc()
             return {"error": str(e), "message": "Failed to list jobs."}
 
     def list_job_files(self, job_id: str) -> Any:

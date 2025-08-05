@@ -29,12 +29,15 @@ def register_file_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def query_dci_files(
-        query: Annotated[
-            str,
-            Field(
-                description="search criteria (e.g., and(ilike(name,ansible),contains(tags,ga))"
-            ),
+        job_id: Annotated[
+            str, Field(description="The ID of the job associated with the file")
         ],
+        query: Annotated[
+            str | None,
+            Field(
+                description="search criteria (e.g., and(ilike(name,%ansible%),lt(size,10240000))"
+            ),
+        ] = None,
         sort: Annotated[str, Field(description="Sort criteria")] = "-created_at",
         limit: Annotated[
             int,
@@ -86,7 +89,17 @@ def register_file_tools(mcp: FastMCP) -> None:
 
             - job_id: The ID of the job associated with the file. Use the `query_dci_jobs` tool to get it.
 
-            - tags: list of tags associated with the file.
+            - mime: The MIME type of the file, e.g., text/plain, application/json, etc. Task files are of MIME type application/x-ansible-output.
+
+            - size: The size of the file in bytes.
+
+            - md5: The MD5 checksum of the file.
+
+            - state: The state of the file (active or inactive).
+
+            - team_id: The ID of the team that owns the file.
+
+            - jobstate_id: The ID of the job state associated with the file.
 
         **Counting Files**: To get the total count of files matching a query, set `limit=1` and read the `count` field in the `_meta` section of the response.
 
@@ -116,7 +129,7 @@ def register_file_tools(mcp: FastMCP) -> None:
             service = DCIFileService()
 
             result = service.query_files(
-                query=query, sort=sort, limit=limit, offset=offset
+                job_id=job_id, query=query, sort=sort, limit=limit, offset=offset
             )
 
             if isinstance(only_fields, list) and only_fields:
@@ -135,14 +148,20 @@ def register_file_tools(mcp: FastMCP) -> None:
             return json.dumps({"error": str(e)}, indent=2)
 
     @mcp.tool()
-    async def download_dci_file(job_id: str, file_id: str, output_path: str) -> str:
+    async def download_dci_file(
+        job_id: Annotated[
+            str, Field(description="The ID of the job associated with the file")
+        ],
+        file_id: Annotated[str, Field(description="The ID of the file to download")],
+        output_path: Annotated[
+            str,
+            Field(
+                description="Local path where to save the file. If not instructed otherwise, always ask to download to /tmp/dci/<dci job id>/."
+            ),
+        ],
+    ) -> str:
         """
         Download a DCI file to a local path.
-
-        Args:
-            job_id: The ID of the job associated with the file
-            file_id: The ID of the file to download
-            output_path: Local path where to save the file
 
         Returns:
             JSON string with download status
@@ -168,38 +187,6 @@ def register_file_tools(mcp: FastMCP) -> None:
                         "file_id": file_id,
                         "error": "Failed to download file",
                     },
-                    indent=2,
-                )
-        except Exception as e:
-            return json.dumps({"error": str(e)}, indent=2)
-
-    @mcp.tool()
-    async def get_file_content(file_id: str) -> str:
-        """
-        Get the content of a DCI file as a string.
-
-        Args:
-            file_id: The ID of the file
-
-        Returns:
-            JSON string with file content
-        """
-        try:
-            service = DCIFileService()
-            content = service.get_file_content(file_id)
-
-            if content is not None:
-                return json.dumps(
-                    {
-                        "file_id": file_id,
-                        "content": content,
-                        "content_length": len(content),
-                    },
-                    indent=2,
-                )
-            else:
-                return json.dumps(
-                    {"error": f"Could not retrieve content for file {file_id}"},
                     indent=2,
                 )
         except Exception as e:

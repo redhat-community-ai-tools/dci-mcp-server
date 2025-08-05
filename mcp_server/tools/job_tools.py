@@ -112,6 +112,15 @@ def register_job_tools(mcp: FastMCP) -> None:
 
             - components: list of components associated with the job.
 
+            - keys_values: list of key-value pairs associated with the job. Key is a string and value is floating point metric.
+
+            - jobstates: list of job states associated with the job. It is a list of dictionaries with the following fields:
+               - id: unique identifier of the job state
+               - job_id: ID of the job
+               - state: the state of the job (new, pre-run, running, post-run, success, failure, error, killed)
+               - created_at: the creation timestamp of the job state
+               - comment: free text.
+
         **Counting Jobs**: To get the total count of jobs matching a query, set `limit=1` and read the `count` field in the `_meta` section of the response.
 
         **Example for counting MyTeam jobs**:

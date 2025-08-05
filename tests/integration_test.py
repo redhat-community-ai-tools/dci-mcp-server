@@ -20,6 +20,8 @@ project with credentials to access the DCI CS.
 
 import datetime
 import json
+import os
+import tempfile
 
 import pytest
 from fastmcp import Client
@@ -111,7 +113,9 @@ async def test_file_tools(mcp_server):
     """Test file-related tools."""
     async with Client(mcp_server) as client:
         # Test query_dci_files
-        result = await client.call_tool("query_dci_files", {"query": "like(name,%)"})
+        result = await client.call_tool(
+            "query_dci_files", {"job_id": "dummy", "query": "like(name,%)"}
+        )
         assert not result.is_error
 
         data = parse_response(result)
@@ -200,28 +204,48 @@ async def test_job_file_tools(mcp_server):
 async def test_file_download_tools(mcp_server):
     """Test file download and content tools."""
     async with Client(mcp_server) as client:
-        # Test download_dci_file with a dummy file ID (returns error structure)
+        # get the last dci job
         result = await client.call_tool(
-            "download_dci_file",
+            "query_dci_jobs",
             {
-                "job_id": "dummy-job-id",
-                "file_id": "dummy-file-id",
-                "output_path": "/tmp/test",
+                "query": "",
+                "only_fields": ["id"],
+                "sort": "-created_at",
+                "limit": 1,
             },
         )
         assert not result.is_error
 
-        data = parse_response(result)
-        assert "file_id" in data and ("content" in data or "error" in data)
+        job_data = parse_response(result)["jobs"][0]
+        job_id = job_data["id"]
 
-        # Test get_file_content with a dummy file ID (returns error structure)
+        # list files for the job
         result = await client.call_tool(
-            "get_file_content", {"file_id": "dummy-file-id"}
+            "query_dci_files", {"job_id": job_id, "limit": 1}
         )
         assert not result.is_error
 
+        file_data = parse_response(result)
+
+        assert "files" in file_data and len(file_data["files"]) > 0
+        file_id = file_data["files"][0]["id"]
+
+        # copy to a temporary file
+        temp_file = tempfile.mkstemp()[1]
+        result = await client.call_tool(
+            "download_dci_file",
+            {
+                "job_id": job_id,
+                "file_id": file_id,
+                "output_path": temp_file,
+            },
+        )
+        assert not result.is_error
+
+        os.unlink(temp_file)
+
         data = parse_response(result)
-        assert "file_id" in data and ("content" in data or "error" in data)
+        assert data["success"]
 
 
 @pytest.mark.integration
