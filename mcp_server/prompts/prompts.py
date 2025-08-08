@@ -15,6 +15,8 @@
 
 """Prompts for the DCI MCP server."""
 
+from typing import Annotated
+
 from fastmcp.prompts.prompt import PromptMessage, TextContent
 
 
@@ -22,7 +24,11 @@ def register_prompts(mcp):
     """Register prompts with the MCP server."""
 
     @mcp.prompt()
-    async def rca(dci_job_id: str) -> PromptMessage:
+    async def rca(
+        dci_job_id: str = Annotated[
+            str, "The DCI job ID for which to perform root cause analysis (RCA)."
+        ]
+    ) -> PromptMessage:
         """
         Prompt for instructions on how to do a Root Cause Analysis (RCA) of a failing DCI job.
 

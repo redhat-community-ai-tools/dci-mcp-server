@@ -82,9 +82,9 @@ def register_job_tools(mcp: FastMCP) -> None:
 
             - status: The current state  (new, running, success, failure, error, killed). Finished jobs have a status of killed, success, failure, or error. Failing jobs have a status of failure or error.
 
-            - created_at: The creation timestamp. Use `today` tool to compute relative dates.
+            - created_at: The creation timestamp. Use `today` tool to compute relative dates. Use the gt, ge, lt, le operators to filter jobs by creation date. Do not use the eq operator with a date on this field as it means the hour is 00:00:00 UTC.
 
-            - updated_at: The last update timestamp. Use `today` tool to compute relative dates.
+            - updated_at: The last update timestamp. Use `today` tool to compute relative dates. Use the gt, ge, lt, le operators to filter jobs by last update date. Do not use the eq operator with a date on this field as it means the hour is 00:00:00 UTC.
 
             - team_id: The ID of the team associated with the job. Use the `query_dci_teams` tool to get it.
 

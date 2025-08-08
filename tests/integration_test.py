@@ -91,6 +91,46 @@ async def test_job_tools(mcp_server):
 
 
 @pytest.mark.integration
+async def test_only_fields_parameter_issue(mcp_server):
+    """Test the only_fields parameter type validation issue.
+
+    This test documents the known limitation where the MCP framework
+    converts array parameters to strings during transmission, causing
+    validation errors for union types like list[str] | None.
+    """
+    async with Client(mcp_server) as client:
+        # Test 1: Basic query without only_fields
+        result = await client.call_tool(
+            "query_dci_jobs", {"query": "eq(status,success)", "limit": 1}
+        )
+        assert not result.is_error
+
+        data = parse_response(result)
+        assert "jobs" in data and len(data["jobs"]) == 1
+        # validate there are other fields in jobs dictionaries
+        assert all(job.keys() != {"status"} for job in data["jobs"])
+
+        # Test 2: Query with only_fields as array
+        result = await client.call_tool(
+            "query_dci_jobs",
+            {"query": "eq(status,success)", "limit": 1, "only_fields": ["status"]},
+        )
+        data = parse_response(result)
+        assert "jobs" in data and len(data["jobs"]) == 1
+        # validate there are only status fields in jobs dictionaries
+        assert all(job.keys() == {"status"} for job in data["jobs"])
+
+        # Test 3: Query with only_fields as null
+        result = await client.call_tool(
+            "query_dci_jobs",
+            {"query": "eq(status,success)", "limit": 1, "only_fields": None},
+        )
+        assert not result.is_error
+        data = parse_response(result)
+        assert "jobs" in data and len(data["jobs"]) == 0 and data["_meta"]["count"] > 0
+
+
+@pytest.mark.integration
 async def test_component_tools(mcp_server):
     """Test component-related tools."""
     async with Client(mcp_server) as client:
