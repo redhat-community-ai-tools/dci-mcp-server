@@ -2,6 +2,21 @@
 
 ## [2025-08-12]
 
+### Dependencies
+
+- Updated all project dependencies to their latest versions:
+  - fastmcp: 2.10.6 → 2.11.3
+  - fastapi: 0.104.0 → 0.116.1
+  - uvicorn: 0.24.0 → 0.35.0
+  - pytest: 7.0.0 → 8.4.1
+  - pytest-asyncio: 0.21.0 → 1.1.0
+  - pytest-mock: 3.10.0 → 3.14.1
+  - pre-commit: 4.2.0 → 4.3.0
+  - ruff: 0.12.5 → 0.12.8
+  - bandit: 1.7.8 → 1.8.6
+  - detect-secrets: 1.4.0 → 1.5.0
+  - types-python-dateutil: 2.9.0.20250708 → 2.9.0.20250809
+
 ### Improvements
 
 - Standardized all query tools to use `fields` parameter instead of `only_fields` for consistency across the codebase.

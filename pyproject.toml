@@ -9,11 +9,11 @@ description = "DCI MCP Server"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "fastmcp>=2.10.6",
+    "fastmcp>=2.11.3",
     "httpx>=0.28.1",
     "python-dateutil>=2.9.0.post0",
-    "fastapi>=0.104.0",
-    "uvicorn>=0.24.0",
+    "fastapi>=0.116.1",
+    "uvicorn>=0.35.0",
     "dciclient",
     "python-dotenv>=1.1.1",
     "pydantic>=2.11.7",
@@ -21,15 +21,15 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.0.0",
-    "pytest-asyncio>=0.21.0",
-    "pytest-mock>=3.10.0",
-    "pre-commit>=4.2.0",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "pytest-mock>=3.14.1",
+    "pre-commit>=4.3.0",
     "black>=25.1.0",
     "isort>=6.0.1",
-    "ruff>=0.12.5",
-    "bandit>=1.7.8",
-    "detect-secrets>=1.4.0",
+    "ruff>=0.12.8",
+    "bandit>=1.8.6",
+    "detect-secrets>=1.5.0",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -103,6 +103,14 @@ skips = ["B101", "B601", "B104", "B404", "B603", "B311", "B310", "B323", "B110"]
 
 [dependency-groups]
 dev = [
+    "bandit>=1.8.6",
+    "black>=25.1.0",
     "detect-secrets>=1.5.0",
+    "isort>=6.0.1",
+    "pre-commit>=4.3.0",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "pytest-mock>=3.14.1",
+    "ruff>=0.12.8",
     "types-python-dateutil>=2.9.0.20250708",
 ]
