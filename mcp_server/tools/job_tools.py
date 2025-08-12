@@ -45,10 +45,10 @@ def register_job_tools(mcp: FastMCP) -> None:
             ),
         ] = 20,
         offset: Annotated[int, Field(description="Offset for pagination", ge=0)] = 0,
-        only_fields: Annotated[
-            list[str] | None,
+        fields: Annotated[
+            list[str],
             Field(
-                description="List of fields to return, empty list means all fields, None means no data. Fields are the one listed in the query description plus components.",
+                description="List of fields to return. Fields are the one listed in the query description and responses. Must be specified as a list of strings. If empty, no fields are returned.",
             ),
         ] = [],
     ) -> str:
@@ -98,13 +98,13 @@ def register_job_tools(mcp: FastMCP) -> None:
 
             - previous_job_id: The ID of the previous job in the pipeline.
 
-            - tags: list of tags associated with the job. Daily jobs refers to a daily tag.
+            - tags: list of tags associated with the job. Daily jobs refers to a daily tag. OpenShift install jobs have a tag like agent:openshift. OpenShift application or workload jobs have a tag like agent:openshift-app. Use the `contains` or `not_contains` operators to filter jobs by tags.
 
             - status_reason: explanation of the failed job. It is a free text field.
 
             - comment: free text. Can contain a JIRA ticket number.
 
-            - url: The URL associated with the job can be a GitHub PR URL or a Gerrit change URL
+            - url: The URL associated with the job can be a GitHub PR URL or a Gerrit change URL. Gerrit changes URL can be like https://softwarefactory-project.io/r/c/python-dciclient/+/34227.
 
             - configuration: the configuration of this job (which configuration was used in the lab)
 
@@ -129,7 +129,7 @@ def register_job_tools(mcp: FastMCP) -> None:
           "query": "eq(team_id,615a5fb1-d6ac-4a5f-93de-99ffb73c7473)",
           "limit": 1,
           "offset": 0,
-          "only_fields": null
+          "fields": []
         }
         ```
         This will return a response like:
@@ -154,16 +154,18 @@ def register_job_tools(mcp: FastMCP) -> None:
                 query=query, sort=sort, limit=limit, offset=offset
             )
 
-            if isinstance(only_fields, list) and only_fields:
-                # Filter the result to only include specified fields
-                if "jobs" in result:
-                    filtered_result = [
-                        {field: job.get(field) for field in only_fields}
-                        for job in result["jobs"]
-                    ]
-                    result["jobs"] = filtered_result
-            elif only_fields is None:
-                result["jobs"] = []
+            if isinstance(fields, list):
+                if fields:
+                    # Filter the result to only include specified fields
+                    if "jobs" in result:
+                        filtered_result = [
+                            {field: job.get(field) for field in fields}
+                            for job in result["jobs"]
+                        ]
+                        result["jobs"] = filtered_result
+                else:
+                    # If fields is empty, return no jobs
+                    result["jobs"] = []
 
             return json.dumps(result, indent=2)
         except Exception as e:

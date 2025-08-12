@@ -11,7 +11,7 @@ List all DCI teams
 ```
 
 ```
-Show me the last 10 DCI jobs from any team
+Show me the last 10 DCI jobs installing OpenShift from any team
 ```
 
 ```

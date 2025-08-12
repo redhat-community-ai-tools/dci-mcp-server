@@ -1,5 +1,13 @@
 # DCI MCP Server - Change Log
 
+## [2025-08-12]
+
+### Improvements
+
+- Standardized all query tools to use `fields` parameter instead of `only_fields` for consistency across the codebase.
+- Updated parameter type from `list[str] | None` to `list[str]` for better type safety.
+- Changed default behavior: empty list `[]` now returns no fields, instead of `None` returning no fields.
+
 ## [2025-08-05]
 
 ### Bug Fixes

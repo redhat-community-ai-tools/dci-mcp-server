@@ -30,10 +30,10 @@ def register_component_tools(mcp: FastMCP) -> None:
             ),
         ] = 20,
         offset: Annotated[int, Field(description="Offset for pagination", ge=0)] = 0,
-        only_fields: Annotated[
-            list[str] | None,
+        fields: Annotated[
+            list[str],
             Field(
-                description="List of fields to return, empty list means all fields, None means no data. Fields are the one listed in the query description plus components.",
+                description="List of fields to return. Fields are the one listed in the query description and responses. Must be specified as a list of strings. If empty, no fields are returned.",
             ),
         ] = [],
     ) -> str:
@@ -87,7 +87,7 @@ def register_component_tools(mcp: FastMCP) -> None:
           "query": "eq(type,ocp)",
           "limit": 1,
           "offset": 0,
-          "only_fields": null
+          "fields": []
         }
         ```
         This will return a response like:
@@ -110,15 +110,15 @@ def register_component_tools(mcp: FastMCP) -> None:
                 query=query, sort=sort, limit=limit, offset=offset
             )
 
-            if isinstance(only_fields, list) and only_fields:
+            if isinstance(fields, list) and fields:
                 # Filter the result to only include specified fields
                 if "components" in result:
                     filtered_result = [
-                        {field: component.get(field) for field in only_fields}
+                        {field: component.get(field) for field in fields}
                         for component in result["components"]
                     ]
                     result["components"] = filtered_result
-            elif only_fields is None:
+            elif not fields:
                 result["components"] = []
 
             return json.dumps(result, indent=2)

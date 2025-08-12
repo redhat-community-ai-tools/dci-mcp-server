@@ -35,13 +35,17 @@ def register_prompts(mcp):
         Returns:
             A prompt message with instructions on how to perform RCA of a DCI job.
         """
-        content = f"""Conduct a root cause analysis (RCA) on the following DCI job: {dci_job_id}. Store all the downloaded files at /tmp/dci/<job id>, so as not to download them twice. Always download events.txt if it is available to understand the timeline. Create a report with your findings at /tmp/dci/rca-<job id>.md. Be sure to include details about the timeline of events and the DCI job information in the report, such as the components, the topic, and the pipeline name. If there is CILAB-<num> comment, replace it by https://issues.redhat.com/browse/CILAB-<num>. Include an hyperlink each time you refer to the DCI job id.
+        content = f"""Conduct a root cause analysis (RCA) on the following DCI job: {dci_job_id}. Store all the downloaded files at /tmp/dci/<job id>, so as not to download them twice. Create a report with your findings at /tmp/dci/rca-<job id>.md. Be sure to include details about the timeline of events and the DCI job information in the report, such as the components, the topic, and the pipeline name. If there is a CILAB-<num> comment, replace it with https://issues.redhat.com/browse/CILAB-<num>. Include a hyperlink each time you refer to the DCI job ID.
 
-        You can review the logjuicer.txt (for regular files) and logjuicer_omg.txt (for must_gather) files that compare the logs from a previous successful run.
+First step is to review ansible.log (overview of the CI job execution). Then the logjuicer.txt (for regular files) and logjuicer_omg.txt (for must_gather) files that compare the logs from a previous successful run.
 
-        If you need to use a must-gather file, you can use the omc utility to manipulate it.
+Later always download events.txt if it is available to understand the timeline.
 
-        Don't look at the DCI task files as they are the same as what is in ansible.log. Use ansible.log to understand the ansible tasks that were run during the DCI job.
+And lately, always validate your findings using the must_gather file and the omc utility if the must_gather file is available.
+
+Avoid looking at the DCI task files or failed_task.txt or play_recap, as they contain the same information as ansible.log.
+
+Do not hesitate to download any file that you think is relevant to the RCA.
 """
         return PromptMessage(
             role="user", content=TextContent(type="text", text=content)

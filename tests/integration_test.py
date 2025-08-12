@@ -82,7 +82,7 @@ async def test_job_tools(mcp_server):
         # Test list_dci_jobs with a simple filter (no limit parameter)
         result = await client.call_tool(
             "query_dci_jobs",
-            {"query": "contains(tags,daily)", "only_fields": ["team_id"]},
+            {"query": "contains(tags,daily)", "fields": ["team_id"]},
         )
         assert not result.is_error
 
@@ -91,39 +91,28 @@ async def test_job_tools(mcp_server):
 
 
 @pytest.mark.integration
-async def test_only_fields_parameter_issue(mcp_server):
-    """Test the only_fields parameter type validation issue.
+async def test_fields_parameter_issue(mcp_server):
+    """Test the fields parameter type validation issue.
 
     This test documents the known limitation where the MCP framework
     converts array parameters to strings during transmission, causing
     validation errors for union types like list[str] | None.
     """
     async with Client(mcp_server) as client:
-        # Test 1: Basic query without only_fields
-        result = await client.call_tool(
-            "query_dci_jobs", {"query": "eq(status,success)", "limit": 1}
-        )
-        assert not result.is_error
-
-        data = parse_response(result)
-        assert "jobs" in data and len(data["jobs"]) == 1
-        # validate there are other fields in jobs dictionaries
-        assert all(job.keys() != {"status"} for job in data["jobs"])
-
-        # Test 2: Query with only_fields as array
+        # Test 1: Query with fields as array
         result = await client.call_tool(
             "query_dci_jobs",
-            {"query": "eq(status,success)", "limit": 1, "only_fields": ["status"]},
+            {"query": "eq(status,success)", "limit": 1, "fields": ["status"]},
         )
         data = parse_response(result)
         assert "jobs" in data and len(data["jobs"]) == 1
         # validate there are only status fields in jobs dictionaries
         assert all(job.keys() == {"status"} for job in data["jobs"])
 
-        # Test 3: Query with only_fields as null
+        # Test 2: Query with fields as empty array
         result = await client.call_tool(
             "query_dci_jobs",
-            {"query": "eq(status,success)", "limit": 1, "only_fields": None},
+            {"query": "eq(status,success)", "limit": 1, "fields": []},
         )
         assert not result.is_error
         data = parse_response(result)
@@ -160,7 +149,12 @@ async def test_file_tools(mcp_server):
     async with Client(mcp_server) as client:
         # Test query_dci_files
         result = await client.call_tool(
-            "query_dci_files", {"job_id": "dummy", "query": "like(name,%)"}
+            "query_dci_files",
+            {
+                "job_id": "dummy",
+                "query": "like(name,%)",
+                "fields": ["id", "name", "size"],
+            },
         )
         assert not result.is_error
 
@@ -200,7 +194,8 @@ async def test_topic_tools(mcp_server):
     async with Client(mcp_server) as client:
         # Test query_dci_topics
         result = await client.call_tool(
-            "query_dci_topics", {"query": "like(name,OCP-%)"}
+            "query_dci_topics",
+            {"query": "like(name,OCP-%)", "fields": ["id", "name", "state"]},
         )
         assert not result.is_error
 
@@ -255,7 +250,7 @@ async def test_file_download_tools(mcp_server):
             "query_dci_jobs",
             {
                 "query": "",
-                "only_fields": ["id"],
+                "fields": ["id"],
                 "sort": "-created_at",
                 "limit": 1,
             },
@@ -267,7 +262,8 @@ async def test_file_download_tools(mcp_server):
 
         # list files for the job
         result = await client.call_tool(
-            "query_dci_files", {"job_id": job_id, "limit": 1}
+            "query_dci_files",
+            {"job_id": job_id, "limit": 1, "fields": ["id", "name", "size"]},
         )
         assert not result.is_error
 
