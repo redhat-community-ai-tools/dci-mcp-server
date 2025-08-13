@@ -104,7 +104,7 @@ def register_job_tools(mcp: FastMCP) -> None:
 
             - comment: free text. Can contain a JIRA ticket number.
 
-            - url: The URL associated with the job can be a GitHub PR URL or a Gerrit change URL. Gerrit changes URL can be like https://softwarefactory-project.io/r/c/python-dciclient/+/34227.
+            - url: The URL associated with the job can be a GitHub PR URL (like https://github.com/redhatci/ansible-collection-redhatci-ocp/pull/771) or a Gerrit change URL. Gerrit changes URL can be like https://softwarefactory-project.io/r/c/python-dciclient/+/34227.
 
             - configuration: the configuration of this job (which configuration was used in the lab)
 

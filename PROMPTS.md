@@ -201,6 +201,10 @@ Show me the logs from the last 3 failed DCI jobs to identify common failure patt
 What was the last DCI job testing <PR URL>?
 ```
 
+```
+What were the most active Github PR testing though DCI job in the last month and what was their success rate?
+```
+
 ### **For Management:**
 
 ```
