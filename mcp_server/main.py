@@ -42,7 +42,7 @@ def create_server() -> FastMCP:
     mcp: FastMCP = FastMCP(
         name="dci-mcp-server",
         instructions="""
-        This server provides tools for managing DCI (Distributed CI) jobs,
+        This server provides tools for searching DCI (Distributed CI) jobs,
         pipelines, logs, teams, and components.
 
         Daily jobs refer to DCI jobs with a tag "daily" in the list of tags.

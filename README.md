@@ -97,6 +97,8 @@ You can then use [prompts](PROMPTS.md) to explore the DCI data.
 There are also parameterized prompts defined in the MCP server:
 
 - `/dci/rca <job id>` conducts a Root Cause Analysis of the problem in the job. Storing the downloaded files under `/tmp/dci/<job id>` and generating a report at `/tmp/dci/rca-<job id>.md`.
+- `/dci/weekly <team name/id or remoteci name/id>` conducts a report for the last 7 days stored at `/tmp/dci`.
+- `/dci/biweekly <team name/id or remoteci name/id>` conducts a report for the last 14 days stored at `/tmp/dci`.
 
 ## Available Tools exposed by the MCP server
 

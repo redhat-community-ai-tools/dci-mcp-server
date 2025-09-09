@@ -130,7 +130,7 @@ What files are available for the latest DCI job from the MyTeam team?
 ## 🔍 **Advanced Filtering & Search**
 
 ```
-Find all DCI jobs with the 'daily' tag that failed in the last week
+Find all DCI daily jobs that failed in the last week
 ```
 
 ```

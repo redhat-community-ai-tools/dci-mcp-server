@@ -48,8 +48,8 @@ def register_team_tools(mcp: FastMCP) -> None:
             lt (less than) or le (less or equal) using the same syntax as eq: <op>(<field>,<value>).
 
             like(<field>,<value with percent>) and ilike(<field>,<value with percent>)
-            to lookup a field with a SQL glob like way. For example, to get the teams
-            with a specific name pattern, use like(name,qa-%).
+            to lookup a field with a SQL glob with at least one % character. For example, to get the teams
+            with a specific name pattern, use like(name,%Name%).
 
             contains(<field>,<value1>,...) and not_contains(<field>,<value1>,...)
             to lookup elements in an array. This is useful mainly for tags.
