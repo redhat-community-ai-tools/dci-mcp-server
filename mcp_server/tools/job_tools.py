@@ -24,15 +24,121 @@ from pydantic import Field
 from ..services.dci_job_service import DCIJobService
 
 
+def filter_jobs_by_fields(jobs: list, fields: list) -> list:
+    """Filter jobs by fields."""
+
+    if not fields:
+        return []
+
+    def get_nested_value(obj, field_path):
+        """Get nested value from object using dot notation."""
+        keys = field_path.split(".")
+        current = obj
+        for key in keys:
+            if isinstance(current, dict) and key in current:
+                current = current[key]
+            else:
+                return None
+        return current
+
+    # Handle both simple job lists and Elasticsearch response format
+    if isinstance(jobs, dict) and "hits" in jobs and "hits" in jobs["hits"]:
+        # Full Elasticsearch response format
+        job_list = jobs["hits"]["hits"]
+        # Extract _source if present, otherwise use the job directly
+        job_data = []
+        for job in job_list:
+            if "_source" in job:
+                job_data.append(job["_source"])
+            else:
+                job_data.append(job)
+    elif (
+        isinstance(jobs, list)
+        and len(jobs) > 0
+        and isinstance(jobs[0], dict)
+        and "_source" in jobs[0]
+    ):
+        # List of Elasticsearch job objects (each has _source)
+        job_data = []
+        for job in jobs:
+            if "_source" in job:
+                job_data.append(job["_source"])
+            else:
+                job_data.append(job)
+    else:
+        # Simple job list format - jobs are already the source data
+        job_data = jobs
+
+    # Group fields by their top-level key for better handling
+    field_groups = {}
+    simple_fields = []
+
+    for field in fields:
+        if "." in field:
+            top_key = field.split(".")[0]
+            if top_key not in field_groups:
+                field_groups[top_key] = []
+            field_groups[top_key].append(field)
+        else:
+            simple_fields.append(field)
+
+    filtered_result = []
+    for job in job_data:
+        filtered_job = {}
+
+        # Handle simple fields first
+        for field in simple_fields:
+            value = get_nested_value(job, field)
+            if value is not None:
+                filtered_job[field] = value
+
+        # Handle nested field groups
+        for top_key, field_list in field_groups.items():
+            if top_key in job and isinstance(job[top_key], list):
+                # Handle list fields like components
+                nested_items = []
+                for item in job[top_key]:
+                    if isinstance(item, dict):
+                        nested_item = {}
+                        for field in field_list:
+                            if "." in field:
+                                nested_field = field.split(".", 1)[
+                                    1
+                                ]  # Get the part after the first dot
+                                value = get_nested_value(item, nested_field)
+                                if value is not None:
+                                    nested_item[nested_field] = value
+                        if nested_item:  # Only add if we found some fields
+                            nested_items.append(nested_item)
+                if nested_items:
+                    filtered_job[top_key] = nested_items
+            else:
+                # Handle non-list nested fields
+                nested_obj = {}
+                for field in field_list:
+                    if "." in field:
+                        nested_field = field.split(".", 1)[
+                            1
+                        ]  # Get the part after the first dot
+                        value = get_nested_value(job, field)
+                        if value is not None:
+                            nested_obj[nested_field] = value
+                if nested_obj:
+                    filtered_job[top_key] = nested_obj
+        filtered_result.append(filtered_job)
+
+    return filtered_result
+
+
 def register_job_tools(mcp: FastMCP) -> None:
     """Register job-related tools with the MCP server."""
 
     @mcp.tool()
-    async def query_dci_jobs(
+    async def search_dci_jobs(
         query: Annotated[
             str,
             Field(
-                description="search criteria (e.g., and(ilike(name,ptp),contains(tags,build:ga))"
+                description="search criteria (e.g., ((components.type='ocp') and (components.version='4.19.0')) and ((components.type='storage') and (components.name='my-storage'))"
             ),
         ],
         sort: Annotated[str, Field(description="Sort criteria")] = "-created_at",
@@ -48,168 +154,82 @@ def register_job_tools(mcp: FastMCP) -> None:
         fields: Annotated[
             list[str],
             Field(
-                description="List of fields to return. Fields are the one listed in the query description and responses. Must be specified as a list of strings. If empty, no fields are returned.",
+                description="List of fields to return. Fields are the one listed in the query description and responses. Must be specified as a list of strings, you can use 'components.name' or 'topic.id' to get only nested fields. If empty, no fields are returned.",
             ),
         ] = [],
     ) -> str:
-        """
-        Lookup DCI jobs with an advanced query language.
+        """Search DCI job documents from Elasticsearch.
 
         The query language is based on this DSL:
 
-            eq(<field>,<value>) to lookup resources with a <field> having the value <value>.
+        <field>='<value>' to lookup resources with a <field> having the value <value>.
+        You can use the comparison operators !=, >, >=, <, <= using the same syntax as =: <field><op>'<value>'. =~ is the operator for a regex match.
 
-            You can use the comparison functions gt (greater than), ge (greater or equal),
-            lt (less than) or le (less or equal) using the same syntax as eq: <op>(<field>,<value>).
+        The is also a `in` operator to check if a value is in a list of values. The `not_in` operator checks if a value is not in a list of values. The `and`, and `or` operators are supported to combine multiple criteria. Parentheses can be used to group criteria. For example, to get failing daily jobs, use ((tags in ['daily']) and (status in ['failure', 'error'])).
 
-            like(<field>,<value with percent>) and ilike(<field>,<value with percent>)
-            to lookup a field with a SQL glob like way. For example, to get the jobs
-            with a CILAB- jira ticket number, use like(comment,CILAB-%).
+        You can search for sub-object fields like components or tests. If you need multiple criteria for a sub-object, you need to group them with parentheses. For example, to get jobs with a component of type ocp and version 4.19.0, use ((components.type='ocp') and (components.version='4.19.0')).
 
-            contains(<field>,<value1>,...) and not_contains(<field>,<value1>,...)
-            to lookup elements in an array. This is useful mainly for tags.
+        Here are the fields to be used in the query:
 
-            and(<op1>(...),<op2>(...)), or(<op1>(...),<op2>(...)) and not(<op>) allow
-            to build nested boolean queries.
+        - comment: free text. Can contain a JIRA ticket number.
+        - components.(type, name, version): list of components (software) associated with the job.
+        - configuration: representation of the job configuration. It is a free text field.
+        - created_at: The creation timestamp. Use `today` tool to compute relative dates or `now` tool to compute relative times.  Use the >, <, >=, <= operators to filter jobs by last update date. Do not use the = operator with a date on this field as it means the hour is 00:00:00 UTC. You can use a date like 2025-09-12 or a time like 2025-09-12T21:47:02.908617.
+        - duration: duration in seconds.
+        - extra.kernel.(node, version, params): kernel information for each node if available.
+        - files.(id, name, size, state, type, url): list of files associated with the job. If you want to download a file, use the download_dci_file tool.
+        - id: unique identifier
+        - jobstates
+        - keys_values.(key, value): metric associated with the job. For example, OpenShift install jobs have a metric called `install_time` with the installation time in seconds. Jobs can also have a workarounds metrics to count the number of workarounds applied during the job. To find jobs with at least one workaround, use the query "((keys_values.key='workarounds') and (keys_values.value>0))".
+        - name: name of the job. Don't associate too many meanings to the job name. It is just a label.
+        - pipeline.(name, id): pipeline information
+        - previous_job_id: the previous job ID if any in the same pipeline.
+        - product.(name, id): product information. Always use product.name in the query if possible.
+        - remoteci.(name, id): the remote CI associated with the job. It represents the lab. Always use remoteci.name in the query if possible.
+        - results
+        - state
+        - status: The current state  (new, running, success, failure, error, killed). Finished jobs have a status of killed, success, failure, or error. Failing jobs have a status of failure or error.
+        - status_reason: explanation of the failed job. It is a free text field.
+        - tags: : list of tags associated with the job. Daily jobs refers to a daily tag. OpenShift install jobs have a tag like agent:openshift. OpenShift application or workload jobs have a tag like agent:openshift-app. Use the `in` or `not_in` operators to filter jobs by tags.
+        - team.(name, id): team information. Always use team.name in the query if possible.
+        - tests.(name, testsuites.testcases.(name, action, classname, time, type, properties, message, stdout, stderr)): list of tests associated with the job. Each test has a name and a list of test suites. Each test suite has a name and a list of test cases. Each test case has a name, an action (run, skip, error, failure), a classname, a time in seconds, a type (junit or robot), properties (key/value pairs), a message (for failures and errors), stdout and stderr.
+        - topic.(name, id): topic information Always use topic.name in the query if possible.
+        - updated_at: The last update timestamp. Use `today` tool to compute relative dates or `now` tool to compute relative times. Use the >, <, >=, <= operators to filter jobs by last update date. Do not use the = operator with a date on this field as it means the hour is 00:00:00 UTC. You can use a date like 2025-09-12 or a time like 2025-09-12T21:47:02.908617.
+        - url: The URL associated with the job can be a GitHub PR URL (like https://github.com/redhatci/ansible-collection-redhatci-ocp/pull/771) or a Gerrit change URL. Gerrit changes URL can be like https://softwarefactory-project.io/r/c/python-dciclient/+/34227.
+        - user_agent
 
-            null(<field>) to lookup resources with a field having a NULL value.
-
-        Here are all the fields of a DCI job that can be used in the query:
-
-            - id: unique identifier
-
-            - name: name of the job
-
-            - status: The current state  (new, running, success, failure, error, killed). Finished jobs have a status of killed, success, failure, or error. Failing jobs have a status of failure or error.
-
-            - created_at: The creation timestamp. Use `today` tool to compute relative dates. Use the gt, ge, lt, le operators to filter jobs by creation date. Do not use the eq operator with a date on this field as it means the hour is 00:00:00 UTC.
-
-            - updated_at: The last update timestamp. Use `today` tool to compute relative dates. Use the gt, ge, lt, le operators to filter jobs by last update date. Do not use the eq operator with a date on this field as it means the hour is 00:00:00 UTC.
-
-            - team_id: The ID of the team associated with the job. Use the `query_dci_teams` tool to get it.
-
-            - topic_id: The ID of the topic associated with the job. Use the `query_dci_topics` tool to get it.
-
-            - remoteci_id: The ID of the remote CI associated with the job. It represents the lab. Use the `query_dci_remotecis` tool to get it.
-
-            - product_id: The ID of the product associated with the job. Use the `query_dci_products` tool to get it.
-
-            - pipeline_id: The ID of the pipeline associated with the job. Use the `query_dci_pipelines` tool to get it.
-
-            - previous_job_id: The ID of the previous job in the pipeline.
-
-            - tags: list of tags associated with the job. Daily jobs refers to a daily tag. OpenShift install jobs have a tag like agent:openshift. OpenShift application or workload jobs have a tag like agent:openshift-app. Use the `contains` or `not_contains` operators to filter jobs by tags.
-
-            - status_reason: explanation of the failed job. It is a free text field.
-
-            - comment: free text. Can contain a JIRA ticket number.
-
-            - url: The URL associated with the job can be a GitHub PR URL (like https://github.com/redhatci/ansible-collection-redhatci-ocp/pull/771) or a Gerrit change URL. Gerrit changes URL can be like https://softwarefactory-project.io/r/c/python-dciclient/+/34227.
-
-            - configuration: the configuration of this job (which configuration was used in the lab)
-
-        These fields are reported in responses but not usable in the query:
-
-            - components: list of components associated with the job.
-
-            - keys_values: list of key-value pairs associated with the job. Key is a string and value is floating point metric.
-
-            - jobstates: list of job states associated with the job. It is a list of dictionaries with the following fields:
-               - id: unique identifier of the job state
-               - job_id: ID of the job
-               - state: the state of the job (new, pre-run, running, post-run, success, failure, error, killed)
-               - created_at: the creation timestamp of the job state
-               - comment: free text.
-
-        **Counting Jobs**: To get the total count of jobs matching a query, set `limit=1` and read the `count` field in the `_meta` section of the response.
-
-        **Example for counting MyTeam jobs**:
-        ```json
-        {
-          "query": "eq(team_id,615a5fb1-d6ac-4a5f-93de-99ffb73c7473)",
-          "limit": 1,
-          "offset": 0,
-          "fields": []
-        }
-        ```
-        This will return a response like:
-        ```json
-        {
-          "jobs": [],
-          "_meta": {"count": 880},
-          ...
-        }
-        ```
-        The total count is 880 jobs.
-
-        If an URL is needed for a job, returns https://www.distributed-ci.io/jobs/<id>.
+        If you need to compare jobs, look for jobs with the same name, topic, remoteci and url.
 
         Returns:
-            JSON string with list of jobs and pagination info
+            JSON string with list of job documents under the key "hits" and pagination info
         """
         try:
             service = DCIJobService()
 
-            result = service.query_jobs(
+            result = service.search_jobs(
                 query=query, sort=sort, limit=limit, offset=offset
             )
+
+            # manage error message from the service
+            if "message" in result:
+                return json.dumps(
+                    {"error": result.get("message", "Unknown error")}, indent=2
+                )
+            # manage empty result
+            if "hits" not in result or "hits" not in result["hits"]:
+                return json.dumps({"hits": []}, indent=2)
 
             if isinstance(fields, list):
                 if fields:
                     # Filter the result to only include specified fields
-                    if "jobs" in result:
-                        filtered_result = [
-                            {field: job.get(field) for field in fields}
-                            for job in result["jobs"]
-                        ]
-                        result["jobs"] = filtered_result
+                    result["hits"]["hits"] = filter_jobs_by_fields(
+                        result["hits"]["hits"], fields
+                    )
                 else:
                     # If fields is empty, return no jobs
-                    result["jobs"] = []
+                    result["hits"]["hits"] = []
 
-            return json.dumps(result, indent=2)
-        except Exception as e:
-            return json.dumps({"error": str(e)}, indent=2)
-
-    @mcp.tool()
-    async def list_job_files(job_id: str) -> str:
-        """
-        List files associated with a specific DCI job.
-
-        Args:
-            job_id: The ID of the job
-
-        Returns:
-            JSON string with list of job files
-        """
-        try:
-            service = DCIJobService()
-            result = service.list_job_files(job_id)
-
-            return json.dumps(
-                {"job_id": job_id, "files": result, "count": len(result)}, indent=2
-            )
-        except Exception as e:
-            return json.dumps({"error": str(e)}, indent=2)
-
-    @mcp.tool()
-    async def list_job_results(job_id: str) -> str:
-        """
-        List results associated with a specific DCI job.
-
-        Args:
-            job_id: The ID of the job
-
-        Returns:
-            JSON string with list of job results
-        """
-        try:
-            service = DCIJobService()
-            result = service.list_job_results(job_id)
-
-            return json.dumps(
-                {"job_id": job_id, "results": result, "count": len(result)}, indent=2
-            )
+            return json.dumps(result.get("hits", []), indent=2)
         except Exception as e:
             return json.dumps({"error": str(e)}, indent=2)
 

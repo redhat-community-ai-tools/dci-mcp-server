@@ -32,8 +32,23 @@ def register_date_tools(mcp: FastMCP) -> None:
         Returns:
             JSON string with today's date in this format: "YYYY-MM-DD"
         """
-        today_date = datetime.date.today().isoformat()
+        # make sure the date is on the GMT timezone as DCI works in GMT
+        today_date = datetime.datetime.now(datetime.UTC).date().isoformat()
         return json.dumps({"today": today_date}, indent=2)
+
+    @mcp.tool()
+    async def now() -> str:
+        """
+        Get current date and time.
+
+        Returns:
+            JSON string with current date and time in this format: "2025-09-12T21:47:02.908617"
+        """
+        # return the time in UTC timezone with the DCI expected format
+        current_time = datetime.datetime.now(datetime.UTC).strftime(
+            "%Y-%m-%dT%H:%M:%S.%6N"
+        )
+        return json.dumps({"now": current_time}, indent=2)
 
 
 # date_tools.py ends here

@@ -7,7 +7,7 @@ This document contains a comprehensive collection of prompts for the DCI MCP too
 ### **Basic Exploration:**
 
 ```
-List all DCI teams
+List all active DCI teams in the last year
 ```
 
 ```
@@ -27,6 +27,7 @@ What are the names of all the DCI topics of the RHEL product?
 ```
 
 ### **Deep Dive Analysis:**
+
 ```
 Get detailed information about the last failed DCI job including logs and artifacts
 ```

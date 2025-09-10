@@ -25,6 +25,37 @@ from .dci_base_service import DCIBaseService
 class DCIJobService(DCIBaseService):
     """Service class for DCI job operations."""
 
+    def search_jobs(
+        self,
+        query: str,
+        limit: int = 50,
+        offset: int = 0,
+        sort: str | None = None,
+    ) -> list:
+        """
+        List jobs using the advanced search syntax.
+
+        Args:
+            query: query criteria (e.g., "((components.type='ocp') and (components.version='4.19.0')) and ((components.type='storage') and (components.name='my-storage'))")
+            limit: Maximum number of jobs to return (default: 50)
+            offset: Number of jobs to skip (default: 0)
+            sort: Sort criteria (e.g., "-created_at")
+
+        Returns:
+            A dictionary with jobs data or an empty dictionary on error
+        """
+        try:
+            context = self._get_dci_context()
+            return job.search(
+                context,
+                query=query,
+                limit=limit,
+                offset=offset,
+                sort=sort,
+            ).json()
+        except Exception as e:
+            return {"error": str(e), "message": "Failed to list jobs."}
+
     def query_jobs(
         self,
         query: str,
