@@ -129,8 +129,8 @@ To use Google Drive features, follow the [Google Drive Setup Guide](GOOGLE_DRIVE
 ```python
 # Convert a DCI report to Google Doc
 result = await convert_dci_report_to_google_doc(
-    report_path="/tmp/dci/samsungran_weekly_report_2025-09-09.md",
-    doc_title="SamsungRAN Weekly Report - September 2025"
+    report_path="/tmp/dci/the_weekly_report_2025-09-09.md",
+    doc_title="The Weekly Report - September 2025"
 )
 
 # Create a Google Doc from markdown content
