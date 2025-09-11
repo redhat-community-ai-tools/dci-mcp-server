@@ -26,6 +26,12 @@ def register_google_drive_tools(mcp: FastMCP) -> None:
             str | None,
             Field(description="Optional folder ID to place the document in"),
         ] = None,
+        folder_name: Annotated[
+            str | None,
+            Field(
+                description="Optional folder name to place the document in (searched by name)"
+            ),
+        ] = None,
     ) -> str:
         """
         Create a Google Doc from markdown content.
@@ -37,10 +43,8 @@ def register_google_drive_tools(mcp: FastMCP) -> None:
         - Headers and formatting
         - Lists and links
 
-        Args:
-            markdown_content: The markdown content to convert
-            doc_title: The title for the Google Doc
-            folder_id: Optional folder ID to place the document in
+        You can specify either folder_id or folder_name to place the document in a specific folder.
+        If folder_name is provided, the tool will search for a folder with that exact name.
 
         Returns:
             JSON string with the created document information including ID and URL
@@ -48,7 +52,7 @@ def register_google_drive_tools(mcp: FastMCP) -> None:
         try:
             service = GoogleDriveService()
             result = service.create_google_doc_from_markdown(
-                markdown_content, doc_title, folder_id
+                markdown_content, doc_title, folder_id, folder_name
             )
             return json.dumps(result, indent=2)
         except Exception as e:
@@ -70,6 +74,12 @@ def register_google_drive_tools(mcp: FastMCP) -> None:
             str | None,
             Field(description="Optional folder ID to place the document in"),
         ] = None,
+        folder_name: Annotated[
+            str | None,
+            Field(
+                description="Optional folder name to place the document in (searched by name)"
+            ),
+        ] = None,
     ) -> str:
         """
         Create a Google Doc from a markdown file.
@@ -78,10 +88,8 @@ def register_google_drive_tools(mcp: FastMCP) -> None:
         a Google Doc in your Google Drive. Perfect for converting DCI reports
         and other markdown documents.
 
-        Args:
-            file_path: Path to the markdown file
-            doc_title: Optional title for the Google Doc (defaults to filename)
-            folder_id: Optional folder ID to place the document in
+        You can specify either folder_id or folder_name to place the document in a specific folder.
+        If folder_name is provided, the tool will search for a folder with that exact name.
 
         Returns:
             JSON string with the created document information including ID and URL
@@ -89,7 +97,7 @@ def register_google_drive_tools(mcp: FastMCP) -> None:
         try:
             service = GoogleDriveService()
             result = service.create_google_doc_from_file(
-                file_path, doc_title, folder_id
+                file_path, doc_title, folder_id, folder_name
             )
             return json.dumps(result, indent=2)
         except Exception as e:
@@ -116,9 +124,6 @@ def register_google_drive_tools(mcp: FastMCP) -> None:
         This tool searches for Google Docs in your Drive and returns
         information about them including titles, IDs, and URLs.
 
-        Args:
-            query: Optional search query to filter documents by name
-            max_results: Maximum number of results to return (1-100)
 
         Returns:
             JSON string with list of document information
@@ -127,41 +132,6 @@ def register_google_drive_tools(mcp: FastMCP) -> None:
             service = GoogleDriveService()
             result = service.list_documents(query, max_results)
             return json.dumps({"documents": result, "count": len(result)}, indent=2)
-        except Exception as e:
-            return json.dumps({"error": str(e)}, indent=2)
-
-    @mcp.tool()
-    async def delete_google_doc(
-        document_id: Annotated[
-            str,
-            Field(description="The ID of the Google Doc to delete"),
-        ],
-    ) -> str:
-        """
-        Delete a Google Doc from your Google Drive.
-
-        WARNING: This action cannot be undone. The document will be permanently deleted.
-
-        Args:
-            document_id: The ID of the document to delete
-
-        Returns:
-            JSON string with the deletion result
-        """
-        try:
-            service = GoogleDriveService()
-            result = service.delete_document(document_id)
-            return json.dumps(
-                {
-                    "success": result,
-                    "message": (
-                        "Document deleted successfully"
-                        if result
-                        else "Failed to delete document"
-                    ),
-                },
-                indent=2,
-            )
         except Exception as e:
             return json.dumps({"error": str(e)}, indent=2)
 
@@ -181,6 +151,12 @@ def register_google_drive_tools(mcp: FastMCP) -> None:
             str | None,
             Field(description="Optional folder ID to place the document in"),
         ] = None,
+        folder_name: Annotated[
+            str | None,
+            Field(
+                description="Optional folder name to place the document in (searched by name)"
+            ),
+        ] = None,
     ) -> str:
         """
         Convert a DCI report markdown file to a Google Doc.
@@ -189,10 +165,8 @@ def register_google_drive_tools(mcp: FastMCP) -> None:
         analysis documents to Google Docs. It automatically formats the content
         with proper styling for tables, code blocks, and headers.
 
-        Args:
-            report_path: Path to the DCI report markdown file
-            doc_title: Optional title for the Google Doc (defaults to report filename)
-            folder_id: Optional folder ID to place the document in
+        You can specify either folder_id or folder_name to place the document in a specific folder.
+        If folder_name is provided, the tool will search for a folder with that exact name.
 
         Returns:
             JSON string with the created document information including ID and URL
@@ -200,7 +174,7 @@ def register_google_drive_tools(mcp: FastMCP) -> None:
         try:
             service = GoogleDriveService()
             result = service.create_google_doc_from_file(
-                report_path, doc_title, folder_id
+                report_path, doc_title, folder_id, folder_name
             )
 
             # Add some metadata about the conversion
@@ -215,5 +189,50 @@ def register_google_drive_tools(mcp: FastMCP) -> None:
             }
 
             return json.dumps(result, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e)}, indent=2)
+
+    @mcp.tool()
+    async def find_folder_by_name(
+        folder_name: Annotated[
+            str,
+            Field(description="The name of the folder to find"),
+        ],
+        include_shared_drives: Annotated[
+            bool,
+            Field(description="Whether to search in shared drives (default: True)"),
+        ] = True,
+    ) -> str:
+        """
+        Find a folder by name in Google Drive, including shared drives.
+
+        This tool searches for folders by exact name in both your personal Google Drive
+        and shared drives (if enabled). It will return the folder ID if found.
+
+
+        Returns:
+            JSON string with folder information including ID and location details
+        """
+        try:
+            service = GoogleDriveService()
+            folder_id = service.find_folder_by_name(folder_name, include_shared_drives)
+
+            if folder_id:
+                return json.dumps(
+                    {
+                        "found": True,
+                        "folder_id": folder_id,
+                        "message": f"Folder '{folder_name}' found with ID: {folder_id}",
+                    },
+                    indent=2,
+                )
+            else:
+                return json.dumps(
+                    {
+                        "found": False,
+                        "message": f"Folder '{folder_name}' not found in Google Drive{' or shared drives' if include_shared_drives else ''}",
+                    },
+                    indent=2,
+                )
         except Exception as e:
             return json.dumps({"error": str(e)}, indent=2)

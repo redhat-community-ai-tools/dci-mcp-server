@@ -86,8 +86,66 @@ class GoogleDriveService:
         )
         return md.convert(markdown_content)
 
+    def find_folder_by_name(
+        self, folder_name: str, include_shared_drives: bool = True
+    ) -> str | None:
+        """
+        Find a folder by name in Google Drive, including shared drives.
+
+        Args:
+            folder_name: The name of the folder to find
+            include_shared_drives: Whether to search in shared drives (default: True)
+
+        Returns:
+            Folder ID if found, None otherwise
+
+        Raises:
+            HttpError: If there's an error with the Google Drive API
+        """
+        try:
+            # 🛡️ Sanitize input to prevent query injection
+            sanitized_name = folder_name.replace("\\", "\\\\").replace("'", "\\'")
+
+            # Build the base query
+            query_parts = [
+                f"name='{sanitized_name}'",
+                "mimeType='application/vnd.google-apps.folder'",
+                "trashed=false",
+            ]
+
+            query = " and ".join(query_parts)
+
+            # Prepare request parameters
+            request_params = {
+                "q": query,
+                "fields": "files(id, name, parents)",
+            }
+
+            # Include shared drives if requested
+            if include_shared_drives:
+                request_params["includeItemsFromAllDrives"] = True
+                request_params["supportsAllDrives"] = True
+
+            results = self.service.files().list(**request_params).execute()
+
+            folders = results.get("files", [])
+            if folders:
+                # Return the first match
+                return folders[0]["id"]
+
+            return None
+
+        except HttpError as error:
+            raise Exception(
+                f"An error occurred with the Google Drive API: {error}"
+            ) from error
+
     def create_google_doc_from_markdown(
-        self, markdown_content: str, doc_title: str, folder_id: str | None = None
+        self,
+        markdown_content: str,
+        doc_title: str,
+        folder_id: str | None = None,
+        folder_name: str | None = None,
     ) -> dict:
         """
         Create a Google Doc from markdown content.
@@ -96,14 +154,33 @@ class GoogleDriveService:
             markdown_content: The markdown content to convert
             doc_title: The title for the Google Doc
             folder_id: Optional folder ID to place the document in
+            folder_name: Optional folder name to place the document in (searched by name)
 
         Returns:
             Dictionary containing the created document information
 
         Raises:
             HttpError: If there's an error with the Google Drive API
+            ValueError: If both folder_id and folder_name are provided, or if folder_name is not found
         """
         try:
+            # Validate parameters
+            if folder_id and folder_name:
+                raise ValueError(
+                    "Cannot specify both folder_id and folder_name. Use only one."
+                )
+
+            # Resolve folder ID if folder_name is provided
+            target_folder_id = folder_id
+            if folder_name:
+                target_folder_id = self.find_folder_by_name(
+                    folder_name, include_shared_drives=True
+                )
+                if not target_folder_id:
+                    raise ValueError(
+                        f"Folder '{folder_name}' not found in Google Drive or shared drives"
+                    )
+
             # Step 1: Convert markdown to HTML
             html_content = self.markdown_to_html(markdown_content)
 
@@ -122,8 +199,8 @@ class GoogleDriveService:
                 }
 
                 # Add folder if specified
-                if folder_id:
-                    file_metadata["parents"] = [folder_id]
+                if target_folder_id:
+                    file_metadata["parents"] = [target_folder_id]
 
                 # Step 4: Create MediaUpload from HTML file
                 media = MediaIoBaseUpload(
@@ -154,7 +231,6 @@ class GoogleDriveService:
 
             finally:
                 # Clean up the temporary file
-                import os
 
                 if os.path.exists(temp_file_path):
                     os.unlink(temp_file_path)
@@ -169,6 +245,7 @@ class GoogleDriveService:
         file_path: str,
         doc_title: str | None = None,
         folder_id: str | None = None,
+        folder_name: str | None = None,
     ) -> dict:
         """
         Create a Google Doc from a markdown file.
@@ -177,6 +254,7 @@ class GoogleDriveService:
             file_path: Path to the markdown file
             doc_title: Optional title for the Google Doc (defaults to filename)
             folder_id: Optional folder ID to place the document in
+            folder_name: Optional folder name to place the document in (searched by name)
 
         Returns:
             Dictionary containing the created document information
@@ -184,6 +262,7 @@ class GoogleDriveService:
         Raises:
             FileNotFoundError: If the markdown file doesn't exist
             HttpError: If there's an error with the Google Drive API
+            ValueError: If both folder_id and folder_name are provided, or if folder_name is not found
         """
         file_path_obj = Path(file_path)
         if not file_path_obj.exists():
@@ -198,7 +277,7 @@ class GoogleDriveService:
             doc_title = file_path_obj.stem
 
         return self.create_google_doc_from_markdown(
-            markdown_content, doc_title, folder_id
+            markdown_content, doc_title, folder_id, folder_name
         )
 
     def list_documents(self, query: str | None = None, max_results: int = 10) -> list:
@@ -253,25 +332,4 @@ class GoogleDriveService:
         except HttpError as error:
             raise Exception(
                 f"Error listing Google Docs: {error.resp.status} - {error.content}"
-            ) from error
-
-    def delete_document(self, document_id: str) -> bool:
-        """
-        Delete a Google Doc.
-
-        Args:
-            document_id: The ID of the document to delete
-
-        Returns:
-            True if successful
-
-        Raises:
-            HttpError: If there's an error with the Google Drive API
-        """
-        try:
-            self.service.files().delete(fileId=document_id).execute()
-            return True
-        except HttpError as error:
-            raise Exception(
-                f"Error deleting Google Doc: {error.resp.status} - {error.content}"
             ) from error

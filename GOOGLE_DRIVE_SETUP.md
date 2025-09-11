@@ -133,6 +133,7 @@ Creates a Google Doc from markdown content.
 - `markdown_content`: The markdown content to convert
 - `doc_title`: The title for the Google Doc
 - `folder_id`: Optional folder ID to place the document in
+- `folder_name`: Optional folder name to place the document in (searched by name)
 
 ### `create_google_doc_from_file`
 Creates a Google Doc from a markdown file.
@@ -141,6 +142,7 @@ Creates a Google Doc from a markdown file.
 - `file_path`: Path to the markdown file
 - `doc_title`: Optional title (defaults to filename)
 - `folder_id`: Optional folder ID
+- `folder_name`: Optional folder name to place the document in (searched by name)
 
 ### `convert_dci_report_to_google_doc`
 Specialized tool for converting DCI reports to Google Docs.
@@ -149,6 +151,7 @@ Specialized tool for converting DCI reports to Google Docs.
 - `report_path`: Path to the DCI report markdown file
 - `doc_title`: Optional title (defaults to report filename)
 - `folder_id`: Optional folder ID
+- `folder_name`: Optional folder name to place the document in (searched by name)
 
 ### `list_google_docs`
 Lists Google Docs in your Drive.
@@ -157,21 +160,43 @@ Lists Google Docs in your Drive.
 - `query`: Optional search query
 - `max_results`: Maximum number of results (1-100)
 
-### `delete_google_doc`
-Deletes a Google Doc (use with caution).
+## Folder Management
 
-**Parameters:**
-- `document_id`: The ID of the document to delete
+The Google Drive tools support two ways to specify where documents should be created:
+
+### Using Folder ID
+- **Pros**: Exact, fast lookup
+- **Cons**: Requires knowing the folder ID (found in the folder URL)
+- **Usage**: `folder_id="1BxiMVXXXXXXdKvBdBZjgmUUqptlbs74OgvE2upms"`
+
+### Using Folder Name
+- **Pros**: Human-readable, easier to use
+- **Cons**: Searches for exact name match, may be slower
+- **Usage**: `folder_name="DCI Reports"`
+
+**Important Notes:**
+- Use either `folder_id` OR `folder_name`, not both
+- Folder name search is case-sensitive and looks for exact matches
+- If a folder with the specified name is not found, the operation will fail
+- The folder must exist in your Google Drive before creating documents in it
 
 ## Usage Examples
 
 ### Convert a DCI Report to Google Doc
 
 ```python
-# Using the MCP tool
+# Using the MCP tool with folder name
 result = await convert_dci_report_to_google_doc(
-    report_path="/tmp/dci/samsungran_weekly_report_2025-09-09.md",
-    doc_title="SamsungRAN Weekly Report - September 2025"
+    report_path="/tmp/dci/the_weekly_report_2025-09-09.md",
+    doc_title="The Weekly Report - September 2025",
+    folder_name="DCI Reports"
+)
+
+# Or using folder ID
+result = await convert_dci_report_to_google_doc(
+    report_path="/tmp/dci/the_weekly_report_2025-09-09.md",
+    doc_title="The Weekly Report - September 2025",
+    folder_id="1BxiMVs0XXXXXMdKvBdBZjgmUUqptlbs74OgvE2upms"
 )
 ```
 
@@ -196,7 +221,8 @@ This is a **markdown** report with:
 
 result = await create_google_doc_from_markdown(
     markdown_content=markdown_content,
-    doc_title="My Custom Report"
+    doc_title="My Custom Report",
+    folder_name="Project Documents"
 )
 ```
 

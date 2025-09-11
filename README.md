@@ -127,16 +127,25 @@ To use Google Drive features, follow the [Google Drive Setup Guide](GOOGLE_DRIVE
 
 ### Usage Examples
 ```python
-# Convert a DCI report to Google Doc
+# Convert a DCI report to Google Doc in a specific folder by name
 result = await convert_dci_report_to_google_doc(
     report_path="/tmp/dci/the_weekly_report_2025-09-09.md",
-    doc_title="The Weekly Report - September 2025"
+    doc_title="The Weekly Report - September 2025",
+    folder_name="DCI Reports"
 )
 
-# Create a Google Doc from markdown content
+# Create a Google Doc from markdown content in a folder by ID
 result = await create_google_doc_from_markdown(
     markdown_content="# My Report\n\nThis is a **test** document.",
-    doc_title="My Custom Report"
+    doc_title="My Custom Report",
+    folder_id="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+)
+
+# Create a Google Doc from a file in a folder by name
+result = await create_google_doc_from_file(
+    file_path="/path/to/report.md",
+    doc_title="My Report",
+    folder_name="Project Documents"
 )
 ```
 
@@ -187,11 +196,12 @@ The server provides comprehensive tools for interacting with DCI API components:
 
 ### Google Drive Tools
 
-- `create_google_doc_from_markdown(markdown_content, doc_title, folder_id)`: Create a Google Doc from markdown content
-- `create_google_doc_from_file(file_path, doc_title, folder_id)`: Create a Google Doc from a markdown file
-- `convert_dci_report_to_google_doc(report_path, doc_title, folder_id)`: Convert a DCI report to Google Doc
+- `create_google_doc_from_markdown(markdown_content, doc_title, folder_id, folder_name)`: Create a Google Doc from markdown content
+- `create_google_doc_from_file(file_path, doc_title, folder_id, folder_name)`: Create a Google Doc from a markdown file
+- `convert_dci_report_to_google_doc(report_path, doc_title, folder_id, folder_name)`: Convert a DCI report to Google Doc
 - `list_google_docs(query, max_results)`: List Google Docs in your Drive
-- `delete_google_doc(document_id)`: Delete a Google Doc (use with caution)
+
+**Note**: For folder placement, you can use either `folder_id` (exact folder ID) or `folder_name` (searches for folder by name). Do not use both parameters together.
 
 
 ## Code Quality Checks
