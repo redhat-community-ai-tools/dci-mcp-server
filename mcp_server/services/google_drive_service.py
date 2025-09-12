@@ -58,9 +58,11 @@ class GoogleDriveService:
                     self.credentials_path, self.SCOPES
                 )
                 creds = flow.run_local_server(port=0)
-            # Save the credentials for the next run
-            with open(self.token_path, "w") as token:
+            # Save the credentials for the next run with secure permissions
+            with open(self.token_path, "w", encoding="utf-8") as token:
                 token.write(creds.to_json())
+            # Set secure permissions (read/write for owner only)
+            os.chmod(self.token_path, 0o600)
 
         self.service = build("drive", "v3", credentials=creds)
 
@@ -164,6 +166,12 @@ class GoogleDriveService:
             ValueError: If both folder_id and folder_name are provided, or if folder_name is not found
         """
         try:
+            # Input validation
+            if not markdown_content.strip():
+                raise ValueError("Markdown content cannot be empty")
+            if not doc_title.strip():
+                raise ValueError("Document title cannot be empty")
+
             # Validate parameters
             if folder_id and folder_name:
                 raise ValueError(
@@ -230,10 +238,13 @@ class GoogleDriveService:
                 }
 
             finally:
-                # Clean up the temporary file
-
-                if os.path.exists(temp_file_path):
-                    os.unlink(temp_file_path)
+                # Clean up the temporary file with better error handling
+                try:
+                    if os.path.exists(temp_file_path):
+                        os.unlink(temp_file_path)
+                except OSError:
+                    # Don't fail the main operation if cleanup fails
+                    pass
 
         except HttpError as error:
             raise Exception(
@@ -280,7 +291,9 @@ class GoogleDriveService:
             markdown_content, doc_title, folder_id, folder_name
         )
 
-    def list_documents(self, query: str | None = None, max_results: int = 10) -> list:
+    def list_documents(
+        self, query: str | None = None, max_results: int = 10
+    ) -> list[dict]:
         """
         List Google Docs in the user's Drive.
 
@@ -298,7 +311,9 @@ class GoogleDriveService:
             # Build the query to search for Google Docs
             search_query = "mimeType='application/vnd.google-apps.document'"
             if query:
-                search_query += f" and name contains '{query}'"
+                # Sanitize query input to prevent injection
+                sanitized_query = query.replace("\\", "\\\\").replace("'", "\\'")
+                search_query += f" and name contains '{sanitized_query}'"
 
             # Execute the search
             results = (
