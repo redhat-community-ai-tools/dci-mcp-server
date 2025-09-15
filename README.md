@@ -151,48 +151,24 @@ result = await create_google_doc_from_file(
 
 ## Available Tools exposed by the MCP server
 
-The server provides comprehensive tools for interacting with DCI API components:
+The server provides tools for interacting with DCI API components:
 
 ### Component Tools
 
-- `get_dci_component(component_id)`: Get a specific component by ID
-- `query_dci_components(query, limit, offset, sort)`: Query components with advanced query language and pagination
+- `query_dci_components(query, limit, offset, sort, fields)`: Query components with advanced query language and pagination
 
-### Date tools
+### Date Tools
 
-- `today`: returns today's date.
+- `today()`: Returns today's date in YYYY-MM-DD format.
+- `now()`: Returns current date and time in DCI compatible format (GMT).
 
 ### Job Tools
 
-- `query_dci_jobs(query, limit, offset, sort)`: Query jobs with pagination.
+- `search_dci_jobs(query, sort, limit, offset, fields)`: Search jobs with advanced query language and pagination
 
 ### File Tools
 
-- `query_dci_files(query, limit, offset, sort)`: Query files with advanced query language and pagination
 - `download_dci_file(job_id, file_id, output_path)`: Download a file to local path
-- `get_file_content(file_id)`: Get file content as string
-
-### Pipeline Tools
-
-- `query_dci_pipelines(query, limit, offset, sort)`: Query pipelines with advanced query language and pagination
-- `get_pipeline_jobs(pipeline_id)`: Get jobs associated with a pipeline
-
-### RemoteCI Tools
-
-- `query_dci_remotecis(query, limit, offset, sort)`: Query remotecis with advanced query language and pagination
-
-### Product Tools
-
-- `query_dci_products(query, limit, offset, sort)`: Query products with advanced query language and pagination
-- `get_product_teams(product_id)`: Get teams associated with a product
-
-### Team Tools
-
-- `query_dci_teams(query, limit, offset, sort)`: Query teams with advanced query language and pagination
-
-### Topic Tools
-
-- `query_dci_topics(query, limit, offset, sort)`: Query topics with advanced query language and pagination
 
 ### Google Drive Tools
 
@@ -243,6 +219,7 @@ mcp_server/
 │   ├── dci_component_service.py
 │   ├── dci_job_service.py
 │   ├── dci_file_service.py
+│   ├── dci_log_service.py
 │   ├── dci_pipeline_service.py
 │   ├── dci_product_service.py
 │   ├── dci_team_service.py
@@ -257,11 +234,7 @@ mcp_server/
 │   ├── job_tools.py
 │   ├── file_tools.py
 │   ├── google_drive_tools.py
-│   ├── pipeline_tools.py
-│   ├── product_tools.py
-│   ├── remoteci_tools.py
-│   ├── team_tools.py
-│   └── topic_tools.py
+│   └── log_tools.py
 └── utils/                # Utility functions
     └── http_client.py
 ```

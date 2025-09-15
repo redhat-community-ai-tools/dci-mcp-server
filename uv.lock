@@ -312,7 +312,7 @@ dev = [
 requires-dist = [
     { name = "bandit", marker = "extra == 'dev'", specifier = ">=1.8.6" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=25.1.0" },
-    { name = "dciclient" },
+    { name = "dciclient", specifier = ">=4.1.0" },
     { name = "detect-secrets", marker = "extra == 'dev'", specifier = ">=1.5.0" },
     { name = "fastapi", specifier = ">=0.116.1" },
     { name = "fastmcp", specifier = ">=2.11.3" },
@@ -359,16 +359,16 @@ wheels = [
 
 [[package]]
 name = "dciclient"
-version = "4.0.1.post202507212339"
+version = "4.1.0.post202509100810"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "dciauth" },
     { name = "prettytable" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/61/32/bf556152cf153d9788160784607907e106b11ea0ad3d34d51c227b41c105/dciclient-4.0.1.post202507212339.tar.gz", hash = "sha256:d0c729b8b0f38b586d72fcf5f83b99f8109cd65b6bea7786cf76a49bbcf8953d", size = 41067, upload-time = "2025-07-21T23:56:25.56Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/27/96/ceb0614f11e202a07de3e5379e234f5106d4b900c171dca56b693bf99f50/dciclient-4.1.0.post202509100810.tar.gz", hash = "sha256:216ed64f7df20a42b39b9330dd427d4e8d5399ed98b34caf098061e5ddf8c92b", size = 41516 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f3/32/00f074862713d3e9d0fd5054178a392121c11b187c9e9bf3b82ab334ff5d/dciclient-4.0.1.post202507212339-py3-none-any.whl", hash = "sha256:703b19cb9e60e39cfb0eadf4e348d171cde823cd7edacbaa086aadc03d718930", size = 60984, upload-time = "2025-07-21T23:56:24.598Z" },
+    { url = "https://files.pythonhosted.org/packages/3c/58/2262a5a9ac10a3b09ff288a9e516d483fb4947864ec6fee479725957a9c8/dciclient-4.1.0.post202509100810-py3-none-any.whl", hash = "sha256:103373324e9e7b3c622b1d63a684dc52c83b0720c9b1ae6c326a3beecd1930d7", size = 61381 },
 ]
 
 [[package]]

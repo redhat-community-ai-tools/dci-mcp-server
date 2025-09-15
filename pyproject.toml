@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dci-mcp-server"
-version = "0.2.0"
+version = "0.3.0"
 description = "DCI MCP Server"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -14,7 +14,7 @@ dependencies = [
     "python-dateutil>=2.9.0.post0",
     "fastapi>=0.116.1",
     "uvicorn>=0.35.0",
-    "dciclient",
+    "dciclient>=4.1.0",
     "python-dotenv>=1.1.1",
     "pydantic>=2.11.7",
     "google-api-python-client>=2.150.0",
