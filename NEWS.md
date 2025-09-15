@@ -1,5 +1,11 @@
 # DCI MCP Server - Change Log
 
+## [2025-09-15] - 0.2.0
+
+### Improvements
+
+- Add new Google drive tools to convert MarkDown files to Google docs
+
 ## [2025-08-12]
 
 ### Dependencies

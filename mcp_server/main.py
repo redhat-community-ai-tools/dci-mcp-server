@@ -60,13 +60,16 @@ def create_server() -> FastMCP:
     register_date_tools(mcp)
     register_job_tools(mcp)
     register_file_tools(mcp)
-    register_google_drive_tools(mcp)
     register_pipeline_tools(mcp)
     register_product_tools(mcp)
     register_remoteci_tools(mcp)
     register_team_tools(mcp)
     register_topic_tools(mcp)
     register_pr_tools(mcp)
+
+    # Register Google drive tools only when credentials are set
+    if os.getenv("GOOGLE_CREDENTIALS_PATH") and os.getenv("GOOGLE_TOKEN_PATH"):
+        register_google_drive_tools(mcp)
 
     # Register prompts for user interaction
     register_prompts(mcp)
