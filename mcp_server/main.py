@@ -24,6 +24,7 @@ from .prompts.prompts import register_prompts
 from .tools.component_tools import register_component_tools
 from .tools.date_tools import register_date_tools
 from .tools.file_tools import register_file_tools
+from .tools.google_drive_tools import register_google_drive_tools
 from .tools.job_tools import register_job_tools
 from .tools.pipeline_tools import register_pipeline_tools
 from .tools.pr_tools import register_pr_tools
@@ -59,6 +60,7 @@ def create_server() -> FastMCP:
     register_date_tools(mcp)
     register_job_tools(mcp)
     register_file_tools(mcp)
+    register_google_drive_tools(mcp)
     register_pipeline_tools(mcp)
     register_product_tools(mcp)
     register_remoteci_tools(mcp)
