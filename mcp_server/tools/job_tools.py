@@ -158,50 +158,135 @@ def register_job_tools(mcp: FastMCP) -> None:
             ),
         ] = [],
     ) -> str:
-        """Search DCI job documents from Elasticsearch.
+        """Search DCI (Distributed CI) job documents from Elasticsearch.
 
-        The query language is based on this DSL:
+        DCI jobs represent CI/CD pipeline executions that test software components
+        (like OpenShift, storage solutions, etc.) across different environments.
 
-        <field>='<value>' to lookup resources with a <field> having the value <value>.
-        You can use the comparison operators !=, >, >=, <, <= using the same syntax as =: <field><op>'<value>'. =~ is the operator for a regex match.
+        ## Query Language (DSL)
 
-        The is also a `in` operator to check if a value is in a list of values. The `not_in` operator checks if a value is not in a list of values. The `and`, and `or` operators are supported to combine multiple criteria. Parentheses can be used to group criteria. For example, to get failing daily jobs, use ((tags in ['daily']) and (status in ['failure', 'error'])).
+        **Basic Operators:**
+        - `field='value'` - exact match
+        - `field!=value` - not equal
+        - `field>value`, `field>=value`, `field<value`, `field<=value` - comparisons
+        - `field=~'regex'` - regex match
 
-        You can search for sub-object fields like components or tests. If you need multiple criteria for a sub-object, you need to group them with parentheses. For example, to get jobs with a component of type ocp and version 4.19.0, use ((components.type='ocp') and (components.version='4.19.0')).
+        **List Operators:**
+        - `field in ['value1', 'value2']` - value in list
+        - `field not_in ['value1', 'value2']` - value not in list
 
-        Here are the fields to be used in the query:
+        **Logical Operators:**
+        - `and`, `or` - combine criteria
+        - `()` - group criteria with parentheses
 
-        - comment: free text. Can contain a JIRA ticket number.
-        - components.(type, name, version): list of components (software) associated with the job.
-        - configuration: representation of the job configuration. It is a free text field.
-        - created_at: The creation timestamp. Use `today` tool to compute relative dates or `now` tool to compute relative times.  Use the >, <, >=, <= operators to filter jobs by last update date. Do not use the = operator with a date on this field as it means the hour is 00:00:00 UTC. You can use a date like 2025-09-12 or a time like 2025-09-12T21:47:02.908617.
-        - duration: duration in seconds.
-        - extra.kernel.(node, version, params): kernel information for each node if available.
-        - files.(id, name, size, state, type, url): list of files associated with the job. If you want to download a file, use the download_dci_file tool.
-        - id: unique identifier
-        - jobstates
-        - keys_values.(key, value): metric associated with the job. For example, OpenShift install jobs have a metric called `install_time` with the installation time in seconds. Jobs can also have a workarounds metrics to count the number of workarounds applied during the job. To find jobs with at least one workaround, use the query "((keys_values.key='workarounds') and (keys_values.value>0))".
-        - name: name of the job. Don't associate too many meanings to the job name. It is just a label.
-        - pipeline.(name, id): pipeline information
-        - previous_job_id: the previous job ID if any in the same pipeline.
-        - product.(name, id): product information. Always use product.name in the query if possible.
-        - remoteci.(name, id): the remote CI associated with the job. It represents the lab. Always use remoteci.name in the query if possible.
-        - results
-        - state
-        - status: The current state  (new, running, success, failure, error, killed). Finished jobs have a status of killed, success, failure, or error. Failing jobs have a status of failure or error.
-        - status_reason: explanation of the failed job. It is a free text field.
-        - tags: : list of tags associated with the job. Daily jobs refers to a daily tag. OpenShift install jobs have a tag like agent:openshift. OpenShift application or workload jobs have a tag like agent:openshift-app. Use the `in` or `not_in` operators to filter jobs by tags.
-        - team.(name, id): team information. Always use team.name in the query if possible.
-        - tests.(name, testsuites.testcases.(name, action, classname, time, type, properties, message, stdout, stderr)): list of tests associated with the job. Each test has a name and a list of test suites. Each test suite has a name and a list of test cases. Each test case has a name, an action (run, skip, error, failure), a classname, a time in seconds, a type (junit or robot), properties (key/value pairs), a message (for failures and errors), stdout and stderr.
-        - topic.(name, id): topic information Always use topic.name in the query if possible.
-        - updated_at: The last update timestamp. Use `today` tool to compute relative dates or `now` tool to compute relative times. Use the >, <, >=, <= operators to filter jobs by last update date. Do not use the = operator with a date on this field as it means the hour is 00:00:00 UTC. You can use a date like 2025-09-12 or a time like 2025-09-12T21:47:02.908617.
-        - url: The URL associated with the job can be a GitHub PR URL (like https://github.com/redhatci/ansible-collection-redhatci-ocp/pull/771) or a Gerrit change URL. Gerrit changes URL can be like https://softwarefactory-project.io/r/c/python-dciclient/+/34227.
-        - user_agent
+        **Examples:**
+        - Failing daily jobs: `((tags in ['daily']) and (status in ['failure', 'error']))`
+        - OpenShift 4.19 jobs: `((components.type='ocp') and (components.version='4.19.0'))`
+        - Jobs with workarounds: `((keys_values.key='workarounds') and (keys_values.value>0))`
+        - OpenShift jobs using 4.?.* versions: `((components.type='ocp') and (components.version=~'4.1?.*'))`
+        - Jobs in specific lab: `(remoteci.name='telco-cilab-bos2')`
+        - Jobs by team: `(team.name='openshift-team')`
 
-        If you need to compare jobs, look for jobs with the same name, topic, remoteci and url.
+        ## Available Fields
+
+        **Basic Job Information:**
+        - `id`: unique job identifier
+        - `name`: job name (just a label, don't over-interpret)
+        - `status`: current state (new, running, success, failure, error, killed)
+        - `state`: internal job state
+        - `status_reason`: explanation for failed jobs (free text)
+        - `comment`: free text, may contain JIRA ticket numbers
+        - `configuration`: job configuration (free text)
+        - `duration`: execution time in seconds
+
+        **Timestamps:**
+        - `created_at`: job creation time
+        - `updated_at`: last update time
+        - Use `today` or `now` tools for relative dates
+        - Use >, <, >=, <= operators (avoid = for dates)
+        - Format: `2025-09-12` or `2025-09-12T21:47:02.908617`
+
+        **Components & Software:**
+        - `components.(type, name, version, tags)`: list of software components tested. Tags can be ('build:ga', 'build:candidate' for Release Candidate or rc, 'build:dev' for engineering candidate or ec, 'build:nightly').
+        - Example: `components.type='ocp'` for OpenShift jobs
+
+        **Infrastructure:**
+        - `remoteci.(name, id)`: lab/environment where job ran (use remoteci.name)
+        - `product.(name, id)`: product being tested (use product.name)
+        - `team.(name, id)`: team owning the job (use team.name)
+        - `topic.(name, id)`: topic/category (use topic.name)
+
+        **Pipeline Information:**
+        - `pipeline.(name, id)`: pipeline details
+        - `previous_job_id`: previous job in same pipeline
+
+        **Tags & Classification:**
+        - `tags`: list of tags for categorization
+        - Common tags: `daily`, `agent:openshift`, `agent:openshift-app`
+        - Use `in` or `not_in` operators
+
+        **Files & Artifacts:**
+        - `files.(id, name, size, state, type, url)`: job artifacts
+        - Use `download_dci_file` tool to download files
+
+        **Metrics & Measurements:**
+        - `keys_values.(key, value)`: job metrics
+        - Examples: `install_time` (seconds), `workarounds` (count)
+        - Query: `((keys_values.key='workarounds') and (keys_values.value>0))`
+
+        **Kernel Information:**
+        - `extra.kernel.(node, version, params)`: kernel details per node
+
+        **Test Results:**
+        - `tests`: complex nested structure with test results
+        - Structure: `tests.(file_id,name)` → `testsuites.(name, testcases)` → `testcases.(name, action, classname, time, type, properties, message, stdout, stderr)`
+        - `tests.name` is the testsuite filenames attached to the job, `file_id` is the id of the file in the job
+        - Actions: run, skip, error, failure
+        - Types: junit, robot
+        - Example: `((tests.testsuites.testcases.action='failure') and (tests.testsuites.testcases.name='test_install'))`
+        - Example: `((tests.name='test_filename') and (tests.testsuites.testcases.action='failure'))`
+        - Example: `((tests.testsuites.testcases.name=~'.*43336-V-BR.*') and (tests.testsuites.testcases.action='success'))`
+
+        **URLs:**
+        - `url`: GitHub PR or Gerrit change URL
+        - Examples: GitHub PR, Gerrit change
+
+        **Other:**
+        - `jobstates`: internal job state information
+        - `results`: job results data
+        - `user_agent`: client information
+
+        ## Common Use Cases
+
+        **Compare Jobs:** Look for jobs with same `name`, `topic`, `remoteci`, `configuration` and `url`
+
+        **Find Failing Jobs:** `(status in ['failure', 'error'])`
+
+        **Daily Jobs:** `(tags in ['daily'])`
+
+        **OpenShift Jobs:** `(components.type='ocp')`
+
+        **Jobs with Specific Component Version:** `((components.type='ocp') and (components.version='4.19.0'))`
+
+        **Jobs with Multiple Components:** `((components.type='ocp') and (components.version='4.19.0')) and ((components.type='storage') and (components.name='my-storage'))`
+
+        **Jobs by Date Range:** `(created_at>='2024-09-16' and created_at<='2025-09-16')`
+
+        **Jobs with Specific Metrics:** `((keys_values.key='install_time') and (keys_values.value>3600))`
+
+        ## Field Filtering
+
+        The `fields` parameter allows you to filter which fields are returned in the response:
+        - If `fields` is empty `[]`, no job data is returned (only metadata)
+        - If `fields` contains field names, only those fields are returned
+        - Use dot notation for nested fields: `components.name`, `topic.id`, `tests.testsuites.testcases.name`
+        - Common field combinations:
+          - Basic info: `['id', 'name', 'status', 'created_at']`
+          - Component details: `['components.name', 'components.version', 'components.tags']`
+          - Test results: `['tests.testsuites.testcases.name', 'tests.testsuites.testcases.action']`
 
         Returns:
-            JSON string with list of job documents under the key "hits" and pagination info
+            JSON string with job documents under "hits" key and pagination info
         """
         try:
             service = DCIJobService()
