@@ -207,8 +207,8 @@ def register_job_tools(mcp: FastMCP) -> None:
         - Format: `2025-09-12` or `2025-09-12T21:47:02.908617`
 
         **Components & Software:**
-        - `components.(type, name, version, tags)`: list of software components tested. Tags can be ('build:ga', 'build:candidate' for Release Candidate or rc, 'build:dev' for engineering candidate or ec, 'build:nightly').
-        - Example: `components.type='ocp'` for OpenShift jobs
+        - `components.(type, name, version, tags)`: list of software components tested. Tags can be ('build:ga' for a released version, 'build:candidate' for Release Candidate or rc, 'build:dev' for engineering candidate or ec, 'build:nightly' for nightly build).
+        - Example: `components.type='ocp'` for OpenShift components
 
         **Infrastructure:**
         - `remoteci.(name, id)`: lab/environment where job ran (use remoteci.name)
@@ -222,11 +222,11 @@ def register_job_tools(mcp: FastMCP) -> None:
 
         **Tags & Classification:**
         - `tags`: list of tags for categorization
-        - Common tags: `daily`, `agent:openshift`, `agent:openshift-app`
+        - Common tags: `daily` for daily jobs, `agent:openshift` for OpenShift/OCP install jobs, `agent:openshift-app` for OpenShift/OCP application or workload jobs. `connected` for jobs using connected mode, `disconnected` for disconnected mode. `use-dci-container` for containerized jobs. `install_type:<type>` for install type (e.g., `install_type:ipi`, `install_type:abi`, `install_type:acm`...).
         - Use `in` or `not_in` operators
 
         **Files & Artifacts:**
-        - `files.(id, name, size, state, type, url)`: job artifacts
+        - `files.(id, name, size, state, mime)`: job artifacts
         - Use `download_dci_file` tool to download files
 
         **Metrics & Measurements:**
