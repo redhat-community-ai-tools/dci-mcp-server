@@ -13,6 +13,7 @@ It allows AI models to interact with [DCI](https://doc.distributed-ci.io/) for c
 - 📝 **Easy Configuration**: Support for .env files for simple setup
 - ✅ **Code Quality**: Comprehensive pre-commit checks and linting
 - 📊 **Google Drive Integration**: Convert DCI reports to Google Docs with rich formatting
+- 🎫 **Jira Integration**: Collect comprehensive ticket data from Jira with comments and changelog
 
 ## Installation
 
@@ -149,6 +150,47 @@ result = await create_google_doc_from_file(
 )
 ```
 
+## Jira Integration
+
+The server includes Jira integration to collect comprehensive ticket data from Red Hat Jira, including comments and changelog information.
+
+### Features
+- 🎫 **Ticket Data Collection**: Retrieve comprehensive ticket information including summary, description, status, and dates
+- 💬 **Comments Analysis**: Get up to 50 recent comments with author and timestamp information
+- 📝 **Changelog Tracking**: Access complete ticket history and field changes
+- 🔍 **JQL Search**: Search tickets using Jira Query Language (JQL)
+- 📊 **Project Information**: Get project details and metadata
+- 🔗 **DCI Integration**: Seamlessly extract Jira tickets from DCI job comments
+
+### Setup
+To use Jira features, follow the [Jira Setup Guide](JIRA_SETUP.md) for detailed configuration instructions.
+
+**Quick Setup:**
+1. Get your Jira API token from [https://issues.redhat.com/secure/ViewProfile.jspa](https://issues.redhat.com/secure/ViewProfile.jspa)
+2. Set environment variables in your `.env` file:
+   ```bash
+   JIRA_API_TOKEN=your_jira_api_token_here
+   JIRA_URL=https://issues.redhat.com
+   ```
+
+### Usage Examples
+```python
+# Get comprehensive ticket data with comments
+ticket_data = await get_jira_ticket("CILAB-1234", max_comments=10)
+
+# Search for tickets using JQL
+open_tickets = await search_jira_tickets("project = CILAB AND status = Open")
+
+# Get project information
+project_info = await get_jira_project_info("CILAB")
+
+# Extract Jira tickets from DCI job comments
+jobs_with_tickets = await search_dci_jobs("comment=~'.*CILAB.*'")
+for job in jobs_with_tickets:
+    if job.get('comment'):
+        ticket_data = await get_jira_ticket(job['comment'])
+```
+
 ## Available Tools exposed by the MCP server
 
 The server provides tools for interacting with DCI API components:
@@ -178,6 +220,14 @@ The server provides tools for interacting with DCI API components:
 - `list_google_docs(query, max_results)`: List Google Docs in your Drive
 
 **Note**: For folder placement, you can use either `folder_id` (exact folder ID) or `folder_name` (searches for folder by name). Do not use both parameters together.
+
+### Jira Tools
+
+- `get_jira_ticket(ticket_key, max_comments)`: Get comprehensive ticket data including comments and changelog
+- `search_jira_tickets(jql, max_results)`: Search tickets using JQL (Jira Query Language)
+- `get_jira_project_info(project_key)`: Get project information and metadata
+
+**Note**: Jira tools require `JIRA_API_TOKEN` environment variable to be set.
 
 
 ## Code Quality Checks
