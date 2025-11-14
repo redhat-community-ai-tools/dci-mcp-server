@@ -205,6 +205,7 @@ def register_job_tools(mcp: FastMCP) -> None:
         - Use `today` or `now` tools for relative dates
         - Use >, <, >=, <= operators (avoid = for dates)
         - Format: `2025-09-12` or `2025-09-12T21:47:02.908617`
+        - For a period: `(created_at>='2024-09-16') and (created_at<='2025-09-20')`
 
         **Components & Software:**
         - `components.(type, name, version, tags)`: list of software components tested. Tags can be ('build:ga' for a released version, 'build:candidate' for Release Candidate or rc, 'build:dev' for engineering candidate or ec, 'build:nightly' for nightly build).
