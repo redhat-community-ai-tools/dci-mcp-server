@@ -46,6 +46,8 @@ And lately, always validate your findings using the must_gather file and the omc
 Avoid looking at the DCI task files or failed_task.txt or play_recap, as they contain the same information as ansible.log.
 
 Do not hesitate to download any extra files that you think is relevant to the RCA.
+
+Check it the associated JIRA ticket is consistent with your findings.
 """
         return PromptMessage(
             role="user", content=TextContent(type="text", text=content)
