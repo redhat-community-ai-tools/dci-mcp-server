@@ -128,7 +128,7 @@ def test_filter_jobs_by_fields_mixed_simple_and_nested():
             "id": "1",
             "name": "test-job",
             "status": "success",
-            "team": {"name": "samsung", "id": "team-1"},
+            "team": {"name": "test-team", "id": "team-1"},
             "components": [
                 {"type": "ocp", "version": "4.19.0"},
             ],
@@ -141,7 +141,7 @@ def test_filter_jobs_by_fields_mixed_simple_and_nested():
     job = filtered_jobs[0]
     assert job["id"] == "1"
     assert job["name"] == "test-job"
-    assert job["team"]["name"] == "samsung"
+    assert job["team"]["name"] == "test-team"
     assert job["components"][0]["type"] == "ocp"
 
 
