@@ -224,19 +224,19 @@ async def test_daily_jobs_search_syntax(mcp_server):
 
         data = parse_response(result)
         assert "hits" in data
-        assert (
-            len(data["hits"]) > 0
-        ), f"Expected to find jobs, but got {len(data['hits'])} hits"
+        assert len(data["hits"]) > 0, (
+            f"Expected to find jobs, but got {len(data['hits'])} hits"
+        )
 
         # Check that we get actual job data, not empty dictionaries
         for hit in data["hits"]:
-            assert (
-                hit
-            ), "Field filtering should return actual job data, not empty dictionaries"
+            assert hit, (
+                "Field filtering should return actual job data, not empty dictionaries"
+            )
             fields_keys = {field.split(".")[0] for field in fields}
-            assert (
-                hit.keys() == fields_keys
-            ), f"Expected fields {fields_keys}, got {hit.keys()}"
+            assert hit.keys() == fields_keys, (
+                f"Expected fields {fields_keys}, got {hit.keys()}"
+            )
             # Data should contain the requested fields
             for field in fields_keys:
                 assert field in hit, f"Expected field '{field}' in job data"

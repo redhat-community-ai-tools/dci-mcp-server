@@ -109,7 +109,7 @@ The Jira integration works seamlessly with DCI job data. You can:
    ```python
    # Search for jobs with CILAB tickets
    jobs = await search_dci_jobs("comment=~'.*CILAB.*'")
-   
+
    # Extract ticket keys from comments
    for job in jobs:
        if job.get('comment'):
@@ -188,7 +188,7 @@ for change in ticket_data['changelog']:
 
 ### Common Issues
 
-1. **Authentication Error**: 
+1. **Authentication Error**:
    - Verify your `JIRA_API_TOKEN` and `JIRA_EMAIL` are correct
    - Ensure your token hasn't expired
    - Check that your account has access to the Jira instance

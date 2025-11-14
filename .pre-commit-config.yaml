@@ -1,31 +1,24 @@
 ---
 repos:
-  # Code formatting
-  - repo: https://github.com/psf/black
-    rev: 25.1.0
-    hooks:
-      - id: black
-        language_version: python3.12
-        args: [--line-length=88, --target-version=py312]
-
   # Import sorting
   - repo: https://github.com/pycqa/isort
-    rev: 6.0.1
+    rev: 7.0.0
     hooks:
       - id: isort
         args: [--profile=black, --line-length=88]
 
-  # Linting and code quality
-  - repo: https://github.com/astral-sh/ruff
-    rev: 0.12.5
+  # Linting and code quality (Ruff replaces Black for formatting)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.5
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
+        # Ruff format is compatible with Black formatting style
 
   # Basic file checks
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.1.0
+    rev: v6.0.0
     hooks:
       - id: check-merge-conflict
       - id: check-added-large-files
@@ -37,4 +30,14 @@ repos:
       - id: trailing-whitespace
       - id: check-docstring-first
       - id: check-case-conflict
-      - id: check-todo
+
+  # Run tests (formatting and linting are handled by individual hooks above)
+  - repo: local
+    hooks:
+      - id: run-checks-test
+        name: run-checks-test
+        entry: bash -c 'if [ -d ".venv" ]; then bash scripts/run-checks.sh --test; else echo "⚠️  Virtual environment not found. Run uv sync first."; exit 1; fi'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

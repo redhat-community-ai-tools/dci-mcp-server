@@ -105,6 +105,7 @@ There are also parameterized prompts defined in the MCP server:
 - `/dci/rca <job id>` conducts a Root Cause Analysis of the problem in the job. Storing the downloaded files under `/tmp/dci/<job id>` and generating a report at `/tmp/dci/rca-<job id>.md`.
 - `/dci/weekly <team name/id or remoteci name/id>` conducts a report for the last 7 days stored at `/tmp/dci`.
 - `/dci/biweekly <team name/id or remoteci name/id>` conducts a report for the last 14 days stored at `/tmp/dci`.
+- `/dci/quarterly <remoteci name/id>` conducts a comprehensive quarterly analysis (last 3 months) with statistics about pipelines, topics, failure rates, trends, and component usage. Uses pagination and caching to handle large datasets. Report stored at `/tmp/dci/<remoteci>/quarterly/<date-range>/report.md`.
 
 ## Google Drive Integration
 

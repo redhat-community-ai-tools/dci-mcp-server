@@ -128,6 +128,39 @@ bash scripts/run-checks.sh
 - Optional scans: `uv run bandit -r . -f json -o bandit-report.json` and `uv run detect-secrets scan`.
 - Container builds: see `Containerfile`/`Containerfile.sse` if packaging is needed.
 
+## Partner Names and Confidentiality
+
+**NEVER** use partner names or company names anywhere in the codebase, including:
+- Test files and test data
+- Example code and documentation
+- Comments and docstrings
+- Variable names, function names, or any identifiers
+- Configuration files
+- Sample data or fixtures
+
+### Why:
+- This is a public repository and partner names should remain confidential
+- Partner information should not be exposed in public code
+
+### Instead:
+- Use generic names like `test-team`, `example-pipeline`, `sample-remoteci`
+- Use placeholder names like `partner-1`, `company-a` if differentiation is needed
+- Use descriptive generic names like `telco-lab`, `ran-pipeline` (without partner-specific identifiers)
+
+### Examples:
+
+**Bad:**
+```python
+team = {"name": "the-company", "id": "team-1"}
+pipeline_name = "the-company-ran-4.17"
+```
+
+**Good:**
+```python
+team = {"name": "test-team", "id": "team-1"}
+pipeline_name = "test-pipeline-4.17"
+```
+
 ## Project Structure
 
 - **Configuration**: Use `pyproject.toml` for all Python project configuration

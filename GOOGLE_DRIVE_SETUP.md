@@ -80,11 +80,11 @@ except Exception as e:
 
 1. **First Run**: The command will display an OAuth URL like:
    ```
-   Please visit this URL to authorize this application: 
+   Please visit this URL to authorize this application:
    https://accounts.google.com/o/oauth2/auth?response_type=code&client_id=...
    ```
 
-2. **Browser Authentication**: 
+2. **Browser Authentication**:
    - Copy and paste the URL into your browser
    - Sign in with your Google account
    - Grant permissions to access your Google Drive
