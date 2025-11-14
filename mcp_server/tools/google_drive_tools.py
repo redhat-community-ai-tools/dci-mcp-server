@@ -176,18 +176,6 @@ def register_google_drive_tools(mcp: FastMCP) -> None:
             result = service.create_google_doc_from_file(
                 report_path, doc_title, folder_id, folder_name
             )
-
-            # Add some metadata about the conversion
-            result["conversion_info"] = {
-                "source_file": report_path,
-                "converted_at": (
-                    service.service._http.request.utcnow().isoformat()
-                    if hasattr(service.service, "_http")
-                    else None
-                ),
-                "tool": "convert_dci_report_to_google_doc",
-            }
-
             return json.dumps(result, indent=2)
         except Exception as e:
             return json.dumps({"error": str(e)}, indent=2)
