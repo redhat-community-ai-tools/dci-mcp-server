@@ -233,4 +233,4 @@ The DCI MCP tool supports:
 - **File downloads** for logs and artifacts
 - **Flexible filtering** by team, status, job type, and time
 - **Comprehensive job metadata** including timing, status, and associated files
-- **Real-time status updates** for monitoring active jobs 
+- **Real-time status updates** for monitoring active jobs

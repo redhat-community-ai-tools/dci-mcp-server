@@ -42,4 +42,4 @@ USER 1001
 EXPOSE 8000
 
 # Run the MCP server app with SSE transport
-CMD ["python3.12", "main.py"] 
+CMD ["python3.12", "main.py"]
