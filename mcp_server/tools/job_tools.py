@@ -265,7 +265,11 @@ def register_job_tools(mcp: FastMCP) -> None:
 
         **Daily Jobs:** `(tags in ['daily'])`
 
-        **OpenShift Jobs:** `(components.type='ocp')`
+        **OpenShift Jobs:** `(product.name='OpenShift')`
+
+        **OpenShift install Jobs:** `(tags in ['agent:openshift'])`
+
+        **OpenShift application/workload Jobs:** `(tags in ['agent:openshift-app'])`
 
         **Jobs with Specific Component Version:** `((components.type='ocp') and (components.version='4.19.0'))`
 
