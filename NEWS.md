@@ -1,5 +1,11 @@
 # DCI MCP Server - Change Log
 
+## [2025-11-21]
+
+### Improvements
+
+- Restored `query_dci_teams` and `query_dci_remotecis` tools that were previously removed
+
 ## [2025-09-15] - 0.3.0
 
 ### Improvements

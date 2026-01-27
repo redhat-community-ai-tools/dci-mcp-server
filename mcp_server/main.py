@@ -27,6 +27,8 @@ from .tools.file_tools import register_file_tools
 from .tools.google_drive_tools import register_google_drive_tools
 from .tools.jira_tools import register_jira_tools
 from .tools.job_tools import register_job_tools
+from .tools.remoteci_tools import register_remoteci_tools
+from .tools.team_tools import register_team_tools
 
 
 def create_server() -> FastMCP:
@@ -55,6 +57,8 @@ def create_server() -> FastMCP:
     register_date_tools(mcp)
     register_job_tools(mcp)
     register_file_tools(mcp)
+    register_team_tools(mcp)
+    register_remoteci_tools(mcp)
 
     # Register Jira tools only when credentials are set
     if os.getenv("JIRA_API_TOKEN"):
