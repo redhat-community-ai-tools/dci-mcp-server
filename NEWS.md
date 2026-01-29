@@ -1,5 +1,29 @@
 # DCI MCP Server - Change Log
 
+## [2026-01-27]
+
+### Improvements
+
+- Simplified prompt implementations to use FastMCP's modern API (direct string returns instead of PromptMessage/TextContent wrappers)
+
+### Dependencies
+
+- Updated all project dependencies to their latest versions:
+  - black: 25.1.0 → 26.1.0
+  - ruff: 0.12.8 → 0.14.14
+  - pytest: 8.4.1 → 9.0.2
+  - fastapi: 0.116.1 → 0.128.0
+  - fastmcp: 2.11.3 → 2.14.4
+  - mcp: 1.12.4 → 1.26.0
+  - pydantic: 2.11.7 → 2.12.5
+  - isort: 6.0.1 → 7.0.0
+  - cryptography: 45.0.6 → 46.0.3
+  - dciclient: 4.1.0.post202509100810 → 4.1.0.post202510221005
+  - google-api-python-client: 2.181.0 → 2.188.0
+  - uvicorn: 0.35.0 → 0.40.0
+  - pre-commit: 4.3.0 → 4.5.1
+  - And many other dependency updates
+
 ## [2025-11-21]
 
 ### Improvements
