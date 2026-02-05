@@ -23,7 +23,7 @@ def register_prompts(mcp):
 
     @mcp.prompt()
     async def rca(
-        dci_job_id: str = Annotated[
+        dci_job_id: Annotated[
             str, "The DCI job ID for which to perform root cause analysis (RCA)."
         ],
     ) -> str:
@@ -50,7 +50,7 @@ Check it the associated JIRA ticket is consistent with your findings.
 
     @mcp.prompt()
     async def weekly(
-        subject: str = Annotated[
+        subject: Annotated[
             str, "The subject of the analysis (team name or id, remoteci name or id)."
         ],
     ) -> str:
@@ -67,7 +67,7 @@ Create a report with your findings in the /tmp/dci directory (create the directo
 
     @mcp.prompt()
     async def biweekly(
-        subject: str = Annotated[
+        subject: Annotated[
             str, "The subject of the analysis (team name or id, remoteci name or id)."
         ],
     ) -> str:
@@ -84,9 +84,7 @@ Create a report with your findings in the /tmp/dci directory (create the directo
 
     @mcp.prompt()
     async def quarterly(
-        subject: str = Annotated[
-            str, "The subject of the analysis (remoteci name or id)."
-        ],
+        subject: Annotated[str, "The subject of the analysis (remoteci name or id)."],
     ) -> str:
         """
         Prompt for instructions on how to analyze DCI jobs for a quarter (3 months).
