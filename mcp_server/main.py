@@ -82,16 +82,27 @@ def main() -> None:
     transport = os.getenv("MCP_TRANSPORT", "stdio")
 
     if transport == "stdio":
-        mcp.run()
+        # Disable banner in stdio mode to avoid breaking MCP protocol
+        # Banner output on stdout confuses MCP clients expecting only JSON-RPC
+        show_banner = os.getenv("MCP_SHOW_BANNER", "false").lower() == "true"
+        mcp.run(show_banner=show_banner)
+    elif transport in ["sse", "http", "streamable-http"]:
+        # HTTP/SSE transport
+        host = os.getenv("MCP_HOST", "127.0.0.1")
+        port = int(os.getenv("MCP_PORT", "8000"))
+        show_banner = os.getenv("MCP_SHOW_BANNER", "true").lower() == "true"
+        print(f"Starting {transport} server on {host}:{port}")
+        mcp.run(transport=transport, host=host, port=port, show_banner=show_banner)
     elif transport == "tcp":
         host = os.getenv("MCP_HOST", "localhost")
         port = int(os.getenv("MCP_PORT", "8000"))
         # Note: TCP transport might not be supported in this version
-        print("TCP transport not supported. Use stdio transport instead.")
+        print("TCP transport not supported. Use stdio or sse transport instead.")
         print(f"Would connect to {host}:{port}")
         exit(1)
     else:
         print(f"Unsupported transport: {transport}")
+        print("Supported transports: stdio, sse, http, streamable-http")
         exit(1)
 
 
