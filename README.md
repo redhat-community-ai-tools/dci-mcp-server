@@ -14,6 +14,7 @@ It allows AI models to interact with [DCI](https://doc.distributed-ci.io/) for c
 - ✅ **Code Quality**: Comprehensive pre-commit checks and linting
 - 📊 **Google Drive Integration**: Convert DCI reports to Google Docs with rich formatting
 - 🎫 **Jira Integration**: Collect comprehensive ticket data from Jira with comments and changelog
+- 🐙 **GitHub Integration**: Search issues and pull requests using GitHub's powerful search API
 
 ## Installation
 
@@ -192,6 +193,27 @@ for job in jobs_with_tickets:
         ticket_data = await get_jira_ticket(job['comment'])
 ```
 
+## GitHub Integration
+
+The server includes GitHub integration to search for issues and pull requests and retrieve detailed information about them.
+
+### Features
+- 🔍 **Issue & PR Search**: Search using GitHub's powerful query syntax
+- 📊 **Comprehensive Data**: Get detailed information including comments, labels, assignees, and more
+- 🔀 **Pull Request Metadata**: Access PR-specific data like merge status, branch info, and file changes
+- 📈 **Repository Information**: Retrieve repository metadata and statistics
+- 🔐 **Token Authentication**: Secure authentication with GitHub personal access tokens
+
+### Setup
+
+**Quick Setup:**
+1. Get your GitHub personal access token from [https://github.com/settings/tokens](https://github.com/settings/tokens)
+2. Create a new token (classic) with `repo` scope (for private repos) or `public_repo` (for public repos only)
+3. Set environment variable in your `.env` file:
+   ```bash
+   GITHUB_TOKEN=your_github_token_here
+   ```
+
 ## Available Tools exposed by the MCP server
 
 The server provides tools for interacting with DCI API components:
@@ -229,6 +251,14 @@ The server provides tools for interacting with DCI API components:
 - `get_jira_project_info(project_key)`: Get project information and metadata
 
 **Note**: Jira tools require `JIRA_API_TOKEN` environment variable to be set.
+
+### GitHub Tools
+
+- `search_github_issues(query, max_results)`: Search issues and pull requests using GitHub search query syntax
+- `get_github_issue(repo, issue_number, max_comments)`: Get comprehensive issue/PR data including comments and PR-specific information
+- `get_github_repository_info(repo)`: Get repository information and statistics
+
+**Note**: GitHub tools require `GITHUB_TOKEN` environment variable to be set.
 
 
 ## Code Quality Checks
@@ -276,7 +306,9 @@ mcp_server/
 │   ├── dci_team_service.py
 │   ├── dci_remoteci_service.py
 │   ├── dci_topic_service.py
-│   └── google_drive_service.py
+│   ├── google_drive_service.py
+│   ├── jira_service.py
+│   └── github_service.py
 ├── promps/               # Templatized prompts
 │   └── prompts.py
 ├── tools/                # MCP tools
@@ -285,6 +317,8 @@ mcp_server/
 │   ├── job_tools.py
 │   ├── file_tools.py
 │   ├── google_drive_tools.py
+│   ├── jira_tools.py
+│   ├── github_tools.py
 │   └── log_tools.py
 └── utils/                # Utility functions
     └── http_client.py

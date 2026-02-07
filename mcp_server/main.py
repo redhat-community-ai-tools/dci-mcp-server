@@ -24,6 +24,7 @@ from .prompts.prompts import register_prompts
 from .tools.component_tools import register_component_tools
 from .tools.date_tools import register_date_tools
 from .tools.file_tools import register_file_tools
+from .tools.github_tools import register_github_tools
 from .tools.google_drive_tools import register_google_drive_tools
 from .tools.jira_tools import register_jira_tools
 from .tools.job_tools import register_job_tools
@@ -63,6 +64,10 @@ def create_server() -> FastMCP:
     # Register Jira tools only when credentials are set
     if os.getenv("JIRA_API_TOKEN"):
         register_jira_tools(mcp)
+
+    # Register GitHub tools only when credentials are set
+    if os.getenv("GITHUB_TOKEN"):
+        register_github_tools(mcp)
 
     # Register Google drive tools only when credentials are set
     if os.getenv("GOOGLE_CREDENTIALS_PATH") and os.getenv("GOOGLE_TOKEN_PATH"):
