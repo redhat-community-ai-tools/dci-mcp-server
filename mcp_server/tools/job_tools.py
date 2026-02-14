@@ -141,7 +141,12 @@ def register_job_tools(mcp: FastMCP) -> None:
                 description="search criteria (e.g., ((components.type='ocp') and (components.version='4.19.0')) and ((components.type='storage') and (components.name='my-storage'))"
             ),
         ],
-        sort: Annotated[str, Field(description="Sort criteria")] = "-created_at",
+        sort: Annotated[
+            str,
+            Field(
+                description="Sort criteria. Use a minus prefix for descending order (e.g., '-created_at'). Only date and numeric fields are sortable: 'created_at', 'updated_at', 'duration'. Text fields like 'name' or 'status' are NOT sortable and will return empty results. Default is '-created_at'."
+            ),
+        ] = "-created_at",
         limit: Annotated[
             int,
             Field(
