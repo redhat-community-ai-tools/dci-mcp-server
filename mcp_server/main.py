@@ -19,7 +19,7 @@ import os
 
 from fastmcp import FastMCP
 
-from .config import validate_required_config
+from .config import has_dci_credentials, validate_required_config
 from .prompts.prompts import register_prompts
 from .tools.component_tools import register_component_tools
 from .tools.date_tools import register_date_tools
@@ -35,8 +35,7 @@ from .tools.team_tools import register_team_tools
 def create_server() -> FastMCP:
     """Create and configure the MCP server."""
 
-    if not validate_required_config():
-        raise ValueError("Required configuration is missing or invalid.")
+    validate_required_config()
 
     mcp: FastMCP = FastMCP(
         name="dci-mcp-server",
@@ -53,13 +52,16 @@ def create_server() -> FastMCP:
         """,
     )
 
-    # Register all tools
-    register_component_tools(mcp)
+    # Register date tools always (no DCI API required)
     register_date_tools(mcp)
-    register_job_tools(mcp)
-    register_file_tools(mcp)
-    register_team_tools(mcp)
-    register_remoteci_tools(mcp)
+
+    # Register DCI tools only when credentials are set
+    if has_dci_credentials():
+        register_component_tools(mcp)
+        register_job_tools(mcp)
+        register_file_tools(mcp)
+        register_team_tools(mcp)
+        register_remoteci_tools(mcp)
 
     # Register Jira tools only when credentials are set
     if os.getenv("JIRA_API_TOKEN"):

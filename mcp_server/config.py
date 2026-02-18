@@ -17,25 +17,27 @@ load_dotenv(env_file, verbose=True, override=True)
 DEFAULT_TIMEOUT = 30.0
 
 
-def validate_required_config() -> bool:
-    """Validate that DCI authentication is configured."""
+def has_dci_credentials() -> bool:
+    """Return True if DCI authentication is configured."""
     # set DCI_CS_URL=https://api.distributed-ci.io in the environment if not set
     if "DCI_CS_URL" not in os.environ:
         os.environ["DCI_CS_URL"] = "https://api.distributed-ci.io"
+    return ("DCI_CLIENT_ID" in os.environ and "DCI_API_SECRET" in os.environ) or (
+        "DCI_LOGIN" in os.environ and "DCI_PASSWORD" in os.environ
+    )
 
+
+def validate_required_config() -> bool:
+    """Validate configuration. Never fails startup; DCI tools are omitted if credentials are missing."""
     print(
-        f"Validating DCI authentication configuration...from {env_file}",
+        f"Validating configuration... from {env_file}",
         file=sys.stderr,
     )
-    # Check for DCI authentication
-    if ("DCI_CLIENT_ID" in os.environ and "DCI_API_SECRET" in os.environ) or (
-        "DCI_LOGIN" in os.environ and "DCI_PASSWORD" in os.environ
-    ):
+    if has_dci_credentials():
         return True
-
     print(
-        "WARNING: DCI authentication not configured. Set either DCI_CLIENT_ID+DCI_API_SECRET or "
-        "DCI_LOGIN+DCI_PASSWORD",
+        "WARNING: DCI authentication not configured. DCI tools will not be available. "
+        "Set either DCI_CLIENT_ID+DCI_API_SECRET or DCI_LOGIN+DCI_PASSWORD to enable them.",
         file=sys.stderr,
     )
     print(
@@ -47,7 +49,7 @@ def validate_required_config() -> bool:
     print("# OR", file=sys.stderr)
     print("DCI_LOGIN=your-login", file=sys.stderr)
     print("DCI_PASSWORD=your-passwod", file=sys.stderr)
-    return False
+    return True
 
 
 def validate_google_drive_config() -> bool:
