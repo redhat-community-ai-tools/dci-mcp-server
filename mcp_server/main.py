@@ -29,6 +29,7 @@ from .tools.google_drive_tools import register_google_drive_tools
 from .tools.jira_tools import register_jira_tools
 from .tools.job_tools import register_job_tools
 from .tools.remoteci_tools import register_remoteci_tools
+from .tools.support_case_tools import register_support_case_tools
 from .tools.team_tools import register_team_tools
 
 
@@ -74,6 +75,10 @@ def create_server() -> FastMCP:
     # Register Google drive tools only when credentials are set
     if os.getenv("GOOGLE_CREDENTIALS_PATH") and os.getenv("GOOGLE_TOKEN_PATH"):
         register_google_drive_tools(mcp)
+
+    # Register Red Hat Support Case tools only when credentials are set
+    if os.getenv("OFFLINE_TOKEN"):
+        register_support_case_tools(mcp)
 
     # Register prompts for user interaction
     register_prompts(mcp)

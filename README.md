@@ -15,6 +15,7 @@ It allows AI models to interact with [DCI](https://doc.distributed-ci.io/) for c
 - 📊 **Google Drive Integration**: Convert DCI reports to Google Docs with rich formatting
 - 🎫 **Jira Integration**: Collect comprehensive ticket data from Jira with comments and changelog
 - 🐙 **GitHub Integration**: Search issues and pull requests using GitHub's powerful search API
+- 🔴 **Red Hat Support Case Integration**: Access Red Hat support case data from the Customer Portal
 
 ## Installation
 
@@ -214,6 +215,26 @@ The server includes GitHub integration to search for issues and pull requests an
    GITHUB_TOKEN=your_github_token_here
    ```
 
+## Red Hat Support Case Integration
+
+The server includes Red Hat Support Case integration to retrieve case data from the Red Hat Customer Portal.
+
+### Features
+- 📋 **Case Data Retrieval**: Get comprehensive case information including summary, status, severity, and product details
+- 💬 **Comments**: Access case comments and communication history
+- 🐛 **Linked Bugs**: View Bugzilla bugs linked to the case
+- 📢 **Errata/Advisory Details**: Retrieve errata information including CVEs, affected products, and references
+- 🔐 **Offline Token Authentication**: Secure authentication using Red Hat API offline tokens
+
+### Setup
+
+**Quick Setup:**
+1. Get your offline token from [https://access.redhat.com/management/api](https://access.redhat.com/management/api)
+2. Set environment variable in your `.env` file:
+   ```bash
+   OFFLINE_TOKEN=your_offline_token_here
+   ```
+
 ## Available Tools exposed by the MCP server
 
 The server provides tools for interacting with DCI API components:
@@ -260,6 +281,15 @@ The server provides tools for interacting with DCI API components:
 
 **Note**: GitHub tools require `GITHUB_TOKEN` environment variable to be set.
 
+### Support Case Tools
+
+- `get_support_case(case_number)`: Get Red Hat support case data including comments and linked Bugzilla bugs
+- `get_support_case_comments(case_number, start_date?, end_date?)`: Get comments for a case with optional date filtering
+- `search_support_cases(keyword?, status?, severity?, product?, include_closed?, max_results?, start_date?, end_date?)`: Search cases by various criteria
+- `list_support_case_attachments(case_number)`: List attachment metadata for a case
+- `get_errata(advisory_id)`: Get Red Hat errata/advisory details (RHSA, RHBA, RHEA)
+
+**Note**: Support Case tools require `OFFLINE_TOKEN` environment variable to be set.
 
 ## Code Quality Checks
 
@@ -308,7 +338,8 @@ mcp_server/
 │   ├── dci_topic_service.py
 │   ├── google_drive_service.py
 │   ├── jira_service.py
-│   └── github_service.py
+│   ├── github_service.py
+│   └── support_case_service.py
 ├── promps/               # Templatized prompts
 │   └── prompts.py
 ├── tools/                # MCP tools
@@ -319,6 +350,7 @@ mcp_server/
 │   ├── google_drive_tools.py
 │   ├── jira_tools.py
 │   ├── github_tools.py
+│   ├── support_case_tools.py
 │   └── log_tools.py
 └── utils/                # Utility functions
     └── http_client.py
