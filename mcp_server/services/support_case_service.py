@@ -136,3 +136,119 @@ class SupportCaseService:
             if "not found" in str(e) or "Access denied" in str(e):
                 raise
             raise Exception(f"Error retrieving case {case_number}: {str(e)}") from e
+
+    async def get_case_comments(
+        self,
+        case_number: str,
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> Any:
+        """Get comments for a support case.
+
+        Args:
+            case_number: The Red Hat support case number
+            start_date: Optional start date filter (ISO format)
+            end_date: Optional end date filter (ISO format)
+
+        Returns:
+            List of comment dictionaries
+
+        Raises:
+            Exception: If the API call fails
+        """
+        try:
+            params: dict[str, str] = {}
+            if start_date:
+                params["startDate"] = start_date
+            if end_date:
+                params["endDate"] = end_date
+
+            response = await self._request(
+                "GET", f"/v1/cases/{case_number}/comments", params=params
+            )
+
+            if response.status_code == 404:
+                raise Exception(f"Case {case_number} not found")
+            if response.status_code == 403:
+                raise Exception(
+                    f"Access denied for case {case_number}. "
+                    "Check your account permissions."
+                )
+            response.raise_for_status()
+
+            return response.json()
+
+        except httpx.HTTPStatusError as e:
+            raise Exception(
+                f"Support Case API error ({e.response.status_code}): {e.response.text}"
+            ) from e
+        except Exception as e:
+            if "not found" in str(e) or "Access denied" in str(e):
+                raise
+            raise Exception(
+                f"Error retrieving comments for case {case_number}: {str(e)}"
+            ) from e
+
+    async def search_cases(self, filter_params: dict[str, Any]) -> Any:
+        """Search cases using the filter API.
+
+        Args:
+            filter_params: Dictionary matching the CaseFilter schema
+
+        Returns:
+            Filtered case results
+
+        Raises:
+            Exception: If the API call fails
+        """
+        try:
+            response = await self._request(
+                "POST", "/v1/cases/filter", json=filter_params
+            )
+            response.raise_for_status()
+
+            return response.json()
+
+        except httpx.HTTPStatusError as e:
+            raise Exception(
+                f"Support Case API error ({e.response.status_code}): {e.response.text}"
+            ) from e
+        except Exception as e:
+            raise Exception(f"Error searching cases: {str(e)}") from e
+
+    async def list_case_attachments(self, case_number: str) -> Any:
+        """List attachments for a support case.
+
+        Args:
+            case_number: The Red Hat support case number
+
+        Returns:
+            List of attachment metadata
+
+        Raises:
+            Exception: If the API call fails
+        """
+        try:
+            response = await self._request("GET", f"/cases/{case_number}/attachments/")
+
+            if response.status_code == 404:
+                raise Exception(f"Case {case_number} not found")
+            if response.status_code == 403:
+                raise Exception(
+                    f"Access denied for case {case_number}. "
+                    "Check your account permissions."
+                )
+            response.raise_for_status()
+
+            return response.json()
+
+        except httpx.HTTPStatusError as e:
+            raise Exception(
+                f"Support Case API error ({e.response.status_code}): {e.response.text}"
+            ) from e
+        except Exception as e:
+            if "not found" in str(e) or "Access denied" in str(e):
+                raise
+            raise Exception(
+                f"Error listing attachments for case {case_number}: {str(e)}"
+            ) from e

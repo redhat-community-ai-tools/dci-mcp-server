@@ -17,7 +17,7 @@
 
 import json
 import re
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastmcp import FastMCP
 from pydantic import Field
@@ -117,6 +117,222 @@ def register_support_case_tools(mcp: FastMCP) -> None:
             case_data = await service.get_case(normalized_case)
 
             return json.dumps(case_data, indent=2)
+
+        except ValueError as e:
+            return json.dumps({"error": str(e)}, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e)}, indent=2)
+
+    @mcp.tool()
+    async def get_support_case_comments(
+        case_number: Annotated[
+            str,
+            Field(description="Red Hat support case number (e.g., 03619625)"),
+        ],
+        start_date: Annotated[
+            str | None,
+            Field(
+                description="Optional start date filter in ISO format (e.g., 2025-01-01)"
+            ),
+        ] = None,
+        end_date: Annotated[
+            str | None,
+            Field(
+                description="Optional end date filter in ISO format (e.g., 2025-12-31)"
+            ),
+        ] = None,
+    ) -> str:
+        """Get comments for a Red Hat support case.
+
+        This tool retrieves the comments/communication history for a support
+        case. Comments can be filtered by date range.
+
+        ## Authentication Required
+
+        This tool requires a Red Hat offline token. Set the following
+        environment variable:
+        - `OFFLINE_TOKEN`: Your Red Hat API offline token
+
+        ## Parameters
+
+        - **case_number**: The case number (e.g., 03619625)
+        - **start_date**: Optional ISO date to filter comments from (e.g., 2025-01-01)
+        - **end_date**: Optional ISO date to filter comments until (e.g., 2025-12-31)
+
+        ## Returned Data
+
+        Returns the raw comments data from the API. Each comment typically
+        includes:
+        - **id**: Comment identifier
+        - **commentBody**: The comment text
+        - **createdBy**: Who created the comment
+        - **createdByType**: Type of creator (customer, support, etc.)
+        - **createdDate**: When the comment was created
+        - **publishedDate**: When the comment was published
+        - **isDraft**: Whether the comment is a draft
+
+        Returns:
+            JSON string with comments data
+        """
+        try:
+            normalized_case = validate_case_number(case_number)
+            service = SupportCaseService()
+            comments = await service.get_case_comments(
+                normalized_case, start_date, end_date
+            )
+            return json.dumps(comments, indent=2)
+
+        except ValueError as e:
+            return json.dumps({"error": str(e)}, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e)}, indent=2)
+
+    @mcp.tool()
+    async def search_support_cases(
+        keyword: Annotated[
+            str | None,
+            Field(description="Full-text search keyword"),
+        ] = None,
+        status: Annotated[
+            str | None,
+            Field(
+                description="Filter by case status (e.g., Open, Closed, "
+                "Waiting on Customer, Waiting on Red Hat)"
+            ),
+        ] = None,
+        severity: Annotated[
+            str | None,
+            Field(
+                description="Filter by severity (e.g., 1 (Urgent), "
+                "2 (High), 3 (Normal), 4 (Low))"
+            ),
+        ] = None,
+        product: Annotated[
+            str | None,
+            Field(
+                description="Filter by product name (e.g., OpenShift Container Platform)"
+            ),
+        ] = None,
+        include_closed: Annotated[
+            bool,
+            Field(description="Whether to include closed cases (default: false)"),
+        ] = False,
+        max_results: Annotated[
+            int,
+            Field(
+                description="Maximum number of results to return (default: 50, max: 200)",
+                ge=1,
+                le=200,
+            ),
+        ] = 50,
+        start_date: Annotated[
+            str | None,
+            Field(
+                description="Filter cases created after this date in ISO format "
+                "(e.g., 2025-01-01)"
+            ),
+        ] = None,
+        end_date: Annotated[
+            str | None,
+            Field(
+                description="Filter cases created before this date in ISO format "
+                "(e.g., 2025-12-31)"
+            ),
+        ] = None,
+    ) -> str:
+        """Search Red Hat support cases by various criteria.
+
+        This tool searches for support cases using filters like keyword,
+        status, severity, product, and date range.
+
+        ## Authentication Required
+
+        This tool requires a Red Hat offline token. Set the following
+        environment variable:
+        - `OFFLINE_TOKEN`: Your Red Hat API offline token
+
+        ## Filter Parameters
+
+        All parameters are optional. When multiple filters are provided,
+        they are combined (AND logic):
+        - **keyword**: Full-text search across case fields
+        - **status**: Filter by case status
+        - **severity**: Filter by severity level
+        - **product**: Filter by product name
+        - **include_closed**: Include closed cases (default: false)
+        - **max_results**: Maximum results to return (default: 50)
+        - **start_date**: Cases created after this date
+        - **end_date**: Cases created before this date
+
+        ## Returned Data
+
+        Returns the raw filtered case results from the API.
+
+        Returns:
+            JSON string with filtered case results
+        """
+        try:
+            service = SupportCaseService()
+
+            filter_params: dict[str, Any] = {"maxResults": max_results}
+            if keyword:
+                filter_params["keyword"] = keyword
+            if status:
+                filter_params["status"] = status
+            if severity:
+                filter_params["severity"] = severity
+            if product:
+                filter_params["product"] = product
+            if include_closed:
+                filter_params["includeClosed"] = True
+            if start_date:
+                filter_params["startDate"] = start_date
+            if end_date:
+                filter_params["endDate"] = end_date
+
+            results = await service.search_cases(filter_params)
+            return json.dumps(results, indent=2)
+
+        except Exception as e:
+            return json.dumps({"error": str(e)}, indent=2)
+
+    @mcp.tool()
+    async def list_support_case_attachments(
+        case_number: Annotated[
+            str,
+            Field(description="Red Hat support case number (e.g., 03619625)"),
+        ],
+    ) -> str:
+        """List attachments for a Red Hat support case.
+
+        This tool retrieves the metadata of all attachments associated with
+        a support case (file names, sizes, dates). It does not download
+        the attachment contents.
+
+        ## Authentication Required
+
+        This tool requires a Red Hat offline token. Set the following
+        environment variable:
+        - `OFFLINE_TOKEN`: Your Red Hat API offline token
+
+        ## Returned Data
+
+        Returns the raw attachment metadata from the API. Each attachment
+        typically includes:
+        - **id**: Attachment identifier
+        - **name**: File name
+        - **size**: File size
+        - **createDate**: When the attachment was uploaded
+        - **lastModifiedDate**: Last modification timestamp
+
+        Returns:
+            JSON string with attachment metadata
+        """
+        try:
+            normalized_case = validate_case_number(case_number)
+            service = SupportCaseService()
+            attachments = await service.list_case_attachments(normalized_case)
+            return json.dumps(attachments, indent=2)
 
         except ValueError as e:
             return json.dumps({"error": str(e)}, indent=2)
