@@ -20,7 +20,10 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
-from mcp_server.tools.support_case_tools import validate_case_number
+from mcp_server.tools.support_case_tools import (
+    validate_advisory_id,
+    validate_case_number,
+)
 
 # -- Anonymized test fixtures based on real API response structure --
 
@@ -510,3 +513,164 @@ async def test_request_retries_on_401(mock_env):
     assert mock_client.request.call_count == 2
     # Token should have been refreshed
     assert svc._access_token == "test-access-token-12345"
+
+
+# -- Errata fixtures and tests --
+
+SAMPLE_ERRATA_RESPONSE = {
+    "body": {
+        "id": "RHSA-2025:4018",
+        "copyrightYear": "2025",
+        "cves": "CVE-2021-47101 CVE-2025-27516",
+        "description": (
+            "Test product is a cloud computing application platform.\n\n"
+            "This advisory contains the RPM packages for Test Product 4.18.10.\n\n"
+            "Security Fix(es):\n\n"
+            "* jinja2: Jinja sandbox breakout (CVE-2025-27516)"
+        ),
+        "issued": "2025-04-22T13:09:39.000Z",
+        "lastUpdated": "2025-04-22T14:45:17.000Z",
+        "severity": "Important",
+        "summary": (
+            "Test Product release 4.18.10 is now available with "
+            "updates to packages and images that fix several bugs."
+        ),
+        "synopsis": "Important: Test Product 4.18.10 security and extras update",
+        "type": "security",
+        "typeSeverity": "Security Advisory (Important)",
+        "solution": (
+            "For Test Product 4.18 see the following documentation "
+            "for important instructions on how to upgrade your cluster."
+        ),
+        "affectedProducts": [
+            "Test Product for Power",
+            "Test Product for ARM 64",
+            "Test Product",
+        ],
+        "bugzillas": [
+            {
+                "href": "https://bugzilla.redhat.com/show_bug.cgi?id=2350190",
+                "id": "2350190",
+                "title": "CVE-2025-27516 jinja2: Jinja sandbox breakout",
+                "type": "bugzilla",
+            }
+        ],
+        "references": [
+            {
+                "href": "https://access.redhat.com/errata/RHSA-2025:4018",
+                "id": "RHSA-2025:4018",
+                "title": "RHSA-2025:4018",
+                "type": "self",
+            },
+            {
+                "href": "https://access.redhat.com/security/cve/CVE-2025-27516",
+                "id": "CVE-2025-27516",
+                "title": "CVE-2025-27516",
+                "type": "cve",
+            },
+        ],
+    }
+}
+
+
+# -- Advisory ID validation tests --
+
+
+def test_validate_advisory_id_valid():
+    """Test validation of valid advisory IDs."""
+    assert validate_advisory_id("RHSA-2025:4018") == "RHSA-2025:4018"
+    assert validate_advisory_id("RHBA-2024:1234") == "RHBA-2024:1234"
+    assert validate_advisory_id("RHEA-2023:56789") == "RHEA-2023:56789"
+
+
+def test_validate_advisory_id_case_insensitive():
+    """Test validation normalizes to uppercase."""
+    assert validate_advisory_id("rhsa-2025:4018") == "RHSA-2025:4018"
+    assert validate_advisory_id("Rhba-2024:1234") == "RHBA-2024:1234"
+
+
+def test_validate_advisory_id_with_whitespace():
+    """Test validation trims whitespace."""
+    assert validate_advisory_id("  RHSA-2025:4018  ") == "RHSA-2025:4018"
+    assert validate_advisory_id("\tRHBA-2024:1234\n") == "RHBA-2024:1234"
+
+
+def test_validate_advisory_id_invalid():
+    """Test validation rejects invalid advisory IDs."""
+    with pytest.raises(ValueError, match="Invalid advisory ID format"):
+        validate_advisory_id("invalid")
+
+    with pytest.raises(ValueError, match="Invalid advisory ID format"):
+        validate_advisory_id("RHSA-2025")  # Missing number after colon
+
+    with pytest.raises(ValueError, match="Invalid advisory ID format"):
+        validate_advisory_id("RHXA-2025:4018")  # Invalid type
+
+    with pytest.raises(ValueError, match="Invalid advisory ID format"):
+        validate_advisory_id("RHSA-25:4018")  # Two-digit year
+
+    with pytest.raises(ValueError, match="Invalid advisory ID format"):
+        validate_advisory_id("")
+
+
+# -- Errata service tests --
+
+
+@pytest.mark.asyncio
+async def test_get_errata_success(mock_env):
+    """Test successful errata retrieval."""
+    from mcp_server.services.support_case_service import SupportCaseService
+
+    svc = SupportCaseService()
+    svc._access_token = "cached-token"
+    svc._token_expires_at = 9999999999.0
+
+    with patch.object(svc, "_request", new_callable=AsyncMock) as mock_req:
+        mock_req.return_value = _mock_response(200, SAMPLE_ERRATA_RESPONSE)
+        result = await svc.get_errata("RHSA-2025:4018")
+
+    assert result["id"] == "RHSA-2025:4018"
+    assert result["severity"] == "Important"
+    assert result["type"] == "security"
+    assert "CVE-2025-27516" in result["cves"]
+    assert len(result["affectedProducts"]) == 3
+    assert len(result["bugzillas"]) == 1
+    assert result["url"] == "https://access.redhat.com/errata/RHSA-2025:4018"
+    mock_req.assert_called_once_with(
+        "GET",
+        "/errata/RHSA-2025:4018",
+        base_url=SupportCaseService.RHSM_BASE_URL,
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_errata_not_found(mock_env):
+    """Test 404 handling for errata retrieval."""
+    from mcp_server.services.support_case_service import SupportCaseService
+
+    svc = SupportCaseService()
+    svc._access_token = "cached-token"
+    svc._token_expires_at = 9999999999.0
+
+    with patch.object(svc, "_request", new_callable=AsyncMock) as mock_req:
+        mock_req.return_value = _mock_response(404, {"message": "Not found"})
+        with pytest.raises(Exception, match="Errata RHSA-9999:0000 not found"):
+            await svc.get_errata("RHSA-9999:0000")
+
+
+@pytest.mark.asyncio
+async def test_get_errata_unwraps_body(mock_env):
+    """Test that errata response is unwrapped from 'body' key."""
+    from mcp_server.services.support_case_service import SupportCaseService
+
+    svc = SupportCaseService()
+    svc._access_token = "cached-token"
+    svc._token_expires_at = 9999999999.0
+
+    with patch.object(svc, "_request", new_callable=AsyncMock) as mock_req:
+        mock_req.return_value = _mock_response(200, SAMPLE_ERRATA_RESPONSE)
+        result = await svc.get_errata("RHSA-2025:4018")
+
+    # Should be unwrapped — no "body" key at top level
+    assert "body" not in result
+    assert result["id"] == "RHSA-2025:4018"

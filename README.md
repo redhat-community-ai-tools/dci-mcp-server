@@ -223,6 +223,7 @@ The server includes Red Hat Support Case integration to retrieve case data from 
 - 📋 **Case Data Retrieval**: Get comprehensive case information including summary, status, severity, and product details
 - 💬 **Comments**: Access case comments and communication history
 - 🐛 **Linked Bugs**: View Bugzilla bugs linked to the case
+- 📢 **Errata/Advisory Details**: Retrieve errata information including CVEs, affected products, and references
 - 🔐 **Offline Token Authentication**: Secure authentication using Red Hat API offline tokens
 
 ### Setup
@@ -286,6 +287,7 @@ The server provides tools for interacting with DCI API components:
 - `get_support_case_comments(case_number, start_date?, end_date?)`: Get comments for a case with optional date filtering
 - `search_support_cases(keyword?, status?, severity?, product?, include_closed?, max_results?, start_date?, end_date?)`: Search cases by various criteria
 - `list_support_case_attachments(case_number)`: List attachment metadata for a case
+- `get_errata(advisory_id)`: Get Red Hat errata/advisory details (RHSA, RHBA, RHEA)
 
 **Note**: Support Case tools require `OFFLINE_TOKEN` environment variable to be set.
 

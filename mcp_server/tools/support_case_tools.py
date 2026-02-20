@@ -25,6 +25,32 @@ from pydantic import Field
 from ..services.support_case_service import SupportCaseService
 
 
+def validate_advisory_id(advisory_id: str) -> str:
+    """Validate and normalize Red Hat advisory/errata ID format.
+
+    Args:
+        advisory_id: Advisory ID (e.g., "RHSA-2025:4018")
+
+    Returns:
+        Normalized advisory ID (stripped of whitespace, uppercased)
+
+    Raises:
+        ValueError: If advisory ID format is invalid
+    """
+    advisory_id = advisory_id.strip().upper()
+
+    # Red Hat advisory IDs: RHSA/RHBA/RHEA-YYYY:NNNN
+    pattern = r"^RH[SBE]A-\d{4}:\d{4,6}$"
+
+    if not re.match(pattern, advisory_id):
+        raise ValueError(
+            f"Invalid advisory ID format: '{advisory_id}'. "
+            "Expected format: RHSA-2025:4018, RHBA-2025:1234, or RHEA-2025:5678"
+        )
+
+    return advisory_id
+
+
 def validate_case_number(case_number: str) -> str:
     """Validate and normalize Red Hat support case number format.
 
@@ -333,6 +359,65 @@ def register_support_case_tools(mcp: FastMCP) -> None:
             service = SupportCaseService()
             attachments = await service.list_case_attachments(normalized_case)
             return json.dumps(attachments, indent=2)
+
+        except ValueError as e:
+            return json.dumps({"error": str(e)}, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e)}, indent=2)
+
+    @mcp.tool()
+    async def get_errata(
+        advisory_id: Annotated[
+            str,
+            Field(
+                description="Red Hat advisory/errata ID "
+                "(e.g., RHSA-2025:4018, RHBA-2025:1234, RHEA-2025:5678)"
+            ),
+        ],
+    ) -> str:
+        """Get Red Hat errata/advisory details by advisory ID.
+
+        This tool retrieves detailed information about a Red Hat
+        errata (security advisory, bug fix, or enhancement).
+
+        ## Authentication Required
+
+        This tool requires a Red Hat offline token. Set the following
+        environment variable:
+        - `OFFLINE_TOKEN`: Your Red Hat API offline token
+
+        ## Advisory ID Format
+
+        Red Hat advisory IDs follow the pattern `TYPE-YEAR:NUMBER`:
+        - **RHSA**: Red Hat Security Advisory (e.g., RHSA-2025:4018)
+        - **RHBA**: Red Hat Bug Fix Advisory (e.g., RHBA-2025:1234)
+        - **RHEA**: Red Hat Enhancement Advisory (e.g., RHEA-2025:5678)
+
+        ## Returned Data
+
+        Returns the raw errata data from the RHSM API. Key fields include:
+        - **id**: Advisory ID
+        - **synopsis**: Short summary of the advisory
+        - **description**: Full advisory description
+        - **severity**: Severity level (Critical, Important, Moderate, Low)
+        - **type**: Advisory type (security, bugfix, enhancement)
+        - **issued**: When the advisory was issued
+        - **lastUpdated**: When the advisory was last updated
+        - **cves**: Space-separated list of CVE identifiers
+        - **affectedProducts**: List of affected product names
+        - **bugzillas**: Linked Bugzilla entries
+        - **references**: Related references (CVEs, Jira issues, etc.)
+        - **solution**: Instructions for applying the fix
+        - **url**: Direct link to the advisory on the Red Hat Customer Portal
+
+        Returns:
+            JSON string with errata details
+        """
+        try:
+            normalized_id = validate_advisory_id(advisory_id)
+            service = SupportCaseService()
+            errata_data = await service.get_errata(normalized_id)
+            return json.dumps(errata_data, indent=2)
 
         except ValueError as e:
             return json.dumps({"error": str(e)}, indent=2)

@@ -32,6 +32,7 @@ class SupportCaseService:
         "/protocol/openid-connect/token"
     )
     BASE_URL = "https://access.redhat.com/hydra/rest"
+    RHSM_BASE_URL = "https://api.access.redhat.com/management/v1"
 
     def __init__(self) -> None:
         """Initialize support case service with authentication."""
@@ -68,8 +69,15 @@ class SupportCaseService:
             self._token_expires_at = now + expires_in - 30
             return self._access_token
 
-    async def _request(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        base_url: str | None = None,
+        **kwargs: Any,
+    ) -> httpx.Response:
         """Make an authenticated request with automatic token refresh."""
+        url = f"{base_url or self.BASE_URL}{path}"
         token = await self._get_access_token()
         headers = {
             "Authorization": f"Bearer {token}",
@@ -77,9 +85,7 @@ class SupportCaseService:
         }
 
         async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
-            response = await client.request(
-                method, f"{self.BASE_URL}{path}", headers=headers, **kwargs
-            )
+            response = await client.request(method, url, headers=headers, **kwargs)
 
             # Handle JWT expiry: force token refresh and retry once
             if response.status_code == 401:
@@ -89,7 +95,7 @@ class SupportCaseService:
                 headers["Authorization"] = f"Bearer {token}"
                 response = await client.request(
                     method,
-                    f"{self.BASE_URL}{path}",
+                    url,
                     headers=headers,
                     **kwargs,
                 )
@@ -252,3 +258,42 @@ class SupportCaseService:
             raise Exception(
                 f"Error listing attachments for case {case_number}: {str(e)}"
             ) from e
+
+    async def get_errata(self, advisory_id: str) -> dict[str, Any]:
+        """Get errata/advisory details by advisory ID.
+
+        Args:
+            advisory_id: The advisory ID (e.g., "RHSA-2025:4018")
+
+        Returns:
+            Dictionary containing errata details
+
+        Raises:
+            Exception: If the API call fails
+        """
+        try:
+            response = await self._request(
+                "GET",
+                f"/errata/{advisory_id}",
+                base_url=self.RHSM_BASE_URL,
+            )
+
+            if response.status_code == 404:
+                raise Exception(f"Errata {advisory_id} not found")
+            response.raise_for_status()
+
+            data: dict[str, Any] = response.json()
+            # The RHSM API wraps the response in a "body" key
+            if "body" in data:
+                data = data["body"]
+            data["url"] = f"https://access.redhat.com/errata/{advisory_id}"
+            return data
+
+        except httpx.HTTPStatusError as e:
+            raise Exception(
+                f"RHSM API error ({e.response.status_code}): {e.response.text}"
+            ) from e
+        except Exception as e:
+            if "not found" in str(e):
+                raise
+            raise Exception(f"Error retrieving errata {advisory_id}: {str(e)}") from e
