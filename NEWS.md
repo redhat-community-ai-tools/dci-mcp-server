@@ -1,5 +1,11 @@
 # DCI MCP Server - Change Log
 
+## [2026-02-18]
+
+### Improvements
+
+- When DCI credentials are not set, the server no longer fails at startup; DCI tools are simply omitted so Jira- or GitHub-only usage is possible.
+
 ## [2026-01-27]
 
 ### Improvements
