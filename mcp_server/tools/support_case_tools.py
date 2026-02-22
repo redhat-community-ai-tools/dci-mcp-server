@@ -17,7 +17,7 @@
 
 import json
 import re
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastmcp import FastMCP
 from pydantic import Field
@@ -210,115 +210,6 @@ def register_support_case_tools(mcp: FastMCP) -> None:
 
         except ValueError as e:
             return json.dumps({"error": str(e)}, indent=2)
-        except Exception as e:
-            return json.dumps({"error": str(e)}, indent=2)
-
-    @mcp.tool()
-    async def search_support_cases(
-        keyword: Annotated[
-            str | None,
-            Field(description="Full-text search keyword"),
-        ] = None,
-        status: Annotated[
-            str | None,
-            Field(
-                description="Filter by case status (e.g., Open, Closed, "
-                "Waiting on Customer, Waiting on Red Hat)"
-            ),
-        ] = None,
-        severity: Annotated[
-            str | None,
-            Field(
-                description="Filter by severity (e.g., 1 (Urgent), "
-                "2 (High), 3 (Normal), 4 (Low))"
-            ),
-        ] = None,
-        product: Annotated[
-            str | None,
-            Field(
-                description="Filter by product name (e.g., OpenShift Container Platform)"
-            ),
-        ] = None,
-        include_closed: Annotated[
-            bool,
-            Field(description="Whether to include closed cases (default: false)"),
-        ] = False,
-        max_results: Annotated[
-            int,
-            Field(
-                description="Maximum number of results to return (default: 50, max: 200)",
-                ge=1,
-                le=200,
-            ),
-        ] = 50,
-        start_date: Annotated[
-            str | None,
-            Field(
-                description="Filter cases created after this date in ISO format "
-                "(e.g., 2025-01-01)"
-            ),
-        ] = None,
-        end_date: Annotated[
-            str | None,
-            Field(
-                description="Filter cases created before this date in ISO format "
-                "(e.g., 2025-12-31)"
-            ),
-        ] = None,
-    ) -> str:
-        """Search Red Hat support cases by various criteria.
-
-        This tool searches for support cases using filters like keyword,
-        status, severity, product, and date range.
-
-        ## Authentication Required
-
-        This tool requires a Red Hat offline token. Set the following
-        environment variable:
-        - `OFFLINE_TOKEN`: Your Red Hat API offline token
-
-        ## Filter Parameters
-
-        All parameters are optional. When multiple filters are provided,
-        they are combined (AND logic):
-        - **keyword**: Full-text search across case fields
-        - **status**: Filter by case status
-        - **severity**: Filter by severity level
-        - **product**: Filter by product name
-        - **include_closed**: Include closed cases (default: false)
-        - **max_results**: Maximum results to return (default: 50)
-        - **start_date**: Cases created after this date
-        - **end_date**: Cases created before this date
-
-        ## Returned Data
-
-        Returns the raw filtered case results from the API.
-
-        Returns:
-            JSON string with filtered case results
-        """
-        try:
-            service = SupportCaseService()
-
-            filter_params: dict[str, Any] = {"maxResults": max_results}
-            if keyword:
-                filter_params["keyword"] = keyword
-            if status:
-                filter_params["status"] = status
-            if severity:
-                filter_params["severity"] = severity
-            if product:
-                filter_params["product"] = product
-            if include_closed:
-                filter_params["includeClosed"] = True
-            if start_date:
-                filter_params["startDate"] = start_date
-            if end_date:
-                filter_params["endDate"] = end_date
-
-            results = await service.search_cases(filter_params)
-            return json.dumps(results, indent=2)
-
         except Exception as e:
             return json.dumps({"error": str(e)}, indent=2)
 

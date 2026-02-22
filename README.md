@@ -285,7 +285,6 @@ The server provides tools for interacting with DCI API components:
 
 - `get_support_case(case_number)`: Get Red Hat support case data including comments and linked Bugzilla bugs
 - `get_support_case_comments(case_number, start_date?, end_date?)`: Get comments for a case with optional date filtering
-- `search_support_cases(keyword?, status?, severity?, product?, include_closed?, max_results?, start_date?, end_date?)`: Search cases by various criteria
 - `list_support_case_attachments(case_number)`: List attachment metadata for a case
 - `get_errata(advisory_id)`: Get Red Hat errata/advisory details (RHSA, RHBA, RHEA)
 

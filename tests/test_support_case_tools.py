@@ -170,29 +170,6 @@ SAMPLE_ATTACHMENTS_RESPONSE = [
     }
 ]
 
-SAMPLE_SEARCH_RESPONSE = {
-    "case": [
-        {
-            "caseNumber": "01234567",
-            "summary": "Test case: documentation does not match behavior",
-            "status": "Closed",
-            "severity": "2 (High)",
-            "product": "OpenShift Container Platform",
-            "version": "4.18",
-            "createdDate": "2025-03-13T13:25:21Z",
-        },
-        {
-            "caseNumber": "07654321",
-            "summary": "Another test case for search results",
-            "status": "Open",
-            "severity": "3 (Normal)",
-            "product": "OpenShift Container Platform",
-            "version": "4.17",
-            "createdDate": "2025-02-01T10:00:00Z",
-        },
-    ]
-}
-
 SAMPLE_TOKEN_RESPONSE = {
     "access_token": "test-access-token-12345",
     "expires_in": 900,
@@ -363,31 +340,6 @@ async def test_get_case_comments_not_found(mock_env):
         mock_req.return_value = _mock_response(404, {"message": "Not found"})
         with pytest.raises(Exception, match="Case 99999999 not found"):
             await svc.get_case_comments("99999999")
-
-
-@pytest.mark.asyncio
-async def test_search_cases_success(mock_env):
-    """Test successful case search."""
-    from mcp_server.services.support_case_service import SupportCaseService
-
-    svc = SupportCaseService()
-    svc._access_token = "cached-token"
-    svc._token_expires_at = 9999999999.0
-
-    with patch.object(svc, "_request", new_callable=AsyncMock) as mock_req:
-        mock_req.return_value = _mock_response(200, SAMPLE_SEARCH_RESPONSE)
-        result = await svc.search_cases(
-            {"maxResults": 50, "keyword": "documentation", "status": "Closed"}
-        )
-
-    assert "case" in result
-    assert len(result["case"]) == 2
-    assert result["case"][0]["caseNumber"] == "01234567"
-    mock_req.assert_called_once_with(
-        "POST",
-        "/v1/cases/filter",
-        json={"maxResults": 50, "keyword": "documentation", "status": "Closed"},
-    )
 
 
 @pytest.mark.asyncio

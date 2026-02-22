@@ -195,33 +195,6 @@ class SupportCaseService:
                 f"Error retrieving comments for case {case_number}: {str(e)}"
             ) from e
 
-    async def search_cases(self, filter_params: dict[str, Any]) -> Any:
-        """Search cases using the filter API.
-
-        Args:
-            filter_params: Dictionary matching the CaseFilter schema
-
-        Returns:
-            Filtered case results
-
-        Raises:
-            Exception: If the API call fails
-        """
-        try:
-            response = await self._request(
-                "POST", "/v1/cases/filter", json=filter_params
-            )
-            response.raise_for_status()
-
-            return response.json()
-
-        except httpx.HTTPStatusError as e:
-            raise Exception(
-                f"Support Case API error ({e.response.status_code}): {e.response.text}"
-            ) from e
-        except Exception as e:
-            raise Exception(f"Error searching cases: {str(e)}") from e
-
     async def list_case_attachments(self, case_number: str) -> Any:
         """List attachments for a support case.
 
