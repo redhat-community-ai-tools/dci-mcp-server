@@ -240,8 +240,20 @@ def register_job_tools(mcp: FastMCP) -> None:
         - Examples: `install_time` (seconds), `workarounds` (count)
         - Query: `((keys_values.key='workarounds') and (keys_values.value>0))`
 
-        **Kernel Information:**
-        - `extra.kernel.(node, version, params)`: kernel details per node
+        **Node Information:**
+        - `nodes`: list of nodes involved in the job, each containing:
+          - `nodes.node`: node hostname
+          - `nodes.role`: node role (e.g., sno, master, worker)
+          - `nodes.kernel.(node, version, params)`: kernel details (version string, boot parameters)
+          - `nodes.hardware`: hardware details including:
+            - `nodes.hardware.(system_vendor, system_model, system_family, system_sku)`: system info
+            - `nodes.hardware.(cpu_model, cpu_vendor, cpu_sockets, cpu_total_cores, cpu_total_threads, cpu_frequency_mhz)`: CPU info
+            - `nodes.hardware.(memory_total_gb, memory_dimm_count)`: memory info
+            - `nodes.hardware.(bios_vendor, bios_version, bios_date, bios_type)`: BIOS info
+            - `nodes.hardware.network_interfaces`: list of NICs with driver, model, speed, firmware details
+            - `nodes.hardware.pci_accelerators`: list of PCI accelerator devices
+            - `nodes.hardware.pci_network_controllers`: list of PCI network controllers
+            - `nodes.hardware.storage_devices`: list of storage devices with type, model, size
 
         **Test Results:**
         - `tests`: complex nested structure with test results
