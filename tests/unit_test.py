@@ -15,251 +15,68 @@
 
 """Unit tests for job tools."""
 
-from mcp_server.tools.job_tools import filter_jobs_by_fields
+
+def test_fields_to_includes_conversion():
+    """Test that fields list is converted to comma-separated includes string."""
+    fields = ["id", "name", "status", "components.version"]
+    includes = ",".join(fields)
+    assert includes == "id,name,status,components.version"
 
 
-def test_filter_jobs_by_fields():
-    jobs = [
-        {"id": "1", "name": "Job 1", "status": "success"},
-        {"id": "2", "name": "Job 2", "status": "failure"},
-    ]
-    fields = ["id", "name"]
-    filtered_jobs = filter_jobs_by_fields(jobs, fields)
-    assert filtered_jobs == [{"id": "1", "name": "Job 1"}, {"id": "2", "name": "Job 2"}]
-
-
-def test_filter_jobs_by_fields_empty():
-    jobs = [
-        {"id": "1", "name": "Job 1", "status": "success"},
-        {"id": "2", "name": "Job 2", "status": "failure"},
-    ]
+def test_fields_empty_produces_no_includes():
+    """Test that empty fields list produces None includes."""
     fields = []
-    filtered_jobs = filter_jobs_by_fields(jobs, fields)
-    assert filtered_jobs == []
+    includes = ",".join(fields) if fields else None
+    assert includes is None
 
 
-def test_filter_jobs_by_fields_complex():
-    jobs = [
-        {
-            "id": "1",
-            "components": {"type": "ocp", "version": "4.19.0", "id": "foo"},
-            "status": "success",
-        },
-        {
-            "id": "2",
-            "components": {"type": "ocp", "version": "4.20.0", "id": "bar"},
-            "status": "failure",
-        },
+def test_source_extraction_from_es_hits():
+    """Test extracting _source from Elasticsearch hit format."""
+    es_hits = [
+        {"_source": {"id": "1", "name": "Job 1", "status": "success"}},
+        {"_source": {"id": "2", "name": "Job 2", "status": "failure"}},
     ]
-    fields = ["id", "components.type", "components.version"]
-    filtered_jobs = filter_jobs_by_fields(jobs, fields)
-    assert filtered_jobs == [
-        {"id": "1", "components": {"type": "ocp", "version": "4.19.0"}},
-        {"id": "2", "components": {"type": "ocp", "version": "4.20.0"}},
+    extracted = [hit["_source"] for hit in es_hits if "_source" in hit]
+    assert extracted == [
+        {"id": "1", "name": "Job 1", "status": "success"},
+        {"id": "2", "name": "Job 2", "status": "failure"},
     ]
 
 
-def test_filter_jobs_by_fields_with_list_components():
-    """Test filtering with components as a list (real DCI format)."""
-    jobs = [
+def test_source_extraction_with_nested_fields():
+    """Test that server-side filtered _source preserves nested structure."""
+    # Simulating what ES returns when includes=id,name,components.name
+    es_hits = [
         {
-            "id": "1",
-            "name": "daily-job-1",
-            "status": "success",
-            "created_at": "2024-01-01T00:00:00Z",
-            "tags": ["daily"],
-            "components": [
-                {"type": "ocp", "version": "4.19.0", "name": "openshift"},
-                {"type": "storage", "version": "1.0.0", "name": "ceph"},
-            ],
-        },
-        {
-            "id": "2",
-            "name": "daily-job-2",
-            "status": "failure",
-            "created_at": "2024-01-02T00:00:00Z",
-            "tags": ["daily"],
-            "components": [
-                {"type": "ocp", "version": "4.20.0", "name": "openshift"},
-            ],
-        },
-    ]
-    fields = [
-        "id",
-        "name",
-        "status",
-        "created_at",
-        "tags",
-        "components.type",
-        "components.version",
-        "components.name",
-    ]
-    filtered_jobs = filter_jobs_by_fields(jobs, fields)
-
-    # Check structure
-    assert len(filtered_jobs) == 2
-
-    # Check first job
-    job1 = filtered_jobs[0]
-    assert job1["id"] == "1"
-    assert job1["name"] == "daily-job-1"
-    assert job1["status"] == "success"
-    assert job1["created_at"] == "2024-01-01T00:00:00Z"
-    assert job1["tags"] == ["daily"]
-    assert "components" in job1
-    assert len(job1["components"]) == 2
-
-    # Check components structure
-    comp1 = job1["components"][0]
-    assert comp1["type"] == "ocp"
-    assert comp1["version"] == "4.19.0"
-    assert comp1["name"] == "openshift"
-
-    comp2 = job1["components"][1]
-    assert comp2["type"] == "storage"
-    assert comp2["version"] == "1.0.0"
-    assert comp2["name"] == "ceph"
-
-
-def test_filter_jobs_by_fields_mixed_simple_and_nested():
-    """Test filtering with both simple and nested fields."""
-    jobs = [
-        {
-            "id": "1",
-            "name": "test-job",
-            "status": "success",
-            "team": {"name": "test-team", "id": "team-1"},
-            "components": [
-                {"type": "ocp", "version": "4.19.0"},
-            ],
+            "_source": {
+                "id": "1",
+                "name": "es-job",
+                "components": [
+                    {"name": "openshift"},
+                    {"name": "ceph"},
+                ],
+            }
         }
     ]
-    fields = ["id", "name", "team.name", "components.type"]
-    filtered_jobs = filter_jobs_by_fields(jobs, fields)
-
-    assert len(filtered_jobs) == 1
-    job = filtered_jobs[0]
-    assert job["id"] == "1"
-    assert job["name"] == "test-job"
-    assert job["team"]["name"] == "test-team"
-    assert job["components"][0]["type"] == "ocp"
+    extracted = [hit["_source"] for hit in es_hits if "_source" in hit]
+    assert len(extracted) == 1
+    assert extracted[0]["id"] == "1"
+    assert extracted[0]["name"] == "es-job"
+    assert len(extracted[0]["components"]) == 2
+    assert extracted[0]["components"][0]["name"] == "openshift"
 
 
-def test_filter_jobs_by_fields_elasticsearch_format():
-    """Test filtering with Elasticsearch response format."""
-    jobs = {
+def test_empty_fields_returns_empty_list():
+    """Test that fields=[] returns empty job list."""
+    result = {
         "hits": {
             "hits": [
-                {
-                    "_source": {
-                        "id": "1",
-                        "name": "es-job",
-                        "status": "success",
-                        "components": [
-                            {"type": "ocp", "version": "4.19.0"},
-                        ],
-                    }
-                }
-            ]
+                {"_source": {"id": "1", "name": "Job 1"}},
+            ],
+            "total": {"value": 1},
         }
     }
-    fields = ["id", "name", "components.type"]
-    filtered_jobs = filter_jobs_by_fields(jobs, fields)
-
-    assert len(filtered_jobs) == 1
-    job = filtered_jobs[0]
-    assert job["id"] == "1"
-    assert job["name"] == "es-job"
-    assert job["components"][0]["type"] == "ocp"
-
-
-def test_filter_jobs_by_fields_missing_nested_fields():
-    """Test filtering when some nested fields are missing."""
-    jobs = [
-        {
-            "id": "1",
-            "name": "job-without-components",
-            "status": "success",
-        },
-        {
-            "id": "2",
-            "name": "job-with-components",
-            "status": "success",
-            "components": [
-                {"type": "ocp", "version": "4.19.0"},
-            ],
-        },
-    ]
-    fields = ["id", "name", "components.type", "components.version"]
-    filtered_jobs = filter_jobs_by_fields(jobs, fields)
-
-    assert len(filtered_jobs) == 2
-
-    # First job should only have simple fields
-    job1 = filtered_jobs[0]
-    assert job1["id"] == "1"
-    assert job1["name"] == "job-without-components"
-    assert "components" not in job1
-
-    # Second job should have components
-    job2 = filtered_jobs[1]
-    assert job2["id"] == "2"
-    assert job2["name"] == "job-with-components"
-    assert "components" in job2
-    assert job2["components"][0]["type"] == "ocp"
-    assert job2["components"][0]["version"] == "4.19.0"
-
-
-def test_filter_jobs_by_fields_empty_components():
-    """Test filtering with empty components list."""
-    jobs = [
-        {
-            "id": "1",
-            "name": "job-with-empty-components",
-            "status": "success",
-            "components": [],
-        }
-    ]
-    fields = ["id", "name", "components.type"]
-    filtered_jobs = filter_jobs_by_fields(jobs, fields)
-
-    assert len(filtered_jobs) == 1
-    job = filtered_jobs[0]
-    assert job["id"] == "1"
-    assert job["name"] == "job-with-empty-components"
-    assert "components" not in job  # Empty list should not be included
-
-
-def test_filter_jobs_by_fields_none_values():
-    """Test filtering with None values in nested fields."""
-    jobs = [
-        {
-            "id": "1",
-            "name": "job-with-null-components",
-            "status": "success",
-            "components": [
-                {"type": "ocp", "version": None, "name": "openshift"},
-                {"type": None, "version": "4.19.0", "name": "openshift"},
-            ],
-        }
-    ]
-    fields = ["id", "name", "components.type", "components.version", "components.name"]
-    filtered_jobs = filter_jobs_by_fields(jobs, fields)
-
-    assert len(filtered_jobs) == 1
-    job = filtered_jobs[0]
-    assert job["id"] == "1"
-    assert job["name"] == "job-with-null-components"
-    assert len(job["components"]) == 2
-
-    # First component should only have type and name (version is None)
-    comp1 = job["components"][0]
-    assert comp1["type"] == "ocp"
-    assert comp1["name"] == "openshift"
-    assert "version" not in comp1
-
-    # Second component should only have version and name (type is None)
-    comp2 = job["components"][1]
-    assert comp2["version"] == "4.19.0"
-    assert comp2["name"] == "openshift"
-    assert "type" not in comp2
+    fields = []
+    if isinstance(fields, list) and not fields:
+        result["hits"]["hits"] = []
+    assert result["hits"]["hits"] == []

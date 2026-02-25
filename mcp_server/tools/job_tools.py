@@ -24,112 +24,6 @@ from pydantic import Field
 from ..services.dci_job_service import DCIJobService
 
 
-def filter_jobs_by_fields(jobs: list, fields: list) -> list:
-    """Filter jobs by fields."""
-
-    if not fields:
-        return []
-
-    def get_nested_value(obj, field_path):
-        """Get nested value from object using dot notation."""
-        keys = field_path.split(".")
-        current = obj
-        for key in keys:
-            if isinstance(current, dict) and key in current:
-                current = current[key]
-            else:
-                return None
-        return current
-
-    # Handle both simple job lists and Elasticsearch response format
-    if isinstance(jobs, dict) and "hits" in jobs and "hits" in jobs["hits"]:
-        # Full Elasticsearch response format
-        job_list = jobs["hits"]["hits"]
-        # Extract _source if present, otherwise use the job directly
-        job_data = []
-        for job in job_list:
-            if "_source" in job:
-                job_data.append(job["_source"])
-            else:
-                job_data.append(job)
-    elif (
-        isinstance(jobs, list)
-        and len(jobs) > 0
-        and isinstance(jobs[0], dict)
-        and "_source" in jobs[0]
-    ):
-        # List of Elasticsearch job objects (each has _source)
-        job_data = []
-        for job in jobs:
-            if "_source" in job:
-                job_data.append(job["_source"])
-            else:
-                job_data.append(job)
-    else:
-        # Simple job list format - jobs are already the source data
-        job_data = jobs
-
-    # Group fields by their top-level key for better handling
-    field_groups = {}
-    simple_fields = []
-
-    for field in fields:
-        if "." in field:
-            top_key = field.split(".")[0]
-            if top_key not in field_groups:
-                field_groups[top_key] = []
-            field_groups[top_key].append(field)
-        else:
-            simple_fields.append(field)
-
-    filtered_result = []
-    for job in job_data:
-        filtered_job = {}
-
-        # Handle simple fields first
-        for field in simple_fields:
-            value = get_nested_value(job, field)
-            if value is not None:
-                filtered_job[field] = value
-
-        # Handle nested field groups
-        for top_key, field_list in field_groups.items():
-            if top_key in job and isinstance(job[top_key], list):
-                # Handle list fields like components
-                nested_items = []
-                for item in job[top_key]:
-                    if isinstance(item, dict):
-                        nested_item = {}
-                        for field in field_list:
-                            if "." in field:
-                                nested_field = field.split(".", 1)[
-                                    1
-                                ]  # Get the part after the first dot
-                                value = get_nested_value(item, nested_field)
-                                if value is not None:
-                                    nested_item[nested_field] = value
-                        if nested_item:  # Only add if we found some fields
-                            nested_items.append(nested_item)
-                if nested_items:
-                    filtered_job[top_key] = nested_items
-            else:
-                # Handle non-list nested fields
-                nested_obj = {}
-                for field in field_list:
-                    if "." in field:
-                        nested_field = field.split(".", 1)[
-                            1
-                        ]  # Get the part after the first dot
-                        value = get_nested_value(job, field)
-                        if value is not None:
-                            nested_obj[nested_field] = value
-                if nested_obj:
-                    filtered_job[top_key] = nested_obj
-        filtered_result.append(filtered_job)
-
-    return filtered_result
-
-
 def register_job_tools(mcp: FastMCP) -> None:
     """Register job-related tools with the MCP server."""
 
@@ -313,8 +207,15 @@ def register_job_tools(mcp: FastMCP) -> None:
         try:
             service = DCIJobService()
 
+            # Convert fields list to server-side includes parameter
+            includes = ",".join(fields) if fields else None
+
             result = service.search_jobs(
-                query=query, sort=sort, limit=limit, offset=offset
+                query=query,
+                sort=sort,
+                limit=limit,
+                offset=offset,
+                includes=includes,
             )
 
             # manage error message from the service
@@ -328,10 +229,12 @@ def register_job_tools(mcp: FastMCP) -> None:
 
             if isinstance(fields, list):
                 if fields:
-                    # Filter the result to only include specified fields
-                    result["hits"]["hits"] = filter_jobs_by_fields(
-                        result["hits"]["hits"], fields
-                    )
+                    # Server already filtered fields; extract _source from ES hits
+                    result["hits"]["hits"] = [
+                        hit["_source"]
+                        for hit in result["hits"]["hits"]
+                        if "_source" in hit
+                    ]
                 else:
                     # If fields is empty, return no jobs
                     result["hits"]["hits"] = []

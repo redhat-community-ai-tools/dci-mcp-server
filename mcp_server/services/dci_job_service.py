@@ -31,6 +31,7 @@ class DCIJobService(DCIBaseService):
         limit: int = 50,
         offset: int = 0,
         sort: str | None = None,
+        includes: str | None = None,
     ) -> list:
         """
         List jobs using the advanced search syntax.
@@ -40,19 +41,24 @@ class DCIJobService(DCIBaseService):
             limit: Maximum number of jobs to return (default: 50)
             offset: Number of jobs to skip (default: 0)
             sort: Sort criteria (e.g., "-created_at")
+            includes: Comma-separated list of fields to include in the response
+                      (e.g., "id,name,status,components.name"). Uses server-side
+                      Elasticsearch _source filtering.
 
         Returns:
             A dictionary with jobs data or an empty dictionary on error
         """
         try:
             context = self._get_dci_context()
-            return job.search(
-                context,
-                query=query,
-                limit=limit,
-                offset=offset,
-                sort=sort,
-            ).json()
+            kwargs = {
+                "query": query,
+                "limit": limit,
+                "offset": offset,
+                "sort": sort,
+            }
+            if includes is not None:
+                kwargs["includes"] = includes
+            return job.search(context, **kwargs).json()
         except Exception as e:
             return {"error": str(e), "message": "Failed to list jobs."}
 
