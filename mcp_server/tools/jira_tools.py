@@ -98,6 +98,8 @@ def register_jira_tools(mcp: FastMCP) -> None:
         - **People**: assignee, reporter
         - **Dates**: created, updated
         - **Classification**: labels, components, fix_versions, affected_versions
+        - **Custom Fields**: custom_fields dict with human-readable field names as keys
+          (only non-null custom fields are included)
         - **Comments**: Recent comments with author, body, timestamps
         - **Changelog**: History of changes with field modifications
         - **URL**: Direct link to the ticket
