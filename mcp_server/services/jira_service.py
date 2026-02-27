@@ -7,6 +7,29 @@ from jira import JIRA
 from jira.exceptions import JIRAError
 
 
+def _simplify_field_value(value: Any) -> Any:
+    """Simplify a raw Jira field value for readability.
+
+    Extracts human-readable values from Jira's nested resource objects
+    while preserving simple types unchanged.
+    """
+    if value is None:
+        return None
+    if isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, list):
+        return [_simplify_field_value(item) for item in value]
+    if isinstance(value, dict):
+        if "displayName" in value:
+            return value["displayName"]
+        if "name" in value:
+            return value["name"]
+        if "value" in value:
+            return value["value"]
+        return {k: _simplify_field_value(v) for k, v in value.items()}
+    return str(value)
+
+
 class JiraService:
     """Service class for Jira API interactions."""
 
@@ -23,6 +46,17 @@ class JiraService:
             )
 
         self.jira = JIRA(server=self.jira_url, token_auth=self.jira_token)
+        self._field_map: dict[str, str] | None = None
+
+    def _get_field_map(self) -> dict[str, str]:
+        """Get field ID to name mapping, cached per instance."""
+        if self._field_map is None:
+            try:
+                fields = self.jira.fields()
+                self._field_map = {f["id"]: f["name"] for f in fields}
+            except Exception:
+                self._field_map = {}
+        return self._field_map
 
     def get_ticket_data(
         self, ticket_key: str, max_comments: int = 10
@@ -85,6 +119,20 @@ class JiraService:
                 "url": f"{self.jira_url}/browse/{issue.key}",
             }
 
+            # Extract custom fields
+            field_map = self._get_field_map()
+            raw_fields = issue.raw.get("fields", {})
+            custom_fields = {}
+            for field_id, raw_value in raw_fields.items():
+                if not field_id.startswith("customfield_"):
+                    continue
+                if raw_value is None:
+                    continue
+                field_name = field_map.get(field_id, field_id)
+                custom_fields[field_name] = _simplify_field_value(raw_value)
+            if custom_fields:
+                ticket_data["custom_fields"] = custom_fields
+
             # Get comments
             comments = self._get_comments(issue, max_comments)
             ticket_data["comments"] = comments
@@ -131,8 +179,13 @@ class JiraService:
 
         if hasattr(issue, "changelog") and issue.changelog:
             for history in issue.changelog.histories:
+                author = getattr(history, "author", None)
                 history_data = {
-                    "author": getattr(history.author, "displayName", "Unknown"),
+                    "author": (
+                        getattr(author, "displayName", "Unknown")
+                        if author
+                        else "Unknown"
+                    ),
                     "created": history.created,
                     "items": [],
                 }

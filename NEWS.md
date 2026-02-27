@@ -1,5 +1,15 @@
 # DCI MCP Server - Change Log
 
+## [2026-02-27]
+
+### Improvements
+
+- `get_jira_ticket` now includes custom fields in the response under a `custom_fields` key with human-readable field names
+
+### Bug Fixes
+
+- Fix crash in `get_jira_ticket` when changelog entries have no author
+
 ## [2026-02-18]
 
 ### Improvements
