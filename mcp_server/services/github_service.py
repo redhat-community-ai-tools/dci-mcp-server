@@ -144,6 +144,78 @@ class GitHubService:
                 f"Error retrieving issue {repo_full_name}#{issue_number}: {str(e)}"
             ) from e
 
+    def get_pr_diff(
+        self,
+        repo_full_name: str,
+        pull_number: int,
+        max_files: int = 100,
+    ) -> dict[str, Any]:
+        """
+        Get the diff/patch for a pull request.
+
+        Args:
+            repo_full_name: Repository in owner/repo format
+            pull_number: Pull request number
+            max_files: Maximum number of files to return (default: 100)
+
+        Returns:
+            Dictionary containing PR summary and per-file diffs
+        """
+        try:
+            repo = self.github.get_repo(repo_full_name)
+            pr = repo.get_pull(number=pull_number)
+
+            result: dict[str, Any] = {
+                "number": pr.number,
+                "title": pr.title,
+                "state": pr.state,
+                "merged": pr.merged,
+                "base_ref": pr.base.ref,
+                "head_ref": pr.head.ref,
+                "additions": pr.additions,
+                "deletions": pr.deletions,
+                "changed_files": pr.changed_files,
+                "url": pr.html_url,
+            }
+
+            files = []
+            count = 0
+            for pr_file in pr.get_files():
+                if count >= max_files:
+                    break
+                file_data: dict[str, Any] = {
+                    "filename": pr_file.filename,
+                    "status": pr_file.status,
+                    "additions": pr_file.additions,
+                    "deletions": pr_file.deletions,
+                    "changes": pr_file.changes,
+                    "patch": pr_file.patch,
+                    "sha": pr_file.sha,
+                }
+                if pr_file.previous_filename:
+                    file_data["previous_filename"] = pr_file.previous_filename
+                files.append(file_data)
+                count += 1
+
+            result["files"] = files
+            result["files_returned"] = len(files)
+            result["total_files"] = pr.changed_files
+            if pr.changed_files > max_files:
+                result["truncated"] = True
+                result["truncation_message"] = (
+                    f"Showing {max_files} of {pr.changed_files} files. "
+                    f"Use max_files parameter to retrieve more."
+                )
+
+            return result
+
+        except GithubException as e:
+            raise Exception(f"GitHub API error: {e.data.get('message', str(e))}") from e
+        except Exception as e:
+            raise Exception(
+                f"Error retrieving PR diff {repo_full_name}#{pull_number}: {str(e)}"
+            ) from e
+
     def _get_comments(self, issue: Any, max_comments: int) -> list[dict[str, Any]]:
         """Extract comments from the issue."""
         comments = []

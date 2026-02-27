@@ -308,3 +308,89 @@ def register_github_tools(mcp: FastMCP) -> None:
             return json.dumps({"error": str(e)}, indent=2)
         except Exception as e:
             return json.dumps({"error": str(e)}, indent=2)
+
+    @mcp.tool()
+    async def get_github_pr_diff(
+        repo: Annotated[
+            str,
+            Field(
+                description="Repository name in format owner/repo (e.g., octocat/Hello-World)"
+            ),
+        ],
+        pull_number: Annotated[
+            int,
+            Field(description="Pull request number", ge=1),
+        ],
+        max_files: Annotated[
+            int,
+            Field(
+                description="Maximum number of files to return (default: 100, max: 500)",
+                ge=1,
+                le=500,
+            ),
+        ] = 100,
+    ) -> str:
+        """Get the diff/patch for a GitHub pull request.
+
+        This tool retrieves the unified diff for each file changed in a pull request,
+        along with PR summary information.
+
+        ## Authentication Required
+
+        This tool requires GitHub API authentication. Set the following environment variable:
+        - `GITHUB_TOKEN`: Your GitHub personal access token
+
+        ## Repository Format
+
+        The repository name should be in the format `owner/repo`:
+        - Examples: `octocat/Hello-World`, `torvalds/linux`, `facebook/react`
+        - Case sensitive
+        - Must be a valid repository you have access to
+
+        ## Pull Request Number
+
+        The pull request number (the number after the # in GitHub PR URLs):
+        - Example: For https://github.com/octocat/Hello-World/pull/42, use 42
+
+        ## Returned Data
+
+        The tool returns a JSON object containing:
+        - **number**: PR number
+        - **title**: PR title
+        - **state**: Current state (open, closed)
+        - **merged**: Whether the PR has been merged
+        - **base_ref**: Base branch name
+        - **head_ref**: Head branch name
+        - **additions**: Total lines added
+        - **deletions**: Total lines deleted
+        - **changed_files**: Total number of changed files
+        - **url**: Direct link to the PR
+        - **files**: Array of file objects, each containing:
+          - **filename**: Path of the file
+          - **status**: File status (added, modified, removed, renamed)
+          - **additions**: Lines added in this file
+          - **deletions**: Lines deleted in this file
+          - **changes**: Total line changes in this file
+          - **patch**: Unified diff content (null for binary files)
+          - **sha**: File SHA
+          - **previous_filename**: Previous path (only for renames)
+        - **files_returned**: Number of files included in response
+        - **total_files**: Total number of files changed in the PR
+        - **truncated**: Whether the file list was truncated (only present if true)
+        - **truncation_message**: Message about truncation (only present if truncated)
+
+        Returns:
+            JSON string with PR diff data
+        """
+        try:
+            normalized_repo = validate_repo_name(repo)
+            github_service = GitHubService()
+            pr_diff = github_service.get_pr_diff(
+                normalized_repo, pull_number, max_files
+            )
+            return json.dumps(pr_diff, indent=2)
+
+        except ValueError as e:
+            return json.dumps({"error": str(e)}, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e)}, indent=2)
