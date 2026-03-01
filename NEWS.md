@@ -4,6 +4,7 @@
 
 ### Improvements
 
+- Add `get_github_pr_diff` tool to retrieve per-file diffs/patches for GitHub pull requests
 - `get_jira_ticket` now includes custom fields in the response under a `custom_fields` key with human-readable field names
 
 ### Bug Fixes
