@@ -47,7 +47,7 @@ SAMPLE_CASE_RESPONSE = {
             "createdAt": "2025-03-19T17:39:54Z",
             "establishedBy": "rhn-support-testuser",
             "resourceKey": "TESTBUGS-12345",
-            "resourceURL": "https://issues.redhat.com/browse/TESTBUGS-12345",
+            "resourceURL": "https://redhat.atlassian.net/browse/TESTBUGS-12345",
             "status": "Closed",
             "system": "Jira",
             "title": "Test bug title for documentation issue",

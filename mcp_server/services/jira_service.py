@@ -35,7 +35,7 @@ class JiraService:
 
     def __init__(self):
         """Initialize Jira service with authentication."""
-        self.jira_url = os.environ.get("JIRA_URL", "https://issues.redhat.com")
+        self.jira_url = os.environ.get("JIRA_URL", "https://redhat.atlassian.net")
         self.jira_token = os.environ.get("JIRA_API_TOKEN")
         self.jira_email = os.environ.get("JIRA_EMAIL")
 
@@ -45,7 +45,13 @@ class JiraService:
                 "See documentation for setup instructions."
             )
 
-        self.jira = JIRA(server=self.jira_url, token_auth=self.jira_token)
+        if self.jira_email:
+            self.jira = JIRA(
+                server=self.jira_url,
+                basic_auth=(self.jira_email, self.jira_token),
+            )
+        else:
+            self.jira = JIRA(server=self.jira_url, token_auth=self.jira_token)
         self._field_map: dict[str, str] | None = None
 
     def _get_field_map(self) -> dict[str, str]:

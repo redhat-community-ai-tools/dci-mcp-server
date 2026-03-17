@@ -72,11 +72,11 @@ def register_jira_tools(mcp: FastMCP) -> None:
 
         This tool requires Jira API authentication. Set the following environment variables:
         - `JIRA_API_TOKEN`: Your Jira API token
-        - `JIRA_URL`: Jira server URL (defaults to https://issues.redhat.com)
+        - `JIRA_URL`: Jira server URL (defaults to https://redhat.atlassian.net)
 
         ## Getting Your Jira API Token
 
-        1. Go to https://issues.redhat.com/secure/ViewProfile.jspa
+        1. Go to https://redhat.atlassian.net/secure/ViewProfile.jspa
         2. Click on "Personal Access Tokens" in the left sidebar
         3. Click "Create token"
         4. Give your token a name (e.g., "DCI MCP Server")
@@ -150,7 +150,7 @@ def register_jira_tools(mcp: FastMCP) -> None:
 
         This tool requires Jira API authentication. Set the following environment variables:
         - `JIRA_API_TOKEN`: Your Jira API token
-        - `JIRA_URL`: Jira server URL (defaults to https://issues.redhat.com)
+        - `JIRA_URL`: Jira server URL (defaults to https://redhat.atlassian.net)
 
         ## JQL Examples
 
@@ -220,7 +220,7 @@ def register_jira_tools(mcp: FastMCP) -> None:
 
         This tool requires Jira API authentication. Set the following environment variables:
         - `JIRA_API_TOKEN`: Your Jira API token
-        - `JIRA_URL`: Jira server URL (defaults to https://issues.redhat.com)
+        - `JIRA_URL`: Jira server URL (defaults to https://redhat.atlassian.net)
 
         ## Project Key Format
 
