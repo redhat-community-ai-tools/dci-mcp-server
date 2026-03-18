@@ -12,37 +12,30 @@ The Jira integration provides tools to:
 
 ## Prerequisites
 
-- Access to Red Hat Jira at https://issues.redhat.com
-- A Red Hat account with Jira access
+- Access to Red Hat Jira at https://redhat.atlassian.net
+- A Red Hat Atlassian account with Jira access
 - Python environment with the DCI MCP Server installed
 
 ## Getting Your Jira API Token
 
-### Step 1: Access Your Profile
+### Step 1: Create an Atlassian API Token
 
-1. Go to [https://issues.redhat.com/secure/ViewProfile.jspa](https://issues.redhat.com/secure/ViewProfile.jspa)
-2. Log in with your Red Hat credentials if prompted
-
-### Step 2: Create a Personal Access Token
-
-1. In your profile page, look for "Personal Access Tokens" in the left sidebar
-2. Click on "Personal Access Tokens"
-3. Click the "Create token" button
-4. Fill in the token details:
-   - **Name**: Give your token a descriptive name (e.g., "DCI MCP Server")
-   - **Expiration**: Set an expiration date (optional but recommended for security)
-   - **Scopes**: Select the appropriate scopes (typically "read" access is sufficient)
+1. Go to [https://id.atlassian.com/manage-profile/security/api-tokens](https://id.atlassian.com/manage-profile/security/api-tokens)
+2. Log in with your Atlassian account if prompted
+3. Click "Create API token"
+4. Give your token a descriptive name (e.g., "DCI MCP Server")
 5. Click "Create"
 6. **Important**: Copy the generated token immediately - it won't be shown again!
 
-### Step 3: Configure Environment Variables
+### Step 2: Configure Environment Variables
 
 Add the following to your `.env` file:
 
 ```bash
 # Jira Integration
 JIRA_API_TOKEN=your_generated_token_here
-JIRA_URL=https://issues.redhat.com
+JIRA_EMAIL=you@redhat.com
+JIRA_URL=https://redhat.atlassian.net
 ```
 
 ## Available Tools
@@ -214,7 +207,7 @@ logging.basicConfig(level=logging.DEBUG)
 ## API Rate Limits
 
 Be aware of Jira API rate limits:
-- Red Hat Jira typically allows 1000 requests per hour per user
+- Jira Cloud (redhat.atlassian.net) enforces rate limits per user
 - The tools include built-in rate limiting and retry logic
 - For high-volume usage, consider implementing additional rate limiting
 

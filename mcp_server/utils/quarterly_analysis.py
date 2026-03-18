@@ -384,7 +384,7 @@ def replace_cilab_references(text: str) -> str:
     import re
 
     pattern = r"CILAB-(\d+)"
-    return re.sub(pattern, r"https://issues.redhat.com/browse/CILAB-\1", text)
+    return re.sub(pattern, r"https://redhat.atlassian.net/browse/CILAB-\1", text)
 
 
 def format_job_id_link(job_id: str) -> str:

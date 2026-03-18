@@ -169,11 +169,12 @@ The server includes Jira integration to collect comprehensive ticket data from R
 To use Jira features, follow the [Jira Setup Guide](JIRA_SETUP.md) for detailed configuration instructions.
 
 **Quick Setup:**
-1. Get your Jira API token from [https://issues.redhat.com/secure/ViewProfile.jspa](https://issues.redhat.com/secure/ViewProfile.jspa)
+1. Get your Jira API token from [https://id.atlassian.com/manage-profile/security/api-tokens](https://id.atlassian.com/manage-profile/security/api-tokens)
 2. Set environment variables in your `.env` file:
    ```bash
    JIRA_API_TOKEN=your_jira_api_token_here
-   JIRA_URL=https://issues.redhat.com
+   JIRA_EMAIL=you@redhat.com
+   JIRA_URL=https://redhat.atlassian.net
    ```
 
 ### Usage Examples
