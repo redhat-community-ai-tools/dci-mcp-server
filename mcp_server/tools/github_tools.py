@@ -310,6 +310,38 @@ def register_github_tools(mcp: FastMCP) -> None:
             return json.dumps({"error": str(e)}, indent=2)
 
     @mcp.tool()
+    async def get_github_rate_limit() -> str:
+        """Check current GitHub API rate limit status.
+
+        Returns the remaining request quota for the core API (used by most
+        operations) and the search API (used by search_github_issues).
+
+        Useful for diagnosing rate limit errors before or after making GitHub
+        API calls. GitHub allows 5,000 core requests per hour and 30 search
+        requests per minute for authenticated users.
+
+        ## Returned Data
+
+        Returns a JSON object with two resources:
+        - **core**: Rate limit for repository, issue, PR, and diff operations
+          - **limit**: Maximum requests per hour
+          - **remaining**: Requests left in the current window
+          - **used**: Requests consumed in the current window
+          - **reset**: ISO timestamp when the window resets (UTC)
+        - **search**: Rate limit for search_github_issues operations
+          (same fields as core)
+
+        Returns:
+            JSON string with rate limit status
+        """
+        try:
+            github_service = GitHubService()
+            status = github_service.get_rate_limit_status()
+            return json.dumps(status, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e)}, indent=2)
+
+    @mcp.tool()
     async def get_github_pr_diff(
         repo: Annotated[
             str,

@@ -1,10 +1,11 @@
 """GitHub service for searching issues and pull requests."""
 
 import os
+from datetime import UTC
 from typing import Any
 
 from github import Auth, Github
-from github.GithubException import GithubException
+from github.GithubException import GithubException, RateLimitExceededException
 
 
 class GitHubService:
@@ -71,6 +72,8 @@ class GitHubService:
 
             return results
 
+        except RateLimitExceededException as e:
+            raise Exception(self._format_rate_limit_error(e)) from e
         except GithubException as e:
             raise Exception(f"GitHub API error: {e.data.get('message', str(e))}") from e
         except Exception as e:
@@ -137,6 +140,8 @@ class GitHubService:
 
             return issue_data
 
+        except RateLimitExceededException as e:
+            raise Exception(self._format_rate_limit_error(e)) from e
         except GithubException as e:
             raise Exception(f"GitHub API error: {e.data.get('message', str(e))}") from e
         except Exception as e:
@@ -209,12 +214,35 @@ class GitHubService:
 
             return result
 
+        except RateLimitExceededException as e:
+            raise Exception(self._format_rate_limit_error(e)) from e
         except GithubException as e:
             raise Exception(f"GitHub API error: {e.data.get('message', str(e))}") from e
         except Exception as e:
             raise Exception(
                 f"Error retrieving PR diff {repo_full_name}#{pull_number}: {str(e)}"
             ) from e
+
+    @staticmethod
+    def _format_rate_limit_error(e: RateLimitExceededException) -> str:
+        """Build an actionable error message from a rate limit exception."""
+        reset_info = ""
+        if e.headers:
+            reset_ts = e.headers.get("x-ratelimit-reset")
+            remaining = e.headers.get("x-ratelimit-remaining", "0")
+            limit = e.headers.get("x-ratelimit-limit", "unknown")
+            if reset_ts:
+                from datetime import datetime
+
+                reset_dt = datetime.fromtimestamp(int(reset_ts), tz=UTC)
+                reset_info = (
+                    f" Rate limit resets at {reset_dt.isoformat()} UTC."
+                    f" ({remaining}/{limit} requests remaining)"
+                )
+        return (
+            f"GitHub API rate limit exceeded.{reset_info}"
+            " Please retry after the reset time."
+        )
 
     def _get_comments(self, issue: Any, max_comments: int) -> list[dict[str, Any]]:
         """Extract comments from the issue."""
@@ -243,6 +271,8 @@ class GitHubService:
                 }
                 comments.append(comment_data)
 
+        except RateLimitExceededException:
+            raise  # surface rate limit errors — do not swallow them
         except Exception:
             # If we can't get comments, just return empty list
             pass
@@ -273,9 +303,43 @@ class GitHubService:
                 "updated_at": repo.updated_at.isoformat() if repo.updated_at else None,
                 "url": repo.html_url,
             }
+        except RateLimitExceededException as e:
+            raise Exception(self._format_rate_limit_error(e)) from e
         except GithubException as e:
             raise Exception(f"GitHub API error: {e.data.get('message', str(e))}") from e
         except Exception as e:
             raise Exception(
                 f"Error retrieving repository {repo_full_name}: {str(e)}"
             ) from e
+
+    def get_rate_limit_status(self) -> dict[str, Any]:
+        """
+        Return current GitHub API rate limit status for core and search resources.
+
+        Returns:
+            Dictionary with rate limit info for 'core' and 'search' resources.
+        """
+        try:
+            rl = self.github.get_rate_limit()
+            core = rl.resources.core
+            search = rl.resources.search
+            return {
+                "core": {
+                    "limit": core.limit,
+                    "remaining": core.remaining,
+                    "used": core.used,
+                    "reset": core.reset.isoformat() if core.reset else None,
+                },
+                "search": {
+                    "limit": search.limit,
+                    "remaining": search.remaining,
+                    "used": search.used,
+                    "reset": search.reset.isoformat() if search.reset else None,
+                },
+            }
+        except RateLimitExceededException as e:
+            raise Exception(self._format_rate_limit_error(e)) from e
+        except GithubException as e:
+            raise Exception(f"GitHub API error: {e.data.get('message', str(e))}") from e
+        except Exception as e:
+            raise Exception(f"Error retrieving rate limit status: {str(e)}") from e
