@@ -44,7 +44,11 @@ class GitHubService:
                 issue_data = {
                     "number": issue.number,
                     "title": issue.title,
+                    "body": issue.body,
                     "state": issue.state,
+                    "locked": issue.locked,
+                    "author_association": issue.author_association,
+                    "comments": issue.comments,
                     "repository": issue.repository.full_name,
                     "type": "pull_request" if issue.pull_request else "issue",
                     "author": issue.user.login if issue.user else None,
@@ -56,6 +60,7 @@ class GitHubService:
                     "labels": [label.name for label in issue.labels]
                     if issue.labels
                     else [],
+                    "milestone": issue.milestone.title if issue.milestone else None,
                     "created_at": issue.created_at.isoformat()
                     if issue.created_at
                     else None,
@@ -65,6 +70,11 @@ class GitHubService:
                     "closed_at": issue.closed_at.isoformat()
                     if issue.closed_at
                     else None,
+                    "merged_at": (
+                        issue.pull_request.merged_at.isoformat()
+                        if issue.pull_request and issue.pull_request.merged_at
+                        else None
+                    ),
                     "url": issue.html_url,
                 }
                 results.append(issue_data)

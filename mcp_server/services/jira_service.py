@@ -53,6 +53,7 @@ class JiraService:
         else:
             self.jira = JIRA(server=self.jira_url, token_auth=self.jira_token)
         self._field_map: dict[str, str] | None = None
+        self._status_name_map: dict[str, str] | None = None
 
     def _get_field_map(self) -> dict[str, str]:
         """Get field ID to name mapping, cached per instance."""
@@ -82,7 +83,7 @@ class JiraService:
                 "key": issue.key,
                 "summary": issue.fields.summary,
                 "description": issue.fields.description,
-                "status": issue.fields.status.name,
+                "status": self._status_name(issue.fields.status),
                 "priority": (
                     getattr(issue.fields.priority, "name", None)
                     if issue.fields.priority
@@ -209,6 +210,29 @@ class JiraService:
 
         return changelog
 
+    def _get_status_name_map(self) -> dict[str, str]:
+        """Fetch status ID → English name map from Jira REST API v3.
+
+        The v2 API (used by the jira library) returns localised status names.
+        The v3 API includes ``untranslatedName`` which is always English.
+        Result is cached per instance.
+        """
+        if self._status_name_map is not None:
+            return self._status_name_map
+        try:
+            resp = self.jira._session.get(f"{self.jira_url}/rest/api/3/status")
+            self._status_name_map = {
+                s["id"]: s.get("untranslatedName") or s["name"]
+                for s in resp.json()
+            }
+        except Exception:
+            self._status_name_map = {}
+        return self._status_name_map
+
+    def _status_name(self, status_obj: Any) -> str:
+        """Return the English status name, looked up from the v3 status map."""
+        return self._get_status_name_map().get(status_obj.id) or status_obj.name
+
     def search_tickets(self, jql: str, max_results: int = 50) -> list[dict[str, Any]]:
         """
         Search for tickets using JQL (Jira Query Language).
@@ -217,17 +241,34 @@ class JiraService:
             List of ticket data dictionaries
         """
         try:
-            issues = self.jira.search_issues(jql, maxResults=max_results)
+            issues = self.jira.search_issues(
+                jql,
+                maxResults=max_results,
+                fields="summary,status,issuetype,priority,assignee,labels,resolution,created,updated,description",
+            )
             tickets = []
 
             for issue in issues:
                 ticket_data = {
                     "key": issue.key,
                     "summary": issue.fields.summary,
-                    "status": issue.fields.status.name,
+                    "description": getattr(issue.fields, "description", None),
+                    "status": self._status_name(issue.fields.status),
+                    "issue_type": issue.fields.issuetype.name if issue.fields.issuetype else None,
+                    "priority": (
+                        getattr(issue.fields.priority, "name", None)
+                        if issue.fields.priority
+                        else None
+                    ),
                     "assignee": (
                         getattr(issue.fields.assignee, "displayName", None)
                         if issue.fields.assignee
+                        else None
+                    ),
+                    "labels": issue.fields.labels if issue.fields.labels else [],
+                    "resolution": (
+                        getattr(issue.fields.resolution, "name", None)
+                        if issue.fields.resolution
                         else None
                     ),
                     "created": issue.fields.created,
