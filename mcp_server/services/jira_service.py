@@ -222,8 +222,7 @@ class JiraService:
         try:
             resp = self.jira._session.get(f"{self.jira_url}/rest/api/3/status")
             self._status_name_map = {
-                s["id"]: s.get("untranslatedName") or s["name"]
-                for s in resp.json()
+                s["id"]: s.get("untranslatedName") or s["name"] for s in resp.json()
             }
         except Exception:
             self._status_name_map = {}
@@ -254,7 +253,9 @@ class JiraService:
                     "summary": issue.fields.summary,
                     "description": getattr(issue.fields, "description", None),
                     "status": self._status_name(issue.fields.status),
-                    "issue_type": issue.fields.issuetype.name if issue.fields.issuetype else None,
+                    "issue_type": issue.fields.issuetype.name
+                    if issue.fields.issuetype
+                    else None,
                     "priority": (
                         getattr(issue.fields.priority, "name", None)
                         if issue.fields.priority
