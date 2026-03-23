@@ -12,11 +12,31 @@ The Jira integration provides tools to:
 
 ## Prerequisites
 
-- Access to Red Hat Jira at https://issues.redhat.com
-- A Red Hat account with Jira access
+- A Jira instance you can access (Red Hat Jira, Jira Cloud, or Jira Server/Data Center)
 - Python environment with the DCI MCP Server installed
 
-## Getting Your Jira API Token
+## Jira Cloud (Atlassian)
+
+For sites such as `https://redhat.atlassian.net/`, authenticate with your **Atlassian account email** and an **API token** (HTTP basic authentication).
+
+### Create an Atlassian API token
+
+1. Open [Atlassian account — API tokens](https://id.atlassian.com/manage-profile/security/api-tokens) and sign in if prompted.
+2. Click **Create API token**.
+3. Give the token a label (e.g. `DCI MCP Server`). Use **no extra scopes** (leave scope selection as the default / non-scoped token, as offered on that page).
+4. Create the token and **copy it once**; it will not be shown again.
+
+Add to your `.env`:
+
+```bash
+JIRA_URL=https://redhat.atlassian.net
+JIRA_EMAIL=user@redhat.com
+JIRA_API_TOKEN=your_atlassian_api_token_here
+```
+
+If your Jira Cloud URL does **not** contain `.atlassian.net` (uncommon), set `JIRA_AUTH_MODE=cloud_api_token` so the server uses email + token auth.
+
+## Getting Your Jira API Token (Red Hat Jira / Jira Server)
 
 ### Step 1: Access Your Profile
 

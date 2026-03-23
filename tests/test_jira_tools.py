@@ -19,7 +19,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from mcp_server.services.jira_service import JiraService, _simplify_field_value
+from mcp_server.services.jira_service import (
+    JiraService,
+    _simplify_field_value,
+    _use_jira_cloud_api_token_auth,
+)
 from mcp_server.tools.jira_tools import validate_ticket_key
 
 # -- _simplify_field_value tests --
@@ -120,12 +124,88 @@ def test_validate_ticket_key_invalid():
         validate_ticket_key("CILAB")
 
 
+# -- Jira Cloud vs Server auth --
+
+
+def test_use_jira_cloud_api_token_auth_auto_atlassian_net():
+    assert _use_jira_cloud_api_token_auth("https://team.atlassian.net") is True
+    assert _use_jira_cloud_api_token_auth("https://TEAM.ATLASSIAN.NET/") is True
+
+
+def test_use_jira_cloud_api_token_auth_explicit_modes():
+    with patch.dict("os.environ", {"JIRA_AUTH_MODE": "cloud_api_token"}):
+        assert _use_jira_cloud_api_token_auth("https://jira.example.com") is True
+    with patch.dict("os.environ", {"JIRA_AUTH_MODE": "server_pat"}):
+        assert _use_jira_cloud_api_token_auth("https://team.atlassian.net") is False
+
+
+def test_jira_service_cloud_uses_basic_auth():
+    env = {
+        "JIRA_URL": "https://example.atlassian.net",
+        "JIRA_EMAIL": "user@example.com",
+        "JIRA_API_TOKEN": "tok",
+    }
+    with patch.dict("os.environ", env, clear=True):
+        with patch("mcp_server.services.jira_service.JIRA") as mock_jira:
+            JiraService()
+    mock_jira.assert_called_once_with(
+        server="https://example.atlassian.net",
+        basic_auth=("user@example.com", "tok"),
+    )
+
+
+def test_jira_service_cloud_requires_email():
+    env = {
+        "JIRA_URL": "https://example.atlassian.net",
+        "JIRA_API_TOKEN": "tok",
+    }
+    with patch.dict("os.environ", env, clear=True):
+        with patch("mcp_server.services.jira_service.JIRA"):
+            with pytest.raises(ValueError, match="JIRA_EMAIL"):
+                JiraService()
+
+
+def test_jira_service_server_uses_token_auth():
+    env = {
+        "JIRA_URL": "https://issues.redhat.com",
+        "JIRA_API_TOKEN": "tok",
+    }
+    with patch.dict("os.environ", env, clear=True):
+        with patch("mcp_server.services.jira_service.JIRA") as mock_jira:
+            JiraService()
+    mock_jira.assert_called_once_with(
+        server="https://issues.redhat.com",
+        token_auth="tok",
+    )
+
+
+def test_jira_service_strips_trailing_slash_on_url():
+    env = {
+        "JIRA_URL": "https://issues.redhat.com/",
+        "JIRA_API_TOKEN": "tok",
+    }
+    with patch.dict("os.environ", env, clear=True):
+        with patch("mcp_server.services.jira_service.JIRA") as mock_jira:
+            svc = JiraService()
+    assert svc.jira_url == "https://issues.redhat.com"
+    mock_jira.assert_called_once_with(
+        server="https://issues.redhat.com",
+        token_auth="tok",
+    )
+
+
 # -- _get_field_map tests --
 
 
 def _make_jira_service():
-    """Create a JiraService with mocked JIRA client."""
-    with patch.dict("os.environ", {"JIRA_API_TOKEN": "test-token"}):
+    """Create a JiraService with mocked JIRA client (Server/PAT URL, not Cloud default)."""
+    with patch.dict(
+        "os.environ",
+        {
+            "JIRA_API_TOKEN": "test-token",
+            "JIRA_URL": "https://issues.redhat.com",
+        },
+    ):
         with patch("mcp_server.services.jira_service.JIRA"):
             svc = JiraService()
     return svc

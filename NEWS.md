@@ -1,5 +1,13 @@
 # DCI MCP Server - Change Log
 
+## [2026-03-23]
+
+### Improvements
+
+- Jira integration supports **Jira Cloud** via `JIRA_URL` (e.g. `https://redhat.atlassian.net`), `JIRA_EMAIL`, and `JIRA_API_TOKEN` (basic auth). Jira Server/Data Center keeps using PAT + `token_auth`. Optional `JIRA_AUTH_MODE` (`cloud_api_token` / `server_pat`) overrides auto-detection from the URL.
+- Default `JIRA_URL` when unset is now `https://redhat.atlassian.net` (Cloud). Use `JIRA_URL=https://issues.redhat.com` (or `JIRA_AUTH_MODE=server_pat`) for Red Hat Jira Server / PAT-only setups.
+- GitHub repository is now under **[redhat-community-ai-tools/dci-mcp-server](https://github.com/redhat-community-ai-tools/dci-mcp-server)** (org rename); `README.md` clone URL updated accordingly.
+
 ## [2026-02-27]
 
 ### Improvements

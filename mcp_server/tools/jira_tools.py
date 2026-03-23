@@ -70,19 +70,20 @@ def register_jira_tools(mcp: FastMCP) -> None:
 
         ## Authentication Required
 
-        This tool requires Jira API authentication. Set the following environment variables:
-        - `JIRA_API_TOKEN`: Your Jira API token
-        - `JIRA_URL`: Jira server URL (defaults to https://issues.redhat.com)
+        Set `JIRA_API_TOKEN`. `JIRA_URL` defaults to https://redhat.atlassian.net
+        (Jira Cloud); for Jira Server / Data Center set `JIRA_URL` (e.g.
+        https://issues.redhat.com) or `JIRA_AUTH_MODE=server_pat`.
 
-        ## Getting Your Jira API Token
+        **Jira Cloud** (`https://redhat.atlassian.net`): also set `JIRA_EMAIL` (e.g.
+        `user@redhat.com`). Create the token at
+        https://id.atlassian.com/manage-profile/security/api-tokens via **Create API token**
+        (no scope). For a
+        Cloud URL that does not contain `.atlassian.net`, set
+        `JIRA_AUTH_MODE=cloud_api_token`. To force PAT-style token auth on a custom
+        host, set `JIRA_AUTH_MODE=server_pat`.
 
-        1. Go to https://issues.redhat.com/secure/ViewProfile.jspa
-        2. Click on "Personal Access Tokens" in the left sidebar
-        3. Click "Create token"
-        4. Give your token a name (e.g., "DCI MCP Server")
-        5. Set an expiration date (optional but recommended)
-        6. Click "Create"
-        7. Copy the generated token and set it as `JIRA_API_TOKEN` in your environment
+        **Jira Server / Data Center**: use a personal access token as
+        `JIRA_API_TOKEN` without `JIRA_EMAIL`.
 
         ## Ticket Key Format
 
@@ -148,9 +149,8 @@ def register_jira_tools(mcp: FastMCP) -> None:
 
         ## Authentication Required
 
-        This tool requires Jira API authentication. Set the following environment variables:
-        - `JIRA_API_TOKEN`: Your Jira API token
-        - `JIRA_URL`: Jira server URL (defaults to https://issues.redhat.com)
+        Same as `get_jira_ticket`: `JIRA_API_TOKEN`, optional `JIRA_URL`; for Jira Cloud
+        add `JIRA_EMAIL`. See `get_jira_ticket` tool docs for `JIRA_AUTH_MODE`.
 
         ## JQL Examples
 
@@ -218,9 +218,8 @@ def register_jira_tools(mcp: FastMCP) -> None:
 
         ## Authentication Required
 
-        This tool requires Jira API authentication. Set the following environment variables:
-        - `JIRA_API_TOKEN`: Your Jira API token
-        - `JIRA_URL`: Jira server URL (defaults to https://issues.redhat.com)
+        Same as `get_jira_ticket`: `JIRA_API_TOKEN`, optional `JIRA_URL`; for Jira Cloud
+        add `JIRA_EMAIL`. See `get_jira_ticket` tool docs for `JIRA_AUTH_MODE`.
 
         ## Project Key Format
 

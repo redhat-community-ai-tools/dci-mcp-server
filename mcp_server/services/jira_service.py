@@ -7,6 +7,24 @@ from jira import JIRA
 from jira.exceptions import JIRAError
 
 
+def _use_jira_cloud_api_token_auth(jira_url: str) -> bool:
+    """Return True if we should use Atlassian Cloud email + API token (basic auth).
+
+    Cloud mode is used when:
+    - ``JIRA_AUTH_MODE`` is ``cloud_api_token``, or
+    - (auto) the server URL hostname contains ``.atlassian.net``.
+
+    Set ``JIRA_AUTH_MODE=server_pat`` to force PAT/token auth even if the URL
+    looks like Cloud (e.g. custom proxy hostnames).
+    """
+    mode = os.environ.get("JIRA_AUTH_MODE", "").strip().lower()
+    if mode == "cloud_api_token":
+        return True
+    if mode in ("server_pat", "pat", "server"):
+        return False
+    return ".atlassian.net" in jira_url.lower()
+
+
 def _simplify_field_value(value: Any) -> Any:
     """Simplify a raw Jira field value for readability.
 
@@ -35,7 +53,9 @@ class JiraService:
 
     def __init__(self):
         """Initialize Jira service with authentication."""
-        self.jira_url = os.environ.get("JIRA_URL", "https://issues.redhat.com")
+        self.jira_url = os.environ.get(
+            "JIRA_URL", "https://redhat.atlassian.net"
+        ).rstrip("/")
         self.jira_token = os.environ.get("JIRA_API_TOKEN")
         self.jira_email = os.environ.get("JIRA_EMAIL")
 
@@ -45,7 +65,20 @@ class JiraService:
                 "See documentation for setup instructions."
             )
 
-        self.jira = JIRA(server=self.jira_url, token_auth=self.jira_token)
+        if _use_jira_cloud_api_token_auth(self.jira_url):
+            if not self.jira_email:
+                raise ValueError(
+                    "Jira Cloud requires JIRA_EMAIL (e.g. user@redhat.com) together "
+                    "with JIRA_API_TOKEN. Default JIRA_URL is https://redhat.atlassian.net; "
+                    "for Jira Server/Data Center set JIRA_URL (e.g. https://issues.redhat.com) "
+                    "or JIRA_AUTH_MODE=server_pat."
+                )
+            self.jira = JIRA(
+                server=self.jira_url,
+                basic_auth=(self.jira_email, self.jira_token),
+            )
+        else:
+            self.jira = JIRA(server=self.jira_url, token_auth=self.jira_token)
         self._field_map: dict[str, str] | None = None
 
     def _get_field_map(self) -> dict[str, str]:

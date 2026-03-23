@@ -21,7 +21,7 @@ It allows AI models to interact with [DCI](https://doc.distributed-ci.io/) for c
 
 ```bash
 # Clone the repository
-git clone https://github.com/redhat-ai-tools/dci-mcp-server
+git clone https://github.com/redhat-community-ai-tools/dci-mcp-server
 cd dci-mcp-server
 
 # Install dependencies
@@ -155,7 +155,7 @@ result = await create_google_doc_from_file(
 
 ## Jira Integration
 
-The server includes Jira integration to collect comprehensive ticket data from Red Hat Jira, including comments and changelog information.
+The server includes Jira integration to collect comprehensive ticket data from Jira (Red Hat Jira, Jira Cloud, or Jira Server/Data Center), including comments and changelog information.
 
 ### Features
 - 🎫 **Ticket Data Collection**: Retrieve comprehensive ticket information including summary, description, status, and dates
@@ -169,12 +169,13 @@ The server includes Jira integration to collect comprehensive ticket data from R
 To use Jira features, follow the [Jira Setup Guide](JIRA_SETUP.md) for detailed configuration instructions.
 
 **Quick Setup:**
-1. Get your Jira API token from [https://issues.redhat.com/secure/ViewProfile.jspa](https://issues.redhat.com/secure/ViewProfile.jspa)
+1. Create an API token: **Jira Cloud** — [Atlassian account API tokens](https://id.atlassian.com/manage-profile/security/api-tokens), **Create API token**, no scope; **Red Hat Jira Server** — [profile / PAT](https://issues.redhat.com/secure/ViewProfile.jspa).
 2. Set environment variables in your `.env` file:
    ```bash
    JIRA_API_TOKEN=your_jira_api_token_here
    JIRA_URL=https://issues.redhat.com
    ```
+   For **Jira Cloud**, set `JIRA_URL` to `https://redhat.atlassian.net` and add `JIRA_EMAIL` (e.g. `user@redhat.com`). See [JIRA_SETUP.md](JIRA_SETUP.md).
 
 ### Usage Examples
 ```python
@@ -271,7 +272,7 @@ The server provides tools for interacting with DCI API components:
 - `search_jira_tickets(jql, max_results)`: Search tickets using JQL (Jira Query Language)
 - `get_jira_project_info(project_key)`: Get project information and metadata
 
-**Note**: Jira tools require `JIRA_API_TOKEN` environment variable to be set.
+**Note**: Jira tools require `JIRA_API_TOKEN`. Jira Cloud also requires `JIRA_EMAIL`.
 
 ### GitHub Tools
 
