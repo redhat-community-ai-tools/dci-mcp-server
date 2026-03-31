@@ -34,7 +34,11 @@ class JiraService:
     """Service class for Jira API interactions."""
 
     def __init__(self):
-        """Initialize Jira service with authentication."""
+        """Initialize Jira service with authentication.
+
+        Supports both Atlassian Cloud (basic auth with email + API token)
+        and on-prem Jira Data Center (PAT bearer token).
+        """
         self.jira_url = os.environ.get("JIRA_URL", "https://redhat.atlassian.net")
         self.jira_token = os.environ.get("JIRA_API_TOKEN")
         self.jira_email = os.environ.get("JIRA_EMAIL")
@@ -45,7 +49,8 @@ class JiraService:
                 "See documentation for setup instructions."
             )
 
-        if self.jira_email:
+        is_cloud = "atlassian.net" in self.jira_url
+        if is_cloud and self.jira_email:
             self.jira = JIRA(
                 server=self.jira_url,
                 basic_auth=(self.jira_email, self.jira_token),
