@@ -35,7 +35,9 @@ def register_prompts(mcp):
         """
         return f"""Conduct a root cause analysis (RCA) on the following DCI job: {dci_job_id}. Store all the downloaded files at /tmp/dci/<job id>, so as not to download them twice. Create a report with your findings at /tmp/dci/rca-<job id>.md. Be sure to include details about the timeline of events and the DCI job information in the report, such as the components, the topic, and the pipeline name. If there is a CILAB-<num> comment, replace it with https://redhat.atlassian.net/browse/CILAB-<num>. Include a hyperlink in the form https://distributed-ci.io/jobs/<job id> each time you refer to the DCI job ID.
 
-First step is to review ansible.log (overview of the CI job execution). Then the logjuicer.txt (for regular files) and logjuicer_omg.txt (for must_gather) files that compare the logs from a previous successful run.
+## Step 1: Evidence Gathering
+
+First step is to review ansible.log (overview of the CI job execution). Then the logjuicer.txt (for regular files) and logjuicer_omg.txt (for must_gather) files that compare the logs from a previous successful run. For each difference flagged by logjuicer, determine whether it is a cause, a consequence, or unrelated to the failure.
 
 Later always download events.txt if it is available to understand the timeline.
 
@@ -43,9 +45,54 @@ And lately, always validate your findings using the must_gather file and the omc
 
 Avoid looking at the DCI task files or failed_task.txt or play_recap, as they contain the same information as ansible.log.
 
-Do not hesitate to download any extra files that you think is relevant to the RCA.
+Do not hesitate to download any extra files that you think are relevant to the RCA.
 
-Check it the associated JIRA ticket is consistent with your findings.
+## Step 2: Root Cause Analysis using the 5 Whys Method
+
+After gathering evidence, apply the "5 Whys" technique to drill down to the true root cause. Do not stop at the first error you find — that is usually a symptom, not the cause.
+
+1. **Identify the failure symptom**: What exactly failed? (e.g., "test X timed out", "pod Y in CrashLoopBackOff", "ansible task Z returned rc=1")
+2. **Ask "Why did this happen?"** and find evidence in the logs supporting the answer.
+3. **Repeat**: For each answer, ask "Why?" again, each time supported by specific log evidence.
+4. **Continue for at least 5 levels** or until you reach a cause that is:
+   - An external factor (infrastructure issue, upstream bug, environment configuration)
+   - A systemic issue (resource limits, race condition, design flaw)
+   - Something actionable that can be directly fixed
+5. **Document the full causal chain** in your report (Why 1 -> Why 2 -> ... -> Root Cause).
+
+At each level, cite the specific log file and relevant log lines as evidence.
+
+### Categorize potential causes
+
+Before narrowing down, consider causes across these categories to avoid tunnel vision:
+- **Infrastructure**: hardware, network, storage, resource exhaustion
+- **Configuration**: cluster settings, deployment parameters, environment variables
+- **Software Bug**: known issues, regressions in components
+- **Environment**: DNS, certificates, external service dependencies
+- **Timing/Race Condition**: ordering issues, timeouts, concurrency problems
+
+## Step 3: Cross-validation
+
+Before finalizing your root cause:
+- Verify your causal chain is consistent with the timeline from events.txt.
+- Check if the same root cause explains ALL the failures in the job, not just the first one.
+- Look for earlier warnings or errors that preceded the main failure.
+- If must_gather is available, confirm your hypothesis with cluster state.
+- **Counterfactual check**: If this root cause had been absent, would the job have succeeded? If not, you may have found a contributing factor rather than the root cause.
+
+## Step 4: Report
+
+Structure the report with these sections:
+
+1. **Job Information**: components, topic, pipeline, timeline of events
+2. **Failure Symptom**: what the user would observe
+3. **Causal Chain (5 Whys)**: the full chain from symptom to root cause, with log evidence at each level
+4. **Root Cause**: the deepest actionable cause identified
+5. **Contributing Factors**: conditions that enabled or worsened the failure
+6. **Confidence Level**: high, medium, or low — based on the strength of available evidence
+7. **Recommendations**: what should be done to prevent recurrence
+
+Check that the associated JIRA ticket is consistent with your findings.
 """
 
     @mcp.prompt()
