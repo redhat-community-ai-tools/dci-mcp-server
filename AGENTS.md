@@ -1,3 +1,60 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Overview
+
+This is an **MCP (Model Context Protocol) server** that provides AI assistants with tools to interact with:
+- **DCI (Distributed CI)**: Red Hat's distributed continuous integration system
+- **GitHub**: Issues, PRs, and repository information
+- **Jira**: Ticket data with comments and changelog
+- **Google Drive**: Document creation from DCI reports
+- **Red Hat Support Cases**: Case data from the Customer Portal
+
+The server is built with **FastMCP** and supports multiple transport modes (stdio for CLI/IDE integration, SSE/HTTP for web applications).
+
+## Architecture
+
+### Core Components
+
+1. **Services** (`mcp_server/services/`): Business logic for external APIs
+   - All DCI services inherit from `DCIBaseService` which handles authentication (API key or login/password)
+   - Each service encapsulates API interactions for a specific domain (jobs, components, files, etc.)
+   - External services: `github_service.py`, `jira_service.py`, `google_drive_service.py`, `support_case_service.py`
+
+2. **Tools** (`mcp_server/tools/`): MCP tool definitions that wrap service methods
+   - Tools are registered conditionally in `mcp_server/main.py` based on available credentials
+   - Each tool file exports a `register_*_tools(mcp)` function
+   - Naming convention: `<domain>_tools.py` (e.g., `job_tools.py`, `github_tools.py`)
+
+3. **Prompts** (`mcp_server/prompts/`): Parameterized prompts for common workflows
+   - `/dci/rca <job_id>`: Root cause analysis workflow
+   - `/dci/weekly <subject>`: 7-day analysis report
+   - `/dci/biweekly <subject>`: 14-day analysis report
+   - `/dci/quarterly <remoteci>`: 3-month comprehensive analysis with statistics
+
+4. **Entry Points**:
+   - `main.py`: CLI entry point that reads `MCP_TRANSPORT` env var (stdio|sse|http)
+   - `mcp_server/main.py`: Creates and configures the FastMCP server instance
+
+### Transport Modes
+
+- **stdio**: Default mode for CLI/IDE integration (Cursor, VS Code, etc.). MCP JSON-RPC over stdin/stdout.
+- **SSE/HTTP**: Web-based mode for applications needing HTTP endpoints. Starts FastAPI server on `MCP_HOST:MCP_PORT`.
+
+Set via `MCP_TRANSPORT=stdio|sse|http` environment variable.
+
+### Conditional Tool Registration
+
+Tools are only registered when their required credentials are available:
+- DCI tools: `DCI_CLIENT_ID` + `DCI_API_SECRET` (or `DCI_LOGIN` + `DCI_PASSWORD`)
+- GitHub tools: `GITHUB_TOKEN`
+- Jira tools: `JIRA_API_TOKEN` + `JIRA_EMAIL` + `JIRA_URL`
+- Google Drive tools: `GOOGLE_CREDENTIALS_PATH` + `GOOGLE_TOKEN_PATH`
+- Support Case tools: `OFFLINE_TOKEN`
+
+This allows the server to run with only a subset of integrations configured.
+
 # Repository Guidelines
 
 ## Project Structure & Module Organization
@@ -11,10 +68,15 @@
 
 - Setup env: `uv sync && source .venv/bin/activate`.
 - Run server (stdio): `uv run main.py`.
-- Run server (SSE): `MCP_TRANSPORT=sse uv run main.py` (SSE endpoint handled by FastMCP).
-- All checks: `bash scripts/run-checks.sh`.
-- Lint/format: `uv run black --check . && uv run isort --check-only . && uv run ruff check .`.
+- Run server (SSE): `MCP_TRANSPORT=sse uv run main.py` (SSE endpoint at `http://127.0.0.1:8000/sse/`).
+- All checks: `bash scripts/run-checks.sh` (runs formatting, linting, and tests).
+- Selective checks: `bash scripts/run-checks.sh --format` or `--lint` or `--test`.
+- Format code: `uv run ruff format .` (auto-fix formatting issues).
+- Sort imports: `uv run isort .` (auto-fix import order).
+- Lint: `uv run ruff check .` or `uv run ruff check --fix .` (auto-fix linting issues).
 - Tests: `uv run pytest -v` or `uv run pytest -m "not slow"`.
+- Single test: `uv run pytest tests/test_file.py::test_function -v`.
+- Test with markers: `uv run pytest -m unit` or `-m integration`.
 
 ## Python Dependency Management
 
@@ -50,14 +112,13 @@ uv run python -c "import new_package; print('Success')"
 
 ## Code Quality and Pre-commit Checks
 
-**ALWAYS** ensure code quality by running pre-commit checks after modifications:
+**ALWAYS** ensure code quality by running checks after modifications:
 
-1. **After any code changes**: Run the comprehensive checks script
-2. **Before committing**: Ensure all pre-commit hooks pass
-3. **Format code**: Use Black and isort for consistent formatting
+1. **After any code changes**: Run `bash scripts/run-checks.sh`
+2. **Before committing**: Ensure all checks pass
+3. **Format code**: Use Ruff format and isort for consistent formatting
 4. **Lint code**: Use Ruff for fast linting and auto-fixing
-5. **Type check**: Use mypy for static type checking
-6. **Security scan**: Use bandit for vulnerability detection
+5. **Tests**: Ensure all tests pass
 
 ### Example workflow:
 
@@ -67,16 +128,15 @@ uv run python -c "import new_package; print('Success')"
 bash scripts/run-checks.sh
 
 # 3. If issues found, fix them:
-./.venv/bin/python -m black .           # Format code
-./.venv/bin/python -m isort .           # Sort imports
-./.venv/bin/python -m ruff check --fix . # Fix linting issues
-./.venv/bin/python -m mypy mcp_server/  # Check types
+./.venv/bin/python -m ruff format .       # Format code
+./.venv/bin/python -m isort .             # Sort imports
+./.venv/bin/python -m ruff check --fix .  # Fix linting issues
 
 # 4. Run checks again to ensure everything passes
 bash scripts/run-checks.sh
 ```
 
-### Pre-commit Hooks (Optional but Recommended):
+### Pre-commit Hooks (Optional):
 
 ```bash
 # Install pre-commit hooks
@@ -89,25 +149,50 @@ bash scripts/run-checks.sh
 ### Never:
 
 - Commit code without running quality checks
-- Ignore linting or type checking errors
-- Skip security scanning with bandit
+- Ignore linting or formatting errors
 - Leave formatting inconsistencies
 
 ### Always:
 
 - Run `bash scripts/run-checks.sh` after code changes
 - Fix any issues found by the checks
-- Ensure Black formatting is applied
+- Ensure Ruff formatting is applied
 - Verify imports are properly sorted with isort
-- Check that mypy type checking passes
-- Confirm bandit security scan passes
+- Ensure all tests pass
+
+**Note**: mypy type checking and bandit security scanning are currently disabled in the automated checks but can be run manually if needed.
 
 ## Coding Style & Naming Conventions
 
 - Python 3.12+, 4‑space indentation, max line length 88.
-- Formatting: Black; Imports: isort (profile=black); Lint: Ruff (E,W,F,I,B,C4,UP) with ignores in `pyproject.toml`.
+- Formatting: Ruff format; Imports: isort (profile=black); Lint: Ruff (E,W,F,I,B,C4,UP) with ignores in `pyproject.toml`.
 - Modules: snake_case files; classes PascalCase; functions/vars snake_case; constants UPPER_SNAKE.
-- Tool files: `mcp_server/tools/<domain>_tools.py`; services: `mcp_server/services/dci_<domain>_service.py`.
+- Tool files: `mcp_server/tools/<domain>_tools.py` with `register_<domain>_tools(mcp)` function.
+- DCI services: `mcp_server/services/dci_<domain>_service.py` inheriting from `DCIBaseService`.
+- External services: `mcp_server/services/<service>_service.py` (e.g., `github_service.py`, `jira_service.py`).
+
+## Prompts System
+
+The server provides parameterized prompts for common DCI workflows:
+
+- **`/dci/rca <job_id>`**: Root Cause Analysis workflow
+  - Downloads and analyzes job files (ansible.log, logjuicer.txt, events.txt, must_gather)
+  - Stores files in `/tmp/dci/<job_id>/`
+  - Generates report at `/tmp/dci/rca-<job_id>.md`
+  - Includes timeline, components, topic, pipeline info, and Jira ticket validation
+
+- **`/dci/weekly <subject>`**: 7-day analysis for a team or remoteci
+  - Generates report stored at `/tmp/dci/`
+
+- **`/dci/biweekly <subject>`**: 14-day analysis for a team or remoteci
+  - Generates report stored at `/tmp/dci/`
+
+- **`/dci/quarterly <remoteci>`**: 3-month comprehensive analysis
+  - Statistics about pipelines, topics, failure rates, trends, component usage
+  - Uses pagination and caching for large datasets
+  - Report stored at `/tmp/dci/<remoteci>/quarterly/<date-range>/report.md`
+
+Prompts are defined in `mcp_server/prompts/prompts.py` and registered via `register_prompts(mcp)`.
 
 ## Testing Guidelines
 
@@ -161,6 +246,37 @@ team = {"name": "test-team", "id": "team-1"}
 pipeline_name = "test-pipeline-4.17"
 ```
 
+## Adding New Integrations
+
+To add a new external service integration, follow this pattern (see existing GitHub, Jira, Google Drive integrations):
+
+1. **Service**: Create `mcp_server/services/<service>_service.py`
+   - Implement service class with API interaction logic
+   - Handle authentication (usually via environment variables)
+   - Provide clean Python API for the service
+
+2. **Tools**: Create `mcp_server/tools/<service>_tools.py`
+   - Define `register_<service>_tools(mcp)` function
+   - Use `@mcp.tool()` decorator for each tool
+   - Add type hints and clear descriptions for all parameters
+   - Tools should be thin wrappers around service methods
+
+3. **Registration**: Update `mcp_server/main.py`
+   - Import the registration function
+   - Add conditional registration based on required env vars
+   - Example: `if os.getenv("SERVICE_TOKEN"): register_service_tools(mcp)`
+
+4. **Configuration**: Update `env.example`
+   - Add required environment variables with descriptions
+   - Document authentication setup process
+
+5. **Documentation**: Update `README.md`
+   - Add setup section for the new integration
+   - Document available tools
+   - Provide usage examples
+
+6. **Dependencies**: Use `uv add <package>` to add any required packages
+
 ## Project Structure
 
 - **Configuration**: Use `pyproject.toml` for all Python project configuration
@@ -172,8 +288,8 @@ pipeline_name = "test-pipeline-4.17"
 ## Code Style
 
 - Follow existing code patterns in the codebase
-- Use type hints where appropriate
-- Add docstrings for new functions and classes
+- Use type hints where appropriate (especially for tool parameters)
+- Add docstrings for new functions, classes, and MCP tools
 - Update `NEWS.md` for significant changes
 - Update `README.md` for user-facing changes
 - **ALWAYS** run quality checks before considering work complete
