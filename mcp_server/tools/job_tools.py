@@ -173,7 +173,7 @@ def register_job_tools(mcp: FastMCP) -> None:
 
         **Files & Artifacts:**
         - `files.(id, name, size, state, mime)`: job artifacts
-        - Use `dci__download_dci_file` tool to download files
+        - Use `download_dci_file` tool to download files
         - Example: Get file IDs with `fields=['id', 'files.id', 'files.name']`, then download
 
         **Metrics & Measurements:**
