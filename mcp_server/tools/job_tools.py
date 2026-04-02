@@ -329,7 +329,7 @@ def register_job_tools(mcp: FastMCP) -> None:
                     # If fields is empty, return no jobs
                     result["hits"]["hits"] = []
 
-            return json.dumps(result.get("hits", []), indent=2)
+            return json.dumps(result.get("hits", []))
         except Exception as e:
             return json.dumps({"error": str(e)}, indent=2)
 

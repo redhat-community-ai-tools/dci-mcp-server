@@ -164,7 +164,7 @@ async def test_component_tools(mcp_server):
 
         # Test query_dci_components with a specific component query
         result = await client.call_tool(
-            "query_dci_components", {"query": "eq(id,dummy-id)"}
+            "query_dci_components", {"query": "eq(name,nonexistent-component-xyz)"}
         )
         assert not result.is_error
 
