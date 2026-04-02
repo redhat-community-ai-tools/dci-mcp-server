@@ -309,3 +309,155 @@ def test_changelog_without_author():
     assert len(result["changelog"]) == 1
     assert result["changelog"][0]["author"] == "Unknown"
     assert result["changelog"][0]["items"][0]["field"] == "status"
+
+
+# -- create_issue tests --
+
+
+def test_create_issue():
+    svc = _make_jira_service()
+    mock_issue = MagicMock()
+    mock_issue.key = "TEST-999"
+    mock_issue.fields.summary = "New ticket"
+    svc.jira.create_issue.return_value = mock_issue
+
+    result = svc.create_issue("TEST", "New ticket")
+
+    svc.jira.create_issue.assert_called_once_with(
+        fields={
+            "project": {"key": "TEST"},
+            "summary": "New ticket",
+            "issuetype": {"name": "Task"},
+        }
+    )
+    assert result["key"] == "TEST-999"
+    assert result["summary"] == "New ticket"
+    assert "url" in result
+
+
+def test_create_issue_with_optional_fields():
+    svc = _make_jira_service()
+    mock_issue = MagicMock()
+    mock_issue.key = "TEST-1000"
+    mock_issue.fields.summary = "Full ticket"
+    svc.jira.create_issue.return_value = mock_issue
+
+    result = svc.create_issue(
+        project_key="TEST",
+        summary="Full ticket",
+        description="A description",
+        issue_type="Bug",
+        priority="Critical",
+        labels=["label1", "label2"],
+        components=["comp1"],
+        assignee="jsmith",
+    )
+
+    call_fields = svc.jira.create_issue.call_args[1]["fields"]
+    assert call_fields["project"] == {"key": "TEST"}
+    assert call_fields["summary"] == "Full ticket"
+    assert call_fields["description"] == "A description"
+    assert call_fields["issuetype"] == {"name": "Bug"}
+    assert call_fields["priority"] == {"name": "Critical"}
+    assert call_fields["labels"] == ["label1", "label2"]
+    assert call_fields["components"] == [{"name": "comp1"}]
+    assert call_fields["assignee"] == {"name": "jsmith"}
+    assert result["key"] == "TEST-1000"
+
+
+# -- update_issue tests --
+
+
+def test_update_issue_fields():
+    svc = _make_jira_service()
+    mock_issue = MagicMock()
+    mock_issue.key = "TEST-123"
+    svc.jira.issue.return_value = mock_issue
+
+    result = svc.update_issue("TEST-123", summary="Updated summary", priority="Major")
+
+    mock_issue.update.assert_called_once_with(
+        fields={"summary": "Updated summary", "priority": {"name": "Major"}}
+    )
+    assert result["key"] == "TEST-123"
+    assert result["status"] == "updated"
+
+
+def test_update_issue_transition():
+    svc = _make_jira_service()
+    mock_issue = MagicMock()
+    mock_issue.key = "TEST-123"
+    svc.jira.issue.return_value = mock_issue
+    svc.jira.transitions.return_value = [
+        {"id": "21", "name": "In Progress"},
+        {"id": "31", "name": "Done"},
+    ]
+
+    result = svc.update_issue("TEST-123", transition="In Progress")
+
+    svc.jira.transition_issue.assert_called_once_with(mock_issue, "21")
+    assert result["status"] == "updated"
+
+
+def test_update_issue_transition_case_insensitive():
+    svc = _make_jira_service()
+    mock_issue = MagicMock()
+    svc.jira.issue.return_value = mock_issue
+    svc.jira.transitions.return_value = [
+        {"id": "21", "name": "In Progress"},
+    ]
+
+    svc.update_issue("TEST-123", transition="in progress")
+
+    svc.jira.transition_issue.assert_called_once_with(mock_issue, "21")
+
+
+def test_update_issue_transition_not_found():
+    svc = _make_jira_service()
+    mock_issue = MagicMock()
+    svc.jira.issue.return_value = mock_issue
+    svc.jira.transitions.return_value = [
+        {"id": "21", "name": "In Progress"},
+        {"id": "31", "name": "Done"},
+    ]
+
+    with pytest.raises(ValueError, match="Transition 'Closed' not found"):
+        svc.update_issue("TEST-123", transition="Closed")
+
+
+# -- add_comment tests --
+
+
+def test_add_comment():
+    svc = _make_jira_service()
+    mock_comment = MagicMock()
+    mock_comment.id = "12345"
+    mock_comment.author.displayName = "Test User"
+    mock_comment.created = "2025-01-01T00:00:00Z"
+    svc.jira.add_comment.return_value = mock_comment
+
+    result = svc.add_comment("TEST-123", "This is a comment")
+
+    svc.jira.add_comment.assert_called_once_with("TEST-123", "This is a comment")
+    assert result["comment_id"] == "12345"
+    assert result["author"] == "Test User"
+    assert result["created"] == "2025-01-01T00:00:00Z"
+
+
+# -- get_transitions tests --
+
+
+def test_get_transitions():
+    svc = _make_jira_service()
+    svc.jira.transitions.return_value = [
+        {"id": "11", "name": "To Do", "extra": "ignored"},
+        {"id": "21", "name": "In Progress", "extra": "ignored"},
+        {"id": "31", "name": "Done", "extra": "ignored"},
+    ]
+
+    result = svc.get_transitions("TEST-123")
+
+    assert len(result) == 3
+    assert result[0] == {"id": "11", "name": "To Do"}
+    assert result[1] == {"id": "21", "name": "In Progress"}
+    assert result[2] == {"id": "31", "name": "Done"}
