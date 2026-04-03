@@ -232,6 +232,153 @@ class JiraService:
         """Return the English status name, looked up from the v3 status map."""
         return self._get_status_name_map().get(status_obj.id) or status_obj.name
 
+    def create_issue(
+        self,
+        project_key: str,
+        summary: str,
+        description: str | None = None,
+        issue_type: str = "Task",
+        priority: str | None = None,
+        labels: list[str] | None = None,
+        components: list[str] | None = None,
+        assignee: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Create a new Jira issue.
+
+        Returns:
+            Dictionary with created issue key, summary, and URL
+        """
+        try:
+            fields: dict[str, Any] = {
+                "project": {"key": project_key},
+                "summary": summary,
+                "issuetype": {"name": issue_type},
+            }
+            if description is not None:
+                fields["description"] = description
+            if priority is not None:
+                fields["priority"] = {"name": priority}
+            if labels is not None:
+                fields["labels"] = labels
+            if components is not None:
+                fields["components"] = [{"name": c} for c in components]
+            if assignee is not None:
+                fields["assignee"] = {"name": assignee}
+
+            issue = self.jira.create_issue(fields=fields)
+            return {
+                "key": issue.key,
+                "summary": issue.fields.summary,
+                "url": f"{self.jira_url}/browse/{issue.key}",
+            }
+        except JIRAError as e:
+            raise Exception(f"Jira API error: {e.text}") from e
+        except Exception as e:
+            raise Exception(f"Error creating issue: {str(e)}") from e
+
+    def update_issue(
+        self,
+        ticket_key: str,
+        summary: str | None = None,
+        description: str | None = None,
+        priority: str | None = None,
+        labels: list[str] | None = None,
+        components: list[str] | None = None,
+        assignee: str | None = None,
+        transition: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Update an existing Jira issue.
+
+        Returns:
+            Dictionary with updated issue information
+        """
+        try:
+            issue = self.jira.issue(ticket_key)
+
+            # Build field updates
+            fields: dict[str, Any] = {}
+            if summary is not None:
+                fields["summary"] = summary
+            if description is not None:
+                fields["description"] = description
+            if priority is not None:
+                fields["priority"] = {"name": priority}
+            if labels is not None:
+                fields["labels"] = labels
+            if components is not None:
+                fields["components"] = [{"name": c} for c in components]
+            if assignee is not None:
+                fields["assignee"] = {"name": assignee}
+
+            if fields:
+                issue.update(fields=fields)
+
+            # Handle transition separately
+            if transition is not None:
+                available = self.jira.transitions(issue)
+                match = None
+                for t in available:
+                    if t["name"].lower() == transition.lower():
+                        match = t
+                        break
+                if match is None:
+                    available_names = [t["name"] for t in available]
+                    raise ValueError(
+                        f"Transition '{transition}' not found. "
+                        f"Available transitions: {available_names}"
+                    )
+                self.jira.transition_issue(issue, match["id"])
+
+            return {
+                "key": ticket_key,
+                "status": "updated",
+                "url": f"{self.jira_url}/browse/{ticket_key}",
+            }
+        except JIRAError as e:
+            raise Exception(f"Jira API error: {e.text}") from e
+        except ValueError:
+            raise
+        except Exception as e:
+            raise Exception(f"Error updating issue {ticket_key}: {str(e)}") from e
+
+    def add_comment(self, ticket_key: str, body: str) -> dict[str, Any]:
+        """
+        Add a comment to a Jira issue.
+
+        Returns:
+            Dictionary with comment ID, author, and creation timestamp
+        """
+        try:
+            comment = self.jira.add_comment(ticket_key, body)
+            return {
+                "comment_id": comment.id,
+                "author": getattr(comment.author, "displayName", "Unknown"),
+                "created": comment.created,
+            }
+        except JIRAError as e:
+            raise Exception(f"Jira API error: {e.text}") from e
+        except Exception as e:
+            raise Exception(f"Error adding comment to {ticket_key}: {str(e)}") from e
+
+    def get_transitions(self, ticket_key: str) -> list[dict[str, Any]]:
+        """
+        Get available workflow transitions for a Jira issue.
+
+        Returns:
+            List of transition dictionaries with id and name
+        """
+        try:
+            transitions = self.jira.transitions(ticket_key)
+            return [{"id": t["id"], "name": t["name"]} for t in transitions]
+        except JIRAError as e:
+            raise Exception(f"Jira API error: {e.text}") from e
+        except Exception as e:
+            raise Exception(
+                f"Error getting transitions for {ticket_key}: {str(e)}"
+            ) from e
+
     def search_tickets(self, jql: str, max_results: int = 50) -> list[dict[str, Any]]:
         """
         Search for tickets using JQL (Jira Query Language).

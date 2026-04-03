@@ -164,6 +164,7 @@ The server includes Jira integration to collect comprehensive ticket data from R
 - 🔍 **JQL Search**: Search tickets using Jira Query Language (JQL)
 - 📊 **Project Information**: Get project details and metadata
 - 🔗 **DCI Integration**: Seamlessly extract Jira tickets from DCI job comments
+- ✏️ **Write Operations** (opt-in): Create tickets, update fields, add comments, and transition status
 
 ### Setup
 To use Jira features, follow the [Jira Setup Guide](JIRA_SETUP.md) for detailed configuration instructions.
@@ -175,6 +176,8 @@ To use Jira features, follow the [Jira Setup Guide](JIRA_SETUP.md) for detailed 
    JIRA_API_TOKEN=your_jira_api_token_here
    JIRA_EMAIL=you@redhat.com
    JIRA_URL=https://redhat.atlassian.net
+   # Optional: enable write operations (create/update tickets, add comments)
+   JIRA_WRITE_ENABLED=true
    ```
 
 ### Usage Examples
@@ -274,6 +277,15 @@ The server provides tools for interacting with DCI API components:
 
 **Note**: Jira tools require `JIRA_API_TOKEN` environment variable to be set.
 
+### Jira Write Tools
+
+- `create_jira_ticket(project_key, summary, ...)`: Create a new Jira ticket with optional description, issue type, priority, labels, components, and assignee
+- `update_jira_ticket(ticket_key, ...)`: Update ticket fields (summary, description, priority, labels, components, assignee) or transition status
+- `add_jira_comment(ticket_key, body)`: Add a comment to a ticket
+- `list_jira_transitions(ticket_key)`: List available workflow transitions for a ticket
+
+**Note**: Jira write tools require both `JIRA_API_TOKEN` and `JIRA_WRITE_ENABLED=true` environment variables.
+
 ### GitHub Tools
 
 - `search_github_issues(query, max_results)`: Search issues and pull requests using GitHub search query syntax
@@ -350,6 +362,7 @@ mcp_server/
 │   ├── file_tools.py
 │   ├── google_drive_tools.py
 │   ├── jira_tools.py
+│   ├── jira_write_tools.py
 │   ├── github_tools.py
 │   ├── support_case_tools.py
 │   └── log_tools.py

@@ -1,5 +1,12 @@
 # DCI MCP Server - Change Log
 
+## [2026-04-02]
+
+### Improvements
+
+- Add Jira write tools: `create_jira_ticket`, `update_jira_ticket`, `add_jira_comment`, and `list_jira_transitions`
+- Jira write operations are disabled by default; set `JIRA_WRITE_ENABLED=true` to enable
+
 ## [2026-02-27]
 
 ### Improvements
