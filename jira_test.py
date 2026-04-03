@@ -2,7 +2,6 @@
 """Quick smoke test for Jira integration tools."""
 
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -17,7 +16,7 @@ from mcp_server.services.jira_service import JiraService
 
 
 def test_get_project_info(service: JiraService, project_key: str = "CILAB"):
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"1. get_jira_project_info('{project_key}')")
     print("=" * 60)
     result = service.get_project_info(project_key)
@@ -25,8 +24,12 @@ def test_get_project_info(service: JiraService, project_key: str = "CILAB"):
     return result
 
 
-def test_search_tickets(service: JiraService, jql: str = "project = CILAB AND status = Open", max_results: int = 5):
-    print(f"\n{'='*60}")
+def test_search_tickets(
+    service: JiraService,
+    jql: str = "project = CILAB AND status = Open",
+    max_results: int = 5,
+):
+    print(f"\n{'=' * 60}")
     print(f"2. search_jira_tickets('{jql}', max_results={max_results})")
     print("=" * 60)
     result = service.search_tickets(jql, max_results)
@@ -35,7 +38,7 @@ def test_search_tickets(service: JiraService, jql: str = "project = CILAB AND st
 
 
 def test_get_ticket(service: JiraService, ticket_key: str, max_comments: int = 3):
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"3. get_jira_ticket('{ticket_key}', max_comments={max_comments})")
     print("=" * 60)
     result = service.get_ticket_data(ticket_key, max_comments)
@@ -94,7 +97,7 @@ def main():
     else:
         print("\nSkipping get_jira_ticket — no ticket found from search.")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("Done.")
 
 
