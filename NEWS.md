@@ -1,5 +1,13 @@
 # DCI MCP Server - Change Log
 
+## [2026-04-05]
+
+### Improvements
+
+- Clarify `search_dci_jobs` response shape, `total` (int or Elasticsearch-style object), and pagination (limit/offset are request-only). Server instructions now distinguish job search totals from `_meta.count` on other tools.
+- Integration test `test_job_search_total_field_shape` asserts the live DCI analytics response includes `total` in a supported shape; when `total` is a dict, optional `relation` must be `eq` or `gte` if present.
+- `search_dci_jobs` docs explain `total.relation` (`eq` exact vs `gte` lower bound) and pagination when `gte`.
+
 ## [2026-04-02]
 
 ### Improvements

@@ -101,6 +101,55 @@ async def test_job_search(mcp_client):
     assert "id" in first_hit
 
 
+def _assert_search_total_shape(data: dict) -> int:
+    """Check live DCI analytics job search ``total`` field; return numeric match count.
+
+    The control server may return Elasticsearch 7+ style ``{"value": n, "relation": ...}``
+    or a bare integer for the hit count, depending on backend version.
+    """
+    assert "total" in data, (
+        "search_dci_jobs response must include 'total' for pagination and counts"
+    )
+    total = data["total"]
+    if isinstance(total, int):
+        assert total >= 0
+        return total
+    if isinstance(total, dict) and "value" in total:
+        val = total["value"]
+        assert isinstance(val, int), f"total['value'] must be int, got {type(val)}"
+        assert val >= 0
+        rel = total.get("relation")
+        if rel is not None:
+            assert rel in (
+                "eq",
+                "gte",
+            ), f"total['relation'] must be 'eq' or 'gte' if set, got {rel!r}"
+        return val
+    pytest.fail(
+        "total must be a non-negative int or a dict with int 'value', "
+        f"got {type(total)!r}: {total!r}"
+    )
+
+
+@pytest.mark.integration
+async def test_job_search_total_field_shape(mcp_client):
+    """Live API: search_dci_jobs includes ``total`` in a supported shape for counts."""
+    result = await mcp_client.call_tool(
+        "search_dci_jobs",
+        {
+            "query": "(components.type='ocp')",
+            "fields": ["id"],
+            "limit": 1,
+        },
+    )
+    assert not result.is_error
+    data = parse_response(result)
+    assert "hits" in data
+    assert len(data["hits"]) > 0
+    match_count = _assert_search_total_shape(data)
+    assert match_count >= len(data["hits"])
+
+
 @pytest.mark.integration
 async def test_job_tools(mcp_client):
     """Test job-related tools."""
