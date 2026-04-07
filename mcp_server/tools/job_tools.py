@@ -44,12 +44,18 @@ def register_job_tools(mcp: FastMCP) -> None:
         limit: Annotated[
             int,
             Field(
-                description="Maximum number of results to return for pagination (default 20, max 200). Use limit=1 to get count from metadata.",
+                description="Page size: max job rows in the response `hits` array (default 20, max 200). For a cheap global count, use limit=1 with minimal fields and read the match count from `total` (integer, or `total['value']` if `total` is an object).",
                 ge=1,
                 le=200,
             ),
         ] = 20,
-        offset: Annotated[int, Field(description="Offset for pagination", ge=0)] = 0,
+        offset: Annotated[
+            int,
+            Field(
+                description="Skip this many matching jobs (same query/sort). Next page: previous offset + limit. Not echoed in the JSON.",
+                ge=0,
+            ),
+        ] = 0,
         fields: Annotated[
             list[str],
             Field(
@@ -240,11 +246,9 @@ def register_job_tools(mcp: FastMCP) -> None:
         - For components: `['components.type', 'components.name', 'components.version']`
         - For tests: `['tests.testsuites.testcases.name', 'tests.testsuites.testcases.action']`
 
-        **limit** (optional, default: 20, max: 200): Number of results to return
-        - If `limit > 50`, ALWAYS use `__save_to_file`
-        - Example: `limit=200, __save_to_file='/tmp/jobs.json'`
+        **limit** (optional, default: 20, max: 200): Page size — maximum job documents in `hits` for this call. Not repeated in the JSON response; you must remember what you passed. If `limit > 50`, use `__save_to_file`.
 
-        **offset** (optional, default: 0): Offset for pagination
+        **offset** (optional, default: 0): Number of matching jobs to skip (same sort as `sort`). Page 1: `offset=0`. Next page: `offset` = previous `offset` + `limit`. Not repeated in the JSON response.
 
         **sort** (optional, default: '-created_at'): Sort criteria
         - `-created_at`: newest to oldest (default)
@@ -269,30 +273,47 @@ def register_job_tools(mcp: FastMCP) -> None:
         - Component details: `['components.name', 'components.version', 'components.tags']`
         - Test results: `['tests.testsuites.testcases.name', 'tests.testsuites.testcases.action']`
 
-        ## Response Format
+        ## Response format and pagination
 
-        Returns JSON string with job documents under "hits" key and pagination info:
+        The return value is a **JSON string**. Parse it once; the top-level object has at least:
+
+        - **`hits`**: array of job objects for this page (up to `limit` items). Shape matches your `fields` (nested objects only where you requested them). If `fields=[]`, this is always `[]` — you still get `total` for counting.
+        - **`total`**: hit metadata for the query. Either a non-negative **integer** (exact match count) or an Elasticsearch-style **object** with:
+        - **`value`** (int): number of matching jobs, or a **lower bound** when `relation` is `gte` (see below).
+        - **`relation`** (string, when present): `eq` means `value` is the **exact** total. `gte` means there are **at least** `value` matches; the true count may be higher (Elasticsearch did not track the full total). If `relation` is omitted, treat `value` as exact unless your deployment documents otherwise.
+
+        Let `N = total` if `total` is an int, else `N = total["value"]`. Let `rel` be `None` if `total` is an int, else `total.get("relation")`.
+
+        There is **no** `limit` or `offset` key in the response; pagination is driven only by the tool arguments on the next call.
+
+        **How to paginate:** Keep the same `query`, `sort`, and `fields`. Start with `offset=0`. After each page, advance `offset` by `limit` while there may be more rows:
+        - If `rel == "gte"`: the only reliable stop rule is **`len(hits) < limit`** (no more full pages). Do **not** assume `N` is the full count.
+        - Otherwise (`rel` is `eq`, `None`, or `total` is an int): stop when **`len(hits) < limit`** or **`offset + len(hits) >= N`**.
+
+        **Quick count:** Exact total only when `total` is an int or `relation == "eq"` (or `relation` absent and your stack guarantees exact `value`). If `relation == "gte"`, `value` is a lower bound only — you must paginate through all pages (or accept an approximate count) for a true total.
+
+        Example (illustrative; field names depend on `fields`):
+
         ```json
         {
-        "hits": [
+          "hits": [
             {
-            "id": "job-abc-123",
-            "status": "failure",
-            "created_at": "2026-03-30T10:00:00",
-            "components": [
+              "id": "job-abc-123",
+              "status": "failure",
+              "created_at": "2026-03-30T10:00:00",
+              "components": [
                 {
-                "type": "ocp",
-                "name": "OpenShift",
-                "version": "4.19.0",
-                "tags": ["build:ga"]
+                  "type": "ocp",
+                  "name": "OpenShift",
+                  "version": "4.19.0",
+                  "tags": ["build:ga"]
                 }
-            ]
+              ]
             }
-        ],
-        "total": 150,
-        "limit": 50,
-        "offset": 0
+          ],
+          "total": {"value": 150, "relation": "eq"}
         }
+        ```
         """
         try:
             service = DCIJobService()

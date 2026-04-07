@@ -48,9 +48,11 @@ def create_server() -> FastMCP:
         Daily jobs refer to DCI jobs with a tag "daily" in the list of tags.
 
         Most of the tools support pagination with the `limit` and
-        `offset` parameters. You get the total count of items in the
-        `_meta` field of the response under the `count`. To count, you
-        just need to set `limit` to 1.
+        `offset` parameters. For many list tools, the total count is in
+        the `_meta` field under `count` (use `limit=1` to read it).
+        For `search_dci_jobs`, parse the JSON string and read counts from `total`:
+        integer or `total['value']`; if `total['relation']` is `gte`, that value is
+        a lower bound only. That tool does not return `_meta`.
         """,
     )
 
