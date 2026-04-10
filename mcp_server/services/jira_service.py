@@ -34,7 +34,11 @@ class JiraService:
     """Service class for Jira API interactions."""
 
     def __init__(self):
-        """Initialize Jira service with authentication."""
+        """Initialize Jira service with authentication.
+
+        Supports both Atlassian Cloud (basic auth with email + API token)
+        and on-prem Jira Data Center (PAT bearer token).
+        """
         self.jira_url = os.environ.get("JIRA_URL", "https://redhat.atlassian.net")
         self.jira_token = os.environ.get("JIRA_API_TOKEN")
         self.jira_email = os.environ.get("JIRA_EMAIL")
@@ -45,7 +49,8 @@ class JiraService:
                 "See documentation for setup instructions."
             )
 
-        if self.jira_email:
+        is_cloud = "atlassian.net" in self.jira_url
+        if is_cloud and self.jira_email:
             self.jira = JIRA(
                 server=self.jira_url,
                 basic_auth=(self.jira_email, self.jira_token),
@@ -431,6 +436,114 @@ class JiraService:
             raise Exception(f"Jira search error: {e.text}") from e
         except Exception as e:
             raise Exception(f"Error searching tickets: {str(e)}") from e
+
+    def update_ticket(self, ticket_key: str, fields: dict[str, Any]) -> dict[str, Any]:
+        """
+        Update fields on a Jira ticket.
+
+        Uses the REST API directly to support both standard and Forge-based
+        custom fields (e.g. the rh-cf-single-select / rh-cf-multi-select
+        fields used for RCA/EDA dropdowns).
+
+        Args:
+            ticket_key: Jira ticket key (e.g. ECOENGCL-452)
+            fields: Dict mapping field IDs or names to their new values.
+                    Accepts both customfield_NNNNN IDs and human-readable
+                    field names (resolved via the field map).
+
+        Returns:
+            Dictionary with update status and the rendered values of updated
+            fields for confirmation.
+        """
+        try:
+            field_map = self._get_field_map()
+            name_to_id = {v: k for k, v in field_map.items()}
+
+            resolved: dict[str, Any] = {}
+            for key, value in fields.items():
+                if key.startswith("customfield_") or not key.startswith("custom"):
+                    resolved[key] = value
+                else:
+                    field_id = name_to_id.get(key, key)
+                    resolved[field_id] = field_id if field_id != key else key
+                    resolved[field_id] = value
+
+            resp = self.jira._session.put(
+                f"{self.jira_url}/rest/api/2/issue/{ticket_key}",
+                json={"fields": resolved},
+            )
+
+            if resp.status_code == 204:
+                confirm_ids = [k for k in resolved if k.startswith("customfield_")]
+                rendered_vals: dict[str, str | None] = {}
+                if confirm_ids:
+                    get_resp = self.jira._session.get(
+                        f"{self.jira_url}/rest/api/3/issue/{ticket_key}",
+                        params={
+                            "fields": ",".join(confirm_ids),
+                            "expand": "renderedFields",
+                        },
+                    )
+                    if get_resp.status_code == 200:
+                        rdata = get_resp.json().get("renderedFields", {})
+                        for fid in confirm_ids:
+                            fname = field_map.get(fid, fid)
+                            rendered_vals[fname] = rdata.get(fid)
+
+                return {
+                    "status": "success",
+                    "ticket": ticket_key,
+                    "fields_updated": list(resolved.keys()),
+                    "rendered_values": rendered_vals,
+                    "url": f"{self.jira_url}/browse/{ticket_key}",
+                }
+
+            error_text = resp.text if resp.text else f"HTTP {resp.status_code}"
+            raise Exception(f"Update failed: {error_text}")
+
+        except JIRAError as e:
+            raise Exception(f"Jira API error: {e.text}") from e
+        except Exception as e:
+            if "Update failed" in str(e) or "Jira API error" in str(e):
+                raise
+            raise Exception(f"Error updating ticket {ticket_key}: {str(e)}") from e
+
+    def add_comment(self, ticket_key: str, body: str) -> dict[str, Any]:
+        """
+        Add a comment to a Jira ticket.
+
+        Args:
+            ticket_key: Jira ticket key (e.g. ECOENGCL-452)
+            body: Comment body in Jira wiki markup format.
+
+        Returns:
+            Dictionary with comment ID and metadata.
+        """
+        try:
+            resp = self.jira._session.post(
+                f"{self.jira_url}/rest/api/2/issue/{ticket_key}/comment",
+                json={"body": body},
+            )
+            if resp.status_code in (200, 201):
+                data = resp.json()
+                return {
+                    "status": "success",
+                    "comment_id": data.get("id"),
+                    "ticket": ticket_key,
+                    "author": data.get("author", {}).get("displayName"),
+                    "created": data.get("created"),
+                    "url": f"{self.jira_url}/browse/{ticket_key}"
+                    f"?focusedId={data.get('id')}",
+                }
+            error_text = resp.text if resp.text else f"HTTP {resp.status_code}"
+            raise Exception(f"Add comment failed: {error_text}")
+
+        except JIRAError as e:
+            raise Exception(f"Jira API error: {e.text}") from e
+        except Exception as e:
+            if "Add comment failed" in str(e) or "Jira API error" in str(e):
+                raise
+            raise Exception(f"Error adding comment to {ticket_key}: {str(e)}") from e
 
     def get_project_info(self, project_key: str) -> dict[str, Any]:
         """
