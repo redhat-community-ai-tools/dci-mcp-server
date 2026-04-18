@@ -311,6 +311,140 @@ def test_changelog_without_author():
     assert result["changelog"][0]["items"][0]["field"] == "status"
 
 
+# -- search_tickets pagination tests --
+
+
+@pytest.mark.unit
+def test_search_tickets_returns_total_count():
+    """Test that search_tickets returns total_count and items structure."""
+    svc = _make_jira_service()
+
+    mock_issues = MagicMock()
+    mock_issues.total = 100
+    mock_issue = MagicMock()
+    mock_issue.key = "TEST-1"
+    mock_issue.fields.summary = "Test"
+    mock_issue.fields.description = None
+    mock_issue.fields.status.name = "Open"
+    mock_issue.fields.status.id = "1"
+    mock_issue.fields.issuetype.name = "Bug"
+    mock_issue.fields.priority.name = "High"
+    mock_issue.fields.assignee.displayName = "Test User"
+    mock_issue.fields.labels = []
+    mock_issue.fields.resolution = None
+    mock_issue.fields.created = "2025-01-01"
+    mock_issue.fields.updated = "2025-01-02"
+    mock_issues.__iter__ = MagicMock(return_value=iter([mock_issue]))
+    svc.jira.search_issues.return_value = mock_issues
+
+    result = svc.search_tickets("project = TEST")
+
+    assert result["total_count"] == 100
+    assert result["offset"] == 0
+    assert result["limit"] == 50
+    assert len(result["items"]) == 1
+    assert result["items"][0]["key"] == "TEST-1"
+
+
+@pytest.mark.unit
+def test_search_tickets_with_offset():
+    """Test that search_tickets passes offset to Jira API as startAt."""
+    svc = _make_jira_service()
+
+    mock_issues = MagicMock()
+    mock_issues.total = 200
+    mock_issues.__iter__ = MagicMock(return_value=iter([]))
+    svc.jira.search_issues.return_value = mock_issues
+
+    svc.search_tickets("project = TEST", max_results=10, offset=50)
+
+    svc.jira.search_issues.assert_called_once_with(
+        "project = TEST",
+        startAt=50,
+        maxResults=10,
+        fields="summary,status,issuetype,priority,assignee,labels,resolution,created,updated,description",
+    )
+
+
+# -- _get_comments pagination tests --
+
+
+@pytest.mark.unit
+def test_jira_get_comments_with_offset():
+    """Test that Jira _get_comments paginates with offset."""
+    svc = _make_jira_service()
+
+    mock_comments = []
+    for i in range(5):
+        c = MagicMock()
+        c.id = str(i)
+        c.author.displayName = f"User {i}"
+        c.body = f"Comment {i}"
+        c.created = f"2025-01-0{i + 1}T00:00:00Z"
+        c.updated = f"2025-01-0{i + 1}T00:00:00Z"
+        mock_comments.append(c)
+
+    mock_issue = MagicMock()
+    mock_issue.fields.comment.comments = mock_comments
+
+    result = svc._get_comments(mock_issue, max_comments=2, offset=2)
+
+    assert len(result) == 2
+    assert result[0]["id"] == "2"
+    assert result[1]["id"] == "3"
+
+
+@pytest.mark.unit
+def test_jira_get_comments_offset_past_end():
+    """Test that offset past end returns empty list."""
+    svc = _make_jira_service()
+
+    mock_comments = []
+    for i in range(3):
+        c = MagicMock()
+        c.id = str(i)
+        c.author.displayName = f"User {i}"
+        c.body = f"Comment {i}"
+        c.created = "2025-01-01T00:00:00Z"
+        c.updated = "2025-01-01T00:00:00Z"
+        mock_comments.append(c)
+
+    mock_issue = MagicMock()
+    mock_issue.fields.comment.comments = mock_comments
+
+    result = svc._get_comments(mock_issue, max_comments=10, offset=10)
+
+    assert result == []
+
+
+@pytest.mark.unit
+def test_get_ticket_data_includes_total_comments():
+    """Test that get_ticket_data includes total_comments field."""
+    svc = _make_jira_service()
+    svc.jira.fields.return_value = []
+
+    mock_comments = []
+    for i in range(5):
+        c = MagicMock()
+        c.id = str(i)
+        c.author.displayName = f"User {i}"
+        c.body = f"Comment {i}"
+        c.created = "2025-01-01T00:00:00Z"
+        c.updated = "2025-01-01T00:00:00Z"
+        mock_comments.append(c)
+
+    issue = _make_mock_issue()
+    issue.fields.comment.comments = mock_comments
+    svc.jira.issue.return_value = issue
+
+    result = svc.get_ticket_data("TEST-123", max_comments=2, comment_offset=1)
+
+    assert result["total_comments"] == 5
+    assert len(result["comments"]) == 2
+    assert result["comments"][0]["id"] == "1"
+    assert result["comments"][1]["id"] == "2"
+
+
 # -- create_issue tests --
 
 

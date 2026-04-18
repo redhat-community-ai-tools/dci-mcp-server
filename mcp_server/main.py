@@ -56,8 +56,9 @@ def create_server() -> FastMCP:
         """,
     )
 
-    # Register date tools always (no DCI API required)
-    register_date_tools(mcp)
+    # Register date tools (enabled by default, no DCI API required)
+    if os.getenv("DATE_TOOLS_ENABLED", "true").lower() == "true":
+        register_date_tools(mcp)
 
     # Register DCI tools only when credentials are set
     if has_dci_credentials():

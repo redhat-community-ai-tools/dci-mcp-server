@@ -66,10 +66,18 @@ class JiraService:
         return self._field_map
 
     def get_ticket_data(
-        self, ticket_key: str, max_comments: int = 10
+        self,
+        ticket_key: str,
+        max_comments: int = 10,
+        comment_offset: int = 0,
     ) -> dict[str, Any]:
         """
         Get comprehensive ticket data including comments.
+
+        Args:
+            ticket_key: Jira ticket key (e.g. PROJ-123)
+            max_comments: Maximum number of comments to return
+            comment_offset: Number of comments to skip for pagination
 
         Returns:
             Dictionary containing ticket data and comments
@@ -79,6 +87,11 @@ class JiraService:
             issue = self.jira.issue(ticket_key, expand="changelog")
 
             # Extract basic ticket information
+            comment_obj = getattr(issue.fields, "comment", None)
+            total_comments = (
+                len(comment_obj.comments) if comment_obj and comment_obj.comments else 0
+            )
+
             ticket_data = {
                 "key": issue.key,
                 "summary": issue.fields.summary,
@@ -123,6 +136,7 @@ class JiraService:
                     if issue.fields.versions
                     else []
                 ),
+                "total_comments": total_comments,
                 "url": f"{self.jira_url}/browse/{issue.key}",
             }
 
@@ -141,7 +155,7 @@ class JiraService:
                 ticket_data["custom_fields"] = custom_fields
 
             # Get comments
-            comments = self._get_comments(issue, max_comments)
+            comments = self._get_comments(issue, max_comments, comment_offset)
             ticket_data["comments"] = comments
 
             # Get changelog/history
@@ -155,20 +169,17 @@ class JiraService:
         except Exception as e:
             raise Exception(f"Error retrieving ticket {ticket_key}: {str(e)}") from e
 
-    def _get_comments(self, issue: Any, max_comments: int) -> list[dict[str, Any]]:
-        """Extract comments from the issue."""
+    def _get_comments(
+        self, issue: Any, max_comments: int, offset: int = 0
+    ) -> list[dict[str, Any]]:
+        """Extract comments from the issue with pagination support."""
         comments = []
 
         if hasattr(issue.fields, "comment") and issue.fields.comment:
             comment_list = issue.fields.comment.comments
-            # Get the most recent comments (up to max_comments)
-            recent_comments = (
-                comment_list[-max_comments:]
-                if len(comment_list) > max_comments
-                else comment_list
-            )
+            page = comment_list[offset : offset + max_comments]
 
-            for comment in recent_comments:
+            for comment in page:
                 comment_data = {
                     "id": comment.id,
                     "author": getattr(comment.author, "displayName", "Unknown"),
@@ -379,16 +390,24 @@ class JiraService:
                 f"Error getting transitions for {ticket_key}: {str(e)}"
             ) from e
 
-    def search_tickets(self, jql: str, max_results: int = 50) -> list[dict[str, Any]]:
+    def search_tickets(
+        self, jql: str, max_results: int = 50, offset: int = 0
+    ) -> dict[str, Any]:
         """
         Search for tickets using JQL (Jira Query Language).
 
+        Args:
+            jql: JQL query string
+            max_results: Maximum number of results to return
+            offset: Number of results to skip for pagination
+
         Returns:
-            List of ticket data dictionaries
+            Dictionary with total_count and items list
         """
         try:
             issues = self.jira.search_issues(
                 jql,
+                startAt=offset,
                 maxResults=max_results,
                 fields="summary,status,issuetype,priority,assignee,labels,resolution,created,updated,description",
             )
@@ -425,7 +444,12 @@ class JiraService:
                 }
                 tickets.append(ticket_data)
 
-            return tickets
+            return {
+                "total_count": issues.total,
+                "offset": offset,
+                "limit": max_results,
+                "items": tickets,
+            }
 
         except JIRAError as e:
             raise Exception(f"Jira search error: {e.text}") from e

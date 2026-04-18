@@ -57,6 +57,13 @@ def register_jira_tools(mcp: FastMCP) -> None:
                 le=50,
             ),
         ] = 10,
+        comment_offset: Annotated[
+            int,
+            Field(
+                description="Number of comments to skip for pagination (default: 0)",
+                ge=0,
+            ),
+        ] = 0,
     ) -> str:
         """Get comprehensive Jira ticket data including comments and changelog.
 
@@ -100,9 +107,12 @@ def register_jira_tools(mcp: FastMCP) -> None:
         - **Classification**: labels, components, fix_versions, affected_versions
         - **Custom Fields**: custom_fields dict with human-readable field names as keys
           (only non-null custom fields are included)
-        - **Comments**: Recent comments with author, body, timestamps
+        - **total_comments**: Total number of comments on the ticket
+        - **Comments**: Comments with author, body, timestamps (paginated)
         - **Changelog**: History of changes with field modifications
         - **URL**: Direct link to the ticket
+
+        Use comment_offset and max_comments to paginate through comments.
 
         Returns:
             JSON string with comprehensive ticket data
@@ -115,7 +125,9 @@ def register_jira_tools(mcp: FastMCP) -> None:
             jira_service = JiraService()
 
             # Get ticket data
-            ticket_data = jira_service.get_ticket_data(normalized_key, max_comments)
+            ticket_data = jira_service.get_ticket_data(
+                normalized_key, max_comments, comment_offset
+            )
 
             return json.dumps(ticket_data, indent=2)
 
@@ -140,6 +152,13 @@ def register_jira_tools(mcp: FastMCP) -> None:
                 le=200,
             ),
         ] = 50,
+        offset: Annotated[
+            int,
+            Field(
+                description="Number of results to skip for pagination (default: 0)",
+                ge=0,
+            ),
+        ] = 0,
     ) -> str:
         """Search Jira tickets using JQL (Jira Query Language).
 
@@ -180,26 +199,32 @@ def register_jira_tools(mcp: FastMCP) -> None:
 
         ## Returned Data
 
-        The tool returns a JSON array containing ticket summaries with:
-        - **key**: Ticket key (e.g., CILAB-1234)
-        - **summary**: Ticket title/summary
-        - **status**: Current status
-        - **assignee**: Assigned user
-        - **created**: Creation date
-        - **updated**: Last update date
-        - **url**: Direct link to the ticket
+        The tool returns a JSON object containing:
+        - **total_count**: Total number of matching results
+        - **offset**: Number of results skipped
+        - **limit**: Maximum results requested
+        - **items**: Array of ticket summaries, each with:
+          - **key**: Ticket key (e.g., CILAB-1234)
+          - **summary**: Ticket title/summary
+          - **status**: Current status
+          - **assignee**: Assigned user
+          - **created**: Creation date
+          - **updated**: Last update date
+          - **url**: Direct link to the ticket
+
+        Use offset and max_results to paginate through large result sets.
 
         Returns:
-            JSON string with array of ticket data
+            JSON string with total_count and items array
         """
         try:
             # Initialize Jira service
             jira_service = JiraService()
 
             # Search tickets
-            tickets = jira_service.search_tickets(jql, max_results)
+            results = jira_service.search_tickets(jql, max_results, offset)
 
-            return json.dumps(tickets, indent=2)
+            return json.dumps(results, indent=2)
 
         except Exception as e:
             return json.dumps({"error": str(e)}, indent=2)

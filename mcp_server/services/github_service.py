@@ -24,21 +24,32 @@ class GitHubService:
         auth = Auth.Token(self.github_token)
         self.github = Github(auth=auth)
 
-    def search_issues(self, query: str, max_results: int = 50) -> list[dict[str, Any]]:
+    def search_issues(
+        self, query: str, max_results: int = 50, offset: int = 0
+    ) -> dict[str, Any]:
         """
         Search for issues and pull requests using GitHub search query syntax.
 
+        Args:
+            query: GitHub search query string
+            max_results: Maximum number of results to return
+            offset: Number of results to skip for pagination
+
         Returns:
-            List of issue/PR data dictionaries
+            Dictionary with total_count and items list
         """
         try:
             issues = self.github.search_issues(query=query)
+            total_count = issues.totalCount
             results = []
 
-            # Limit results to max_results
-            count = 0
+            skipped = 0
+            collected = 0
             for issue in issues:
-                if count >= max_results:
+                if skipped < offset:
+                    skipped += 1
+                    continue
+                if collected >= max_results:
                     break
 
                 issue_data = {
@@ -78,9 +89,14 @@ class GitHubService:
                     "url": issue.html_url,
                 }
                 results.append(issue_data)
-                count += 1
+                collected += 1
 
-            return results
+            return {
+                "total_count": total_count,
+                "offset": offset,
+                "limit": max_results,
+                "items": results,
+            }
 
         except RateLimitExceededException as e:
             raise Exception(self._format_rate_limit_error(e)) from e
@@ -90,10 +106,20 @@ class GitHubService:
             raise Exception(f"Error searching GitHub: {str(e)}") from e
 
     def get_issue(
-        self, repo_full_name: str, issue_number: int, max_comments: int = 10
+        self,
+        repo_full_name: str,
+        issue_number: int,
+        max_comments: int = 10,
+        comment_offset: int = 0,
     ) -> dict[str, Any]:
         """
         Get comprehensive issue/PR data including comments.
+
+        Args:
+            repo_full_name: Repository in owner/repo format
+            issue_number: Issue or PR number
+            max_comments: Maximum number of comments to return
+            comment_offset: Number of comments to skip for pagination
 
         Returns:
             Dictionary containing issue/PR data
@@ -127,10 +153,11 @@ class GitHubService:
                 else None,
                 "closed_at": issue.closed_at.isoformat() if issue.closed_at else None,
                 "url": issue.html_url,
+                "total_comments": issue.comments,
             }
 
             # Get comments
-            comments = self._get_comments(issue, max_comments)
+            comments = self._get_comments(issue, max_comments, comment_offset)
             issue_data["comments"] = comments
 
             # Get PR-specific data if it's a pull request
@@ -164,6 +191,7 @@ class GitHubService:
         repo_full_name: str,
         pull_number: int,
         max_files: int = 100,
+        offset: int = 0,
     ) -> dict[str, Any]:
         """
         Get the diff/patch for a pull request.
@@ -172,6 +200,7 @@ class GitHubService:
             repo_full_name: Repository in owner/repo format
             pull_number: Pull request number
             max_files: Maximum number of files to return (default: 100)
+            offset: Number of files to skip for pagination (default: 0)
 
         Returns:
             Dictionary containing PR summary and per-file diffs
@@ -194,9 +223,13 @@ class GitHubService:
             }
 
             files = []
-            count = 0
+            skipped = 0
+            collected = 0
             for pr_file in pr.get_files():
-                if count >= max_files:
+                if skipped < offset:
+                    skipped += 1
+                    continue
+                if collected >= max_files:
                     break
                 file_data: dict[str, Any] = {
                     "filename": pr_file.filename,
@@ -210,16 +243,18 @@ class GitHubService:
                 if pr_file.previous_filename:
                     file_data["previous_filename"] = pr_file.previous_filename
                 files.append(file_data)
-                count += 1
+                collected += 1
 
             result["files"] = files
             result["files_returned"] = len(files)
+            result["offset"] = offset
             result["total_files"] = pr.changed_files
-            if pr.changed_files > max_files:
+            if pr.changed_files > offset + max_files:
                 result["truncated"] = True
                 result["truncation_message"] = (
-                    f"Showing {max_files} of {pr.changed_files} files. "
-                    f"Use max_files parameter to retrieve more."
+                    f"Showing {len(files)} of {pr.changed_files} files "
+                    f"(offset: {offset}). "
+                    f"Use offset and max_files parameters to paginate."
                 )
 
             return result
@@ -254,20 +289,22 @@ class GitHubService:
             " Please retry after the reset time."
         )
 
-    def _get_comments(self, issue: Any, max_comments: int) -> list[dict[str, Any]]:
-        """Extract comments from the issue."""
+    def _get_comments(
+        self, issue: Any, max_comments: int, offset: int = 0
+    ) -> list[dict[str, Any]]:
+        """Extract comments from the issue with pagination support."""
         comments = []
 
         try:
-            all_comments = list(issue.get_comments())
-            # Get the most recent comments (up to max_comments)
-            recent_comments = (
-                all_comments[-max_comments:]
-                if len(all_comments) > max_comments
-                else all_comments
-            )
-
-            for comment in recent_comments:
+            all_comments = issue.get_comments()
+            skipped = 0
+            collected = 0
+            for comment in all_comments:
+                if skipped < offset:
+                    skipped += 1
+                    continue
+                if collected >= max_comments:
+                    break
                 comment_data = {
                     "id": comment.id,
                     "author": comment.user.login if comment.user else None,
@@ -280,11 +317,11 @@ class GitHubService:
                     else None,
                 }
                 comments.append(comment_data)
+                collected += 1
 
         except RateLimitExceededException:
-            raise  # surface rate limit errors — do not swallow them
+            raise
         except Exception:
-            # If we can't get comments, just return empty list
             pass
 
         return comments
