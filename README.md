@@ -249,6 +249,8 @@ The server provides tools for interacting with DCI API components:
 
 ### Date Tools
 
+Enabled by default. Set `DATE_TOOLS_ENABLED=false` to disable.
+
 - `today()`: Returns today's date in YYYY-MM-DD format.
 - `now()`: Returns current date and time in DCI compatible format (GMT).
 

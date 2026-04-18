@@ -47,6 +47,7 @@ Set via `MCP_TRANSPORT=stdio|sse|http` environment variable.
 ### Conditional Tool Registration
 
 Tools are only registered when their required credentials are available:
+- Date tools: enabled by default; set `DATE_TOOLS_ENABLED=false` to disable
 - DCI tools: `DCI_CLIENT_ID` + `DCI_API_SECRET` (or `DCI_LOGIN` + `DCI_PASSWORD`)
 - GitHub tools: `GITHUB_TOKEN`
 - Jira tools: `JIRA_API_TOKEN` + `JIRA_EMAIL` + `JIRA_URL`
