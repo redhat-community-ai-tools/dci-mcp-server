@@ -244,6 +244,59 @@ def test_get_pr_diff_truncation():
     assert len(result["files"]) == 2
 
 
+def test_get_pr_diff_offset():
+    """Test pagination with offset skips files correctly."""
+    svc = _make_github_service()
+
+    mock_files = [
+        _make_mock_pr_file(filename=f"file{i}.py", sha=f"sha{i}") for i in range(5)
+    ]
+    mock_pr = _make_mock_pr(
+        number=6,
+        title="Paginated PR",
+        changed_files=5,
+        files=mock_files,
+    )
+
+    mock_repo = MagicMock()
+    mock_repo.get_pull.return_value = mock_pr
+    svc.github.get_repo.return_value = mock_repo
+
+    result = svc.get_pr_diff("test-org/test-repo", 6, max_files=2, offset=2)
+
+    assert result["files_returned"] == 2
+    assert result["offset"] == 2
+    assert result["total_files"] == 5
+    assert result["files"][0]["filename"] == "file2.py"
+    assert result["files"][1]["filename"] == "file3.py"
+    assert result["truncated"] is True
+
+
+def test_get_pr_diff_offset_past_end():
+    """Test offset beyond available files returns empty list."""
+    svc = _make_github_service()
+
+    mock_files = [
+        _make_mock_pr_file(filename=f"file{i}.py", sha=f"sha{i}") for i in range(3)
+    ]
+    mock_pr = _make_mock_pr(
+        number=7,
+        title="Offset past end",
+        changed_files=3,
+        files=mock_files,
+    )
+
+    mock_repo = MagicMock()
+    mock_repo.get_pull.return_value = mock_pr
+    svc.github.get_repo.return_value = mock_repo
+
+    result = svc.get_pr_diff("test-org/test-repo", 7, max_files=10, offset=10)
+
+    assert result["files_returned"] == 0
+    assert result["files"] == []
+    assert result["offset"] == 10
+
+
 def test_get_pr_diff_no_previous_filename_when_none():
     """Test that previous_filename is omitted when not a rename."""
     svc = _make_github_service()
@@ -297,6 +350,102 @@ def test_get_pr_diff_empty_pr():
     assert result["files_returned"] == 0
     assert result["total_files"] == 0
     assert "truncated" not in result
+
+
+# -- search_issues pagination tests --
+
+
+def _make_mock_issue(number, title="Test issue"):
+    """Create a mock issue for search results."""
+    issue = MagicMock()
+    issue.number = number
+    issue.title = title
+    issue.body = f"Body of issue {number}"
+    issue.state = "open"
+    issue.locked = False
+    issue.author_association = "MEMBER"
+    issue.comments = 0
+    issue.repository.full_name = "test-org/test-repo"
+    issue.pull_request = None
+    issue.user.login = "testuser"
+    issue.assignees = []
+    issue.labels = []
+    issue.milestone = None
+    issue.created_at = datetime(2026, 1, 1, tzinfo=UTC)
+    issue.updated_at = datetime(2026, 1, 2, tzinfo=UTC)
+    issue.closed_at = None
+    issue.html_url = f"https://github.com/test-org/test-repo/issues/{number}"
+    return issue
+
+
+@pytest.mark.unit
+def test_search_issues_returns_total_count():
+    """Test that search_issues returns total_count and items structure."""
+    svc = _make_github_service()
+
+    mock_issues = [_make_mock_issue(i) for i in range(3)]
+    paginated = MagicMock()
+    paginated.totalCount = 3
+    paginated.__iter__ = MagicMock(return_value=iter(mock_issues))
+    svc.github.search_issues.return_value = paginated
+
+    result = svc.search_issues("is:issue repo:test-org/test-repo")
+
+    assert result["total_count"] == 3
+    assert result["offset"] == 0
+    assert result["limit"] == 50
+    assert len(result["items"]) == 3
+
+
+@pytest.mark.unit
+def test_search_issues_with_offset():
+    """Test that search_issues skips items when offset is set."""
+    svc = _make_github_service()
+
+    mock_issues = [_make_mock_issue(i) for i in range(5)]
+    paginated = MagicMock()
+    paginated.totalCount = 5
+    paginated.__iter__ = MagicMock(return_value=iter(mock_issues))
+    svc.github.search_issues.return_value = paginated
+
+    result = svc.search_issues("is:issue", max_results=2, offset=2)
+
+    assert result["total_count"] == 5
+    assert result["offset"] == 2
+    assert result["limit"] == 2
+    assert len(result["items"]) == 2
+    assert result["items"][0]["number"] == 2
+    assert result["items"][1]["number"] == 3
+
+
+# -- _get_comments pagination tests --
+
+
+def _make_mock_comment(comment_id, body="comment"):
+    """Create a mock comment object."""
+    comment = MagicMock()
+    comment.id = comment_id
+    comment.user.login = "commenter"
+    comment.body = body
+    comment.created_at = datetime(2026, 1, 1, tzinfo=UTC)
+    comment.updated_at = datetime(2026, 1, 2, tzinfo=UTC)
+    return comment
+
+
+@pytest.mark.unit
+def test_get_comments_with_offset():
+    """Test that _get_comments skips comments when offset is set."""
+    svc = _make_github_service()
+
+    mock_comments = [_make_mock_comment(i, f"comment {i}") for i in range(5)]
+    mock_issue = MagicMock()
+    mock_issue.get_comments.return_value = iter(mock_comments)
+
+    result = svc._get_comments(mock_issue, max_comments=2, offset=2)
+
+    assert len(result) == 2
+    assert result[0]["id"] == 2
+    assert result[1]["id"] == 3
 
 
 # -- rate limit tests --

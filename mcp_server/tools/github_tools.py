@@ -57,6 +57,13 @@ def register_github_tools(mcp: FastMCP) -> None:
                 le=200,
             ),
         ] = 50,
+        offset: Annotated[
+            int,
+            Field(
+                description="Number of results to skip for pagination (default: 0)",
+                ge=0,
+            ),
+        ] = 0,
     ) -> str:
         """Search GitHub issues and pull requests using GitHub search query syntax.
 
@@ -127,31 +134,37 @@ def register_github_tools(mcp: FastMCP) -> None:
 
         ## Returned Data
 
-        The tool returns a JSON array containing issue/PR data with:
-        - **number**: Issue/PR number
-        - **title**: Title/summary
-        - **state**: Current state (open, closed)
-        - **repository**: Repository full name (owner/repo)
-        - **type**: Either "issue" or "pull_request"
-        - **author**: Creator username
-        - **assignees**: List of assigned usernames
-        - **labels**: List of label names
-        - **created_at**: Creation timestamp
-        - **updated_at**: Last update timestamp
-        - **closed_at**: Close timestamp (if closed)
-        - **url**: Direct link to the issue/PR
+        The tool returns a JSON object containing:
+        - **total_count**: Total number of matching results
+        - **offset**: Number of results skipped
+        - **limit**: Maximum results requested
+        - **items**: Array of issue/PR data, each with:
+          - **number**: Issue/PR number
+          - **title**: Title/summary
+          - **state**: Current state (open, closed)
+          - **repository**: Repository full name (owner/repo)
+          - **type**: Either "issue" or "pull_request"
+          - **author**: Creator username
+          - **assignees**: List of assigned usernames
+          - **labels**: List of label names
+          - **created_at**: Creation timestamp
+          - **updated_at**: Last update timestamp
+          - **closed_at**: Close timestamp (if closed)
+          - **url**: Direct link to the issue/PR
+
+        Use offset and max_results to paginate through large result sets.
 
         Returns:
-            JSON string with array of issue/PR data
+            JSON string with total_count and items array
         """
         try:
             # Initialize GitHub service
             github_service = GitHubService()
 
             # Search issues
-            issues = github_service.search_issues(query, max_results)
+            results = github_service.search_issues(query, max_results, offset)
 
-            return json.dumps(issues, indent=2)
+            return json.dumps(results, indent=2)
 
         except Exception as e:
             return json.dumps({"error": str(e)}, indent=2)
@@ -176,6 +189,13 @@ def register_github_tools(mcp: FastMCP) -> None:
                 le=50,
             ),
         ] = 10,
+        comment_offset: Annotated[
+            int,
+            Field(
+                description="Number of comments to skip for pagination (default: 0)",
+                ge=0,
+            ),
+        ] = 0,
     ) -> str:
         """Get comprehensive GitHub issue or pull request data including comments.
 
@@ -221,8 +241,11 @@ def register_github_tools(mcp: FastMCP) -> None:
         - **updated_at**: Last update timestamp
         - **closed_at**: Close timestamp (if closed)
         - **url**: Direct link to the issue/PR
-        - **comments**: Recent comments with author, body, timestamps
+        - **total_comments**: Total number of comments on the issue/PR
+        - **comments**: Comments with author, body, timestamps (paginated)
         - **pull_request_data**: (PR only) merge status, branches, file changes
+
+        Use comment_offset and max_comments to paginate through comments.
 
         Returns:
             JSON string with comprehensive issue/PR data
@@ -236,7 +259,7 @@ def register_github_tools(mcp: FastMCP) -> None:
 
             # Get issue/PR data
             issue_data = github_service.get_issue(
-                normalized_repo, issue_number, max_comments
+                normalized_repo, issue_number, max_comments, comment_offset
             )
 
             return json.dumps(issue_data, indent=2)
@@ -361,6 +384,13 @@ def register_github_tools(mcp: FastMCP) -> None:
                 le=500,
             ),
         ] = 100,
+        offset: Annotated[
+            int,
+            Field(
+                description="Number of files to skip for pagination (default: 0)",
+                ge=0,
+            ),
+        ] = 0,
     ) -> str:
         """Get the diff/patch for a GitHub pull request.
 
@@ -408,8 +438,11 @@ def register_github_tools(mcp: FastMCP) -> None:
           - **previous_filename**: Previous path (only for renames)
         - **files_returned**: Number of files included in response
         - **total_files**: Total number of files changed in the PR
-        - **truncated**: Whether the file list was truncated (only present if true)
+        - **offset**: Number of files skipped
+        - **truncated**: Whether more files remain (only present if true)
         - **truncation_message**: Message about truncation (only present if truncated)
+
+        Use offset and max_files to paginate through files in large PRs.
 
         Returns:
             JSON string with PR diff data
@@ -418,7 +451,7 @@ def register_github_tools(mcp: FastMCP) -> None:
             normalized_repo = validate_repo_name(repo)
             github_service = GitHubService()
             pr_diff = github_service.get_pr_diff(
-                normalized_repo, pull_number, max_files
+                normalized_repo, pull_number, max_files, offset
             )
             return json.dumps(pr_diff, indent=2)
 
