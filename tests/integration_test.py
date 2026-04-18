@@ -63,9 +63,9 @@ async def test_date(mcp_client):
     assert not result.is_error
 
     data = parse_response(result)
-    assert "today" in data and data["today"] == datetime.date.today().strftime(
-        "%Y-%m-%d"
-    )
+    assert "today" in data and data["today"] == datetime.datetime.now(
+        datetime.UTC
+    ).date().strftime("%Y-%m-%d")
 
     # Test now tool
     result = await mcp_client.call_tool("now", {})
