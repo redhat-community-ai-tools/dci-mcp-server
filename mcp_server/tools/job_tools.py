@@ -32,7 +32,7 @@ def register_job_tools(mcp: FastMCP) -> None:
         query: Annotated[
             str,
             Field(
-                description="search criteria (e.g., ((components.type='ocp') and (components.version='4.19.0')) and ((components.type='storage') and (components.name='my-storage'))"
+                description="search criteria (e.g., (((components.type='ocp') and (components.version='4.19.0')) and ((components.type='storage') and (components.name='my-storage'))))"
             ),
         ],
         sort: Annotated[
@@ -44,8 +44,8 @@ def register_job_tools(mcp: FastMCP) -> None:
         limit: Annotated[
             int,
             Field(
-                description="Page size: max job rows in the response `hits` array (default 20, max 200). For a cheap global count, use limit=1 with minimal fields and read the match count from `total` (integer, or `total['value']` if `total` is an object).",
-                ge=1,
+                description="Page size: max job rows in the response `hits` array (default 20, max 200). Use limit=0 with aggs to get only aggregation results (no job documents). For a cheap global count, use limit=1 with minimal fields and read the match count from `total` (integer, or `total['value']` if `total` is an object).",
+                ge=0,
                 le=200,
             ),
         ] = 20,
@@ -62,6 +62,12 @@ def register_job_tools(mcp: FastMCP) -> None:
                 description="List of fields to return. Fields are the one listed in the query description and responses. Must be specified as a list of strings, you can use 'components.name' or 'topic.id' to get only nested fields. If empty, no fields are returned.",
             ),
         ] = [],
+        aggs: Annotated[
+            dict | None,
+            Field(
+                description="ElasticSearch 7.16 aggregation JSON (dict). Use this when the user asks for statistics, counts, trends, or aggregated data instead of individual job documents. When provided, response includes 'aggregations' field. Use limit=0 for optimal bandwidth (only aggregation results, no job documents)."
+            ),
+        ] = None,
     ) -> str:
         """Search DCI (Distributed CI) job documents from Elasticsearch.
 
@@ -70,10 +76,26 @@ def register_job_tools(mcp: FastMCP) -> None:
 
         ## ⚠️ COMMON MISTAKES TO AVOID
 
-        ### 1. ALWAYS wrap conditions in parentheses
-        - ❌ `status='failure'` → INVALID
-        - ✅ `(status='failure')` → VALID
-        - ✅ `((status='failure') and (tags in ['daily']))` → VALID
+        ### 1. ALWAYS wrap conditions in parentheses - CRITICAL RULE
+        Each condition MUST be wrapped in parentheses. When combining conditions with AND/OR, add EXTRA parentheses to group them.
+
+        **Single condition:**
+        - ❌ `status='failure'` → INVALID (no parentheses)
+        - ✅ `(status='failure')` → VALID (wrapped)
+
+        **Two conditions (AND/OR):**
+        - ❌ `(status='failure') and (tags in ['daily'])` → INVALID (missing outer parentheses)
+        - ✅ `((status='failure') and (tags in ['daily']))` → VALID (each condition + outer grouping)
+
+        **Three or more conditions:**
+        - ❌ `((status='failure') and (created_at>='2024-01-01') and (duration>=1000))` → MAY FAIL
+        - ✅ `(((status='failure') and (created_at>='2024-01-01')) and (duration>=1000))` → VALID (proper grouping)
+        - ✅ `(((tests.testsuites.testcases.action='failure') and (nodes.hardware.cpu_vendor='Intel')) and (created_at>='2024-01-01'))` → VALID (complex nested fields)
+
+        **Rule of thumb:** Count your conditions. If N conditions, you need N pairs of parentheses PLUS (N-1) grouping pairs.
+        - 1 condition = 1 pair: `(field='value')`
+        - 2 conditions = 3 pairs: `((cond1) and (cond2))`
+        - 3 conditions = 5 pairs: `(((cond1) and (cond2)) and (cond3))`
 
         ### 2. NEVER use `=` for dates
         - ❌ `created_at='2024-01-15'` → INVALID
@@ -88,8 +110,7 @@ def register_job_tools(mcp: FastMCP) -> None:
 
         ### 4. Multiple components = separate conditions with AND
         - ❌ `(components.type in ['ocp', 'storage'])` → Finds jobs with OCP OR storage
-        - ✅ `((components.type='ocp') and (components.version='4.19.0')) and ((components.type='storage') and (components.name='ceph'))` → Finds jobs with
-        OCP 4.19.0 AND Ceph storage
+        - ✅ `(((components.type='ocp') and (components.version='4.19.0')) and ((components.type='storage') and (components.name='ceph')))` → Finds jobs with OCP 4.19.0 AND Ceph storage
 
         ### 5. Specify necessary fields
         - ❌ `fields=[]` → No data returned (only metadata)
@@ -116,14 +137,18 @@ def register_job_tools(mcp: FastMCP) -> None:
         - `and`, `or` - combine criteria
         - `()` - group criteria with parentheses (ALWAYS REQUIRED)
 
-        **Examples:**
+        **Simple Examples (1-2 conditions):**
+        - Single condition: `(remoteci.name='telco-cilab-bos2')`
         - Failing daily jobs: `((tags in ['daily']) and (status in ['failure', 'error']))`
         - OpenShift 4.19 jobs: `((components.type='ocp') and (components.version='4.19.0'))`
         - Jobs with workarounds: `((keys_values.key='workarounds') and (keys_values.value>0))`
-        - OpenShift jobs using 4.?.* versions: `((components.type='ocp') and (components.version=~'4.1?.*'))`
-        - Jobs in specific lab: `(remoteci.name='telco-cilab-bos2')`
-        - Jobs by team: `(team.name='openshift-team')`
-        - Jobs in date range: `((created_at>='2024-09-16') and (created_at<='2025-09-20'))`
+        - Date range: `((created_at>='2024-09-16') and (created_at<='2025-09-20'))`
+
+        **Complex Examples (3+ conditions - note the extra grouping parentheses):**
+        - Success jobs in date range: `(((status='success') and (created_at>='2024-01-01')) and (duration>=1000))`
+        - Failed test with specific firmware: `(((tests.testsuites.testcases.name=~'PTP.*') and (tests.testsuites.testcases.action='failure')) and (nodes.hardware.network_interfaces.firmware_version='2.50'))`
+        - Multiple criteria: `(((tags in ['daily']) and (status='failure')) and (created_at>='2024-01-01'))`
+        - Nested fields combo: `(((components.type='ocp') and (components.version=~'4.1?.*')) and (team.name='my-team'))`
 
         ## Available Fields
 
@@ -150,7 +175,7 @@ def register_job_tools(mcp: FastMCP) -> None:
         - Component types: `ocp` (OpenShift), `storage`, `cnf`, `hwcert`
         - Build tags: `build:ga` (GA release), `build:candidate` (RC), `build:dev` (EC), `build:nightly`
         - Example: `((components.type='ocp') and (components.version='4.19.0'))`
-        - Multiple components: `((components.type='ocp') and (components.version='4.19.0')) and ((components.type='storage') and (components.name='ceph'))`
+        - Multiple components: `(((components.type='ocp') and (components.version='4.19.0')) and ((components.type='storage') and (components.name='ceph')))`
 
         **Infrastructure:**
         - `remoteci.(name, id)`: lab/environment where job ran (prefer remoteci.name)
@@ -207,7 +232,7 @@ def register_job_tools(mcp: FastMCP) -> None:
         - Actions: `run` (success), `skip` (skipped), `error` (error), `failure` (failed)
         - Types: `junit`, `robot`
         - Examples:
-        - All jobs with at least 1 failed test: `((tests.testsuites.testcases.action='failure'))`
+        - All jobs with at least 1 failed test: `(tests.testsuites.testcases.action='failure')`
         - Failed tests in specific suite file: `((tests.name='test_suite.xml') and (tests.testsuites.testcases.action='failure'))`
         - Specific test by name: `((tests.testsuites.testcases.name='test_install') and (tests.testsuites.testcases.action='failure'))`
         - Test matching pattern: `((tests.testsuites.testcases.name=~'.*43336-V-BR.*') and (tests.testsuites.testcases.action='success'))`
@@ -222,17 +247,117 @@ def register_job_tools(mcp: FastMCP) -> None:
 
         ## Common Use Cases
 
-        **Find Failing Jobs:** `((status in ['failure', 'error']))`
-        **Daily Jobs:** `((tags in ['daily']))`
+        **Find Failing Jobs:** `(status in ['failure', 'error'])`
+        **Daily Jobs:** `(tags in ['daily'])`
         **OpenShift Jobs:** `(product.name='OpenShift')`
-        **OpenShift Install Jobs:** `((tags in ['agent:openshift']))`
-        **OpenShift Application/Workload Jobs:** `((tags in ['agent:openshift-app']))`
+        **OpenShift Install Jobs:** `(tags in ['agent:openshift'])`
+        **OpenShift Application/Workload Jobs:** `(tags in ['agent:openshift-app'])`
         **Jobs with Specific Component Version:** `((components.type='ocp') and (components.version='4.19.0'))`
-        **Jobs with Multiple Components:** `((components.type='ocp') and (components.version='4.19.0')) and ((components.type='storage') and
-        (components.name='ceph'))`
+        **Jobs with Multiple Components:** `(((components.type='ocp') and (components.version='4.19.0')) and ((components.type='storage') and (components.name='ceph')))`
         **Jobs by Date Range:** `((created_at>='2024-09-16') and (created_at<='2025-09-16'))`
         **Jobs with Specific Metrics:** `((keys_values.key='install_time') and (keys_values.value>3600))`
         **Compare Jobs:** Look for jobs with same `name`, `topic`, `remoteci`, `configuration`, and `url`
+
+        ## ElasticSearch Aggregations (for Statistics & Analysis)
+
+        **When to use aggregations (aggs parameter):**
+        - User asks for counts, statistics, trends, distributions, or averages
+        - Examples: "How many jobs failed?", "Show daily trend", "Average duration", "Count by status"
+        - Aggregations compute stats server-side (much faster than fetching all documents)
+        - Use `limit=0` with aggregations to get only stats (no job documents returned)
+
+        **Aggregation syntax (ElasticSearch 7.16):**
+        The aggs parameter takes a dict with this structure: `{"aggs": {"<agg_name>": {"<agg_type>": {...}}}}`
+
+        **Simple field aggregations (keyword, date, numeric fields):**
+        - Terms (group by): `{"aggs": {"by_status": {"terms": {"field": "status", "size": 10}}}}`
+        - Date histogram: `{"aggs": {"daily": {"date_histogram": {"field": "created_at", "calendar_interval": "day"}}}}`
+        - Stats (avg, min, max, sum): `{"aggs": {"duration_stats": {"stats": {"field": "duration"}}}}`
+        - Count: `{"aggs": {"total": {"value_count": {"field": "id"}}}}`
+
+        **Nested field aggregations (components, tests, team, remoteci, pipeline, topic, files, keys_values, nodes):**
+        Nested fields require special nested aggregation syntax:
+        - Step 1: Wrap in nested aggregation with path
+        - Step 2: Add filter or terms aggregation inside
+        - Example for components.version:
+          ```
+          {"aggs": {
+            "components_agg": {
+              "nested": {"path": "components"},
+              "aggs": {
+                "ocp_only": {
+                  "filter": {"term": {"components.type": "ocp"}},
+                  "aggs": {
+                    "versions": {"terms": {"field": "components.version", "size": 50}}
+                  }
+                }
+              }
+            }
+          }}
+          ```
+
+        **Triple-nested: tests.testsuites.testcases (test results):**
+        Test data requires three levels of nested aggregations:
+        ```
+        {"aggs": {
+          "tests_agg": {
+            "nested": {"path": "tests"},
+            "aggs": {
+              "testsuites_agg": {
+                "nested": {"path": "tests.testsuites"},
+                "aggs": {
+                  "testcases_agg": {
+                    "nested": {"path": "tests.testsuites.testcases"},
+                    "aggs": {
+                      "by_action": {"terms": {"field": "tests.testsuites.testcases.action"}}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }}
+        ```
+
+        **Available aggregation fields by type:**
+        - **Simple fields** (direct aggregation): status, tags, team_id, remoteci_id, pipeline_id, topic_id, product_id, created_at, updated_at, duration, state, name
+        - **Nested fields** (need nested agg):
+          - components: type, name, version, tags, canonical_project_name
+          - tests → testsuites → testcases: name, action (success/failure/error/skip), classname, time, type
+          - team: id, name, state, external, has_pre_release_access
+          - remoteci: id, name, state, public
+          - pipeline: id, name, state
+          - topic: id, name, component_types, export_control
+          - files: id, name, mime, size, state
+          - keys_values: key, value
+          - nodes → hardware: (nested within nested)
+          - nodes → kernel: (nested within nested)
+
+        **Common aggregation patterns:**
+        - "How many jobs by status?" → `{"aggs": {"by_status": {"terms": {"field": "status"}}}}`
+        - "Daily job count last week" → `{"aggs": {"daily": {"date_histogram": {"field": "created_at", "calendar_interval": "day"}}}}`
+        - "Average job duration" → `{"aggs": {"avg_duration": {"avg": {"field": "duration"}}}}`
+        - "Count by team" → `{"aggs": {"by_team": {"terms": {"field": "team_id"}}}}`
+        - "OCP version distribution" → Use nested aggregation on components (see example above)
+        - "Test failure rate" → Use triple-nested aggregation on tests.testsuites.testcases (see example above)
+
+        **Combining aggregations with sub-aggregations:**
+        You can nest aggregations for multi-dimensional analysis:
+        ```
+        {"aggs": {
+          "daily": {
+            "date_histogram": {"field": "created_at", "calendar_interval": "day"},
+            "aggs": {
+              "by_status": {"terms": {"field": "status"}},
+              "avg_duration": {"avg": {"field": "duration"}}
+            }
+          }
+        }}
+        ```
+
+        **Response format with aggregations:**
+        When aggregations are provided, the response includes an "aggregations" field with the computed statistics.
+        The "hits" field will contain 1 job document (auto-set when aggs provided), or more if limit is explicitly set higher.
 
         ## Function Parameters
 
@@ -327,6 +452,7 @@ def register_job_tools(mcp: FastMCP) -> None:
                 limit=limit,
                 offset=offset,
                 includes=includes,
+                aggs=aggs,
             )
 
             # manage error message from the service
@@ -334,6 +460,33 @@ def register_job_tools(mcp: FastMCP) -> None:
                 return json.dumps(
                     {"error": result.get("message", "Unknown error")}, indent=2
                 )
+
+            # If aggregations were requested, return both aggregations and hits
+            if aggs is not None:
+                response = {}
+                if "aggregations" in result:
+                    response["aggregations"] = result["aggregations"]
+                if "hits" in result and "hits" in result["hits"]:
+                    if isinstance(fields, list):
+                        if fields:
+                            # Server already filtered fields; extract _source from ES hits
+                            response["hits"] = [
+                                hit["_source"]
+                                for hit in result["hits"]["hits"]
+                                if "_source" in hit
+                            ]
+                        else:
+                            # If fields is empty, return no jobs
+                            response["hits"] = []
+                    else:
+                        response["hits"] = result["hits"]["hits"]
+                    response["total"] = result["hits"].get("total", 0)
+                else:
+                    response["hits"] = []
+                    response["total"] = 0
+                return json.dumps(response, indent=2)
+
+            # Regular search (no aggregations)
             # manage empty result
             if "hits" not in result or "hits" not in result["hits"]:
                 return json.dumps({"hits": []}, indent=2)

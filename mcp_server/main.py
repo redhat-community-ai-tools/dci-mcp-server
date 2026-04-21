@@ -21,6 +21,7 @@ from fastmcp import FastMCP
 
 from .config import has_dci_credentials, validate_required_config
 from .prompts.prompts import register_prompts
+from .resources.es_mapping import register_es_mapping_resource
 from .tools.component_tools import register_component_tools
 from .tools.date_tools import register_date_tools
 from .tools.file_tools import register_file_tools
@@ -67,6 +68,8 @@ def create_server() -> FastMCP:
         register_file_tools(mcp)
         register_team_tools(mcp)
         register_remoteci_tools(mcp)
+        # Register ES mapping resource for aggregation queries
+        register_es_mapping_resource(mcp)
 
     # Register Jira tools only when credentials are set
     if os.getenv("JIRA_API_TOKEN"):
