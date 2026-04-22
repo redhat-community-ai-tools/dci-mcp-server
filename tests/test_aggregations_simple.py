@@ -55,7 +55,7 @@ async def test_status_aggregation(mcp_client):
         {
             "query": "(created_at>='2026-01-01')",
             "limit": 1,
-            "aggs": {"aggs": {"by_status": {"terms": {"field": "status", "size": 10}}}},
+            "aggs": {"by_status": {"terms": {"field": "status", "size": 10}}},
         },
     )
     assert not result.is_error
@@ -88,7 +88,7 @@ async def test_duration_stats_aggregation(mcp_client):
         {
             "query": "((status='success') and (created_at>='2026-01-01'))",
             "limit": 1,
-            "aggs": {"aggs": {"duration_stats": {"stats": {"field": "duration"}}}},
+            "aggs": {"duration_stats": {"stats": {"field": "duration"}}},
         },
     )
     assert not result.is_error
@@ -115,12 +115,10 @@ async def test_date_histogram_daily(mcp_client):
             "query": "((created_at>='2026-04-01') and (created_at<'2026-04-08'))",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "daily": {
-                        "date_histogram": {
-                            "field": "created_at",
-                            "calendar_interval": "day",
-                        }
+                "daily": {
+                    "date_histogram": {
+                        "field": "created_at",
+                        "calendar_interval": "day",
                     }
                 }
             },
@@ -154,12 +152,10 @@ async def test_date_histogram_weekly(mcp_client):
             "query": "(created_at>='2026-03-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "weekly": {
-                        "date_histogram": {
-                            "field": "created_at",
-                            "calendar_interval": "week",
-                        }
+                "weekly": {
+                    "date_histogram": {
+                        "field": "created_at",
+                        "calendar_interval": "week",
                     }
                 }
             },
@@ -188,7 +184,7 @@ async def test_tags_aggregation(mcp_client):
         {
             "query": "(created_at>='2026-01-01')",
             "limit": 1,
-            "aggs": {"aggs": {"by_tags": {"terms": {"field": "tags", "size": 20}}}},
+            "aggs": {"by_tags": {"terms": {"field": "tags", "size": 20}}},
         },
     )
     assert not result.is_error
@@ -216,7 +212,7 @@ async def test_team_id_aggregation(mcp_client):
         {
             "query": "(created_at>='2026-01-01')",
             "limit": 1,
-            "aggs": {"aggs": {"by_team": {"terms": {"field": "team_id", "size": 20}}}},
+            "aggs": {"by_team": {"terms": {"field": "team_id", "size": 20}}},
         },
     )
     assert not result.is_error
@@ -245,11 +241,9 @@ async def test_multi_aggregation_simple_fields(mcp_client):
             "query": "(created_at>='2026-04-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "by_status": {"terms": {"field": "status", "size": 10}},
-                    "duration_stats": {"stats": {"field": "duration"}},
-                    "by_tags": {"terms": {"field": "tags", "size": 15}},
-                }
+                "by_status": {"terms": {"field": "status", "size": 10}},
+                "duration_stats": {"stats": {"field": "duration"}},
+                "by_tags": {"terms": {"field": "tags", "size": 15}},
             },
         },
     )
@@ -278,14 +272,12 @@ async def test_sub_aggregation_status_with_duration(mcp_client):
             "query": "(created_at>='2026-04-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "by_status": {
-                        "terms": {"field": "status", "size": 10},
-                        "aggs": {
-                            "avg_duration": {"avg": {"field": "duration"}},
-                            "total_count": {"value_count": {"field": "id"}},
-                        },
-                    }
+                "by_status": {
+                    "terms": {"field": "status", "size": 10},
+                    "aggs": {
+                        "avg_duration": {"avg": {"field": "duration"}},
+                        "total_count": {"value_count": {"field": "id"}},
+                    },
                 }
             },
         },
@@ -318,17 +310,15 @@ async def test_daily_trend_with_status_breakdown(mcp_client):
             "query": "((created_at>='2026-04-01') and (created_at<'2026-04-15'))",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "daily": {
-                        "date_histogram": {
-                            "field": "created_at",
-                            "calendar_interval": "day",
-                        },
-                        "aggs": {
-                            "by_status": {"terms": {"field": "status"}},
-                            "avg_duration": {"avg": {"field": "duration"}},
-                        },
-                    }
+                "daily": {
+                    "date_histogram": {
+                        "field": "created_at",
+                        "calendar_interval": "day",
+                    },
+                    "aggs": {
+                        "by_status": {"terms": {"field": "status"}},
+                        "avg_duration": {"avg": {"field": "duration"}},
+                    },
                 }
             },
         },
@@ -362,11 +352,9 @@ async def test_filter_aggregation_success_only(mcp_client):
             "query": "(created_at>='2026-04-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "success_only": {
-                        "filter": {"term": {"status": "success"}},
-                        "aggs": {"duration_stats": {"stats": {"field": "duration"}}},
-                    }
+                "success_only": {
+                    "filter": {"term": {"status": "success"}},
+                    "aggs": {"duration_stats": {"stats": {"field": "duration"}}},
                 }
             },
         },
@@ -393,12 +381,10 @@ async def test_percentiles_aggregation(mcp_client):
             "query": "((status='success') and (created_at>='2026-04-01'))",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "duration_percentiles": {
-                        "percentiles": {
-                            "field": "duration",
-                            "percents": [50, 90, 95, 99],
-                        }
+                "duration_percentiles": {
+                    "percentiles": {
+                        "field": "duration",
+                        "percents": [50, 90, 95, 99],
                     }
                 }
             },

@@ -56,30 +56,26 @@ async def test_test_results_by_action(mcp_client):
             "query": "(created_at>='2026-04-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "test_results": {
-                        "nested": {"path": "tests"},
-                        "aggs": {
-                            "testsuites": {
-                                "nested": {"path": "tests.testsuites"},
-                                "aggs": {
-                                    "testcases": {
-                                        "nested": {
-                                            "path": "tests.testsuites.testcases"
-                                        },
-                                        "aggs": {
-                                            "by_action": {
-                                                "terms": {
-                                                    "field": "tests.testsuites.testcases.action",
-                                                    "size": 10,
-                                                }
+                "test_results": {
+                    "nested": {"path": "tests"},
+                    "aggs": {
+                        "testsuites": {
+                            "nested": {"path": "tests.testsuites"},
+                            "aggs": {
+                                "testcases": {
+                                    "nested": {"path": "tests.testsuites.testcases"},
+                                    "aggs": {
+                                        "by_action": {
+                                            "terms": {
+                                                "field": "tests.testsuites.testcases.action",
+                                                "size": 10,
                                             }
-                                        },
-                                    }
-                                },
-                            }
-                        },
-                    }
+                                        }
+                                    },
+                                }
+                            },
+                        }
+                    },
                 }
             },
         },
@@ -121,29 +117,25 @@ async def test_test_execution_time_stats(mcp_client):
             "query": "(created_at>='2026-04-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "test_performance": {
-                        "nested": {"path": "tests"},
-                        "aggs": {
-                            "testsuites": {
-                                "nested": {"path": "tests.testsuites"},
-                                "aggs": {
-                                    "testcases": {
-                                        "nested": {
-                                            "path": "tests.testsuites.testcases"
-                                        },
-                                        "aggs": {
-                                            "time_stats": {
-                                                "stats": {
-                                                    "field": "tests.testsuites.testcases.time"
-                                                }
+                "test_performance": {
+                    "nested": {"path": "tests"},
+                    "aggs": {
+                        "testsuites": {
+                            "nested": {"path": "tests.testsuites"},
+                            "aggs": {
+                                "testcases": {
+                                    "nested": {"path": "tests.testsuites.testcases"},
+                                    "aggs": {
+                                        "time_stats": {
+                                            "stats": {
+                                                "field": "tests.testsuites.testcases.time"
                                             }
-                                        },
-                                    }
-                                },
-                            }
-                        },
-                    }
+                                        }
+                                    },
+                                }
+                            },
+                        }
+                    },
                 }
             },
         },
@@ -176,39 +168,35 @@ async def test_top_failing_tests(mcp_client):
             "query": "(created_at>='2026-04-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "failing_tests": {
-                        "nested": {"path": "tests"},
-                        "aggs": {
-                            "testsuites": {
-                                "nested": {"path": "tests.testsuites"},
-                                "aggs": {
-                                    "testcases": {
-                                        "nested": {
-                                            "path": "tests.testsuites.testcases"
-                                        },
-                                        "aggs": {
-                                            "failures_only": {
-                                                "filter": {
-                                                    "term": {
-                                                        "tests.testsuites.testcases.action": "failure"
+                "failing_tests": {
+                    "nested": {"path": "tests"},
+                    "aggs": {
+                        "testsuites": {
+                            "nested": {"path": "tests.testsuites"},
+                            "aggs": {
+                                "testcases": {
+                                    "nested": {"path": "tests.testsuites.testcases"},
+                                    "aggs": {
+                                        "failures_only": {
+                                            "filter": {
+                                                "term": {
+                                                    "tests.testsuites.testcases.action": "failure"
+                                                }
+                                            },
+                                            "aggs": {
+                                                "top_tests": {
+                                                    "terms": {
+                                                        "field": "tests.testsuites.testcases.name",
+                                                        "size": 20,
                                                     }
-                                                },
-                                                "aggs": {
-                                                    "top_tests": {
-                                                        "terms": {
-                                                            "field": "tests.testsuites.testcases.name",
-                                                            "size": 20,
-                                                        }
-                                                    }
-                                                },
-                                            }
-                                        },
-                                    }
-                                },
-                            }
-                        },
-                    }
+                                                }
+                                            },
+                                        }
+                                    },
+                                }
+                            },
+                        }
+                    },
                 }
             },
         },
@@ -239,32 +227,28 @@ async def test_test_suite_statistics(mcp_client):
             "query": "(created_at>='2026-04-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "test_suites": {
-                        "nested": {"path": "tests"},
-                        "aggs": {
-                            "suites": {
-                                "nested": {"path": "tests.testsuites"},
-                                "aggs": {
-                                    "total_errors": {
-                                        "sum": {"field": "tests.testsuites.errors"}
-                                    },
-                                    "total_failures": {
-                                        "sum": {"field": "tests.testsuites.failures"}
-                                    },
-                                    "total_success": {
-                                        "sum": {"field": "tests.testsuites.success"}
-                                    },
-                                    "total_skipped": {
-                                        "sum": {"field": "tests.testsuites.skipped"}
-                                    },
-                                    "avg_time": {
-                                        "avg": {"field": "tests.testsuites.time"}
-                                    },
+                "test_suites": {
+                    "nested": {"path": "tests"},
+                    "aggs": {
+                        "suites": {
+                            "nested": {"path": "tests.testsuites"},
+                            "aggs": {
+                                "total_errors": {
+                                    "sum": {"field": "tests.testsuites.errors"}
                                 },
-                            }
-                        },
-                    }
+                                "total_failures": {
+                                    "sum": {"field": "tests.testsuites.failures"}
+                                },
+                                "total_success": {
+                                    "sum": {"field": "tests.testsuites.success"}
+                                },
+                                "total_skipped": {
+                                    "sum": {"field": "tests.testsuites.skipped"}
+                                },
+                                "avg_time": {"avg": {"field": "tests.testsuites.time"}},
+                            },
+                        }
+                    },
                 }
             },
         },
@@ -293,42 +277,36 @@ async def test_test_results_with_job_status(mcp_client):
             "query": "(created_at>='2026-04-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "test_results": {
-                        "nested": {"path": "tests"},
-                        "aggs": {
-                            "testsuites": {
-                                "nested": {"path": "tests.testsuites"},
-                                "aggs": {
-                                    "testcases": {
-                                        "nested": {
-                                            "path": "tests.testsuites.testcases"
-                                        },
-                                        "aggs": {
-                                            "by_action": {
-                                                "terms": {
-                                                    "field": "tests.testsuites.testcases.action",
-                                                    "size": 10,
-                                                },
-                                                "aggs": {
-                                                    "back_to_jobs": {
-                                                        "reverse_nested": {},
-                                                        "aggs": {
-                                                            "by_status": {
-                                                                "terms": {
-                                                                    "field": "status"
-                                                                }
-                                                            }
-                                                        },
-                                                    }
-                                                },
-                                            }
-                                        },
-                                    }
-                                },
-                            }
-                        },
-                    }
+                "test_results": {
+                    "nested": {"path": "tests"},
+                    "aggs": {
+                        "testsuites": {
+                            "nested": {"path": "tests.testsuites"},
+                            "aggs": {
+                                "testcases": {
+                                    "nested": {"path": "tests.testsuites.testcases"},
+                                    "aggs": {
+                                        "by_action": {
+                                            "terms": {
+                                                "field": "tests.testsuites.testcases.action",
+                                                "size": 10,
+                                            },
+                                            "aggs": {
+                                                "back_to_jobs": {
+                                                    "reverse_nested": {},
+                                                    "aggs": {
+                                                        "by_status": {
+                                                            "terms": {"field": "status"}
+                                                        }
+                                                    },
+                                                }
+                                            },
+                                        }
+                                    },
+                                }
+                            },
+                        }
+                    },
                 }
             },
         },
@@ -362,30 +340,26 @@ async def test_test_classname_distribution(mcp_client):
             "query": "(created_at>='2026-04-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "test_classes": {
-                        "nested": {"path": "tests"},
-                        "aggs": {
-                            "testsuites": {
-                                "nested": {"path": "tests.testsuites"},
-                                "aggs": {
-                                    "testcases": {
-                                        "nested": {
-                                            "path": "tests.testsuites.testcases"
-                                        },
-                                        "aggs": {
-                                            "by_classname": {
-                                                "terms": {
-                                                    "field": "tests.testsuites.testcases.classname",
-                                                    "size": 30,
-                                                }
+                "test_classes": {
+                    "nested": {"path": "tests"},
+                    "aggs": {
+                        "testsuites": {
+                            "nested": {"path": "tests.testsuites"},
+                            "aggs": {
+                                "testcases": {
+                                    "nested": {"path": "tests.testsuites.testcases"},
+                                    "aggs": {
+                                        "by_classname": {
+                                            "terms": {
+                                                "field": "tests.testsuites.testcases.classname",
+                                                "size": 30,
                                             }
-                                        },
-                                    }
-                                },
-                            }
-                        },
-                    }
+                                        }
+                                    },
+                                }
+                            },
+                        }
+                    },
                 }
             },
         },
@@ -412,30 +386,26 @@ async def test_test_type_distribution(mcp_client):
             "query": "(created_at>='2026-04-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "test_types": {
-                        "nested": {"path": "tests"},
-                        "aggs": {
-                            "testsuites": {
-                                "nested": {"path": "tests.testsuites"},
-                                "aggs": {
-                                    "testcases": {
-                                        "nested": {
-                                            "path": "tests.testsuites.testcases"
-                                        },
-                                        "aggs": {
-                                            "by_type": {
-                                                "terms": {
-                                                    "field": "tests.testsuites.testcases.type",
-                                                    "size": 20,
-                                                }
+                "test_types": {
+                    "nested": {"path": "tests"},
+                    "aggs": {
+                        "testsuites": {
+                            "nested": {"path": "tests.testsuites"},
+                            "aggs": {
+                                "testcases": {
+                                    "nested": {"path": "tests.testsuites.testcases"},
+                                    "aggs": {
+                                        "by_type": {
+                                            "terms": {
+                                                "field": "tests.testsuites.testcases.type",
+                                                "size": 20,
                                             }
-                                        },
-                                    }
-                                },
-                            }
-                        },
-                    }
+                                        }
+                                    },
+                                }
+                            },
+                        }
+                    },
                 }
             },
         },
@@ -456,23 +426,21 @@ async def test_testsuite_name_distribution(mcp_client):
             "query": "(created_at>='2026-04-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "suite_names": {
-                        "nested": {"path": "tests"},
-                        "aggs": {
-                            "testsuites": {
-                                "nested": {"path": "tests.testsuites"},
-                                "aggs": {
-                                    "by_name": {
-                                        "terms": {
-                                            "field": "tests.testsuites.name",
-                                            "size": 30,
-                                        }
+                "suite_names": {
+                    "nested": {"path": "tests"},
+                    "aggs": {
+                        "testsuites": {
+                            "nested": {"path": "tests.testsuites"},
+                            "aggs": {
+                                "by_name": {
+                                    "terms": {
+                                        "field": "tests.testsuites.name",
+                                        "size": 30,
                                     }
-                                },
-                            }
-                        },
-                    }
+                                }
+                            },
+                        }
+                    },
                 }
             },
         },
@@ -495,43 +463,37 @@ async def test_combined_test_metrics(mcp_client):
             "query": "(created_at>='2026-04-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "test_metrics": {
-                        "nested": {"path": "tests"},
-                        "aggs": {
-                            "testsuites": {
-                                "nested": {"path": "tests.testsuites"},
-                                "aggs": {
-                                    "suite_count": {
-                                        "value_count": {
-                                            "field": "tests.testsuites.name"
-                                        }
-                                    },
-                                    "total_tests": {
-                                        "sum": {"field": "tests.testsuites.tests"}
-                                    },
-                                    "testcases": {
-                                        "nested": {
-                                            "path": "tests.testsuites.testcases"
+                "test_metrics": {
+                    "nested": {"path": "tests"},
+                    "aggs": {
+                        "testsuites": {
+                            "nested": {"path": "tests.testsuites"},
+                            "aggs": {
+                                "suite_count": {
+                                    "value_count": {"field": "tests.testsuites.name"}
+                                },
+                                "total_tests": {
+                                    "sum": {"field": "tests.testsuites.tests"}
+                                },
+                                "testcases": {
+                                    "nested": {"path": "tests.testsuites.testcases"},
+                                    "aggs": {
+                                        "by_action": {
+                                            "terms": {
+                                                "field": "tests.testsuites.testcases.action",
+                                                "size": 10,
+                                            }
                                         },
-                                        "aggs": {
-                                            "by_action": {
-                                                "terms": {
-                                                    "field": "tests.testsuites.testcases.action",
-                                                    "size": 10,
-                                                }
-                                            },
-                                            "avg_time": {
-                                                "avg": {
-                                                    "field": "tests.testsuites.testcases.time"
-                                                }
-                                            },
+                                        "avg_time": {
+                                            "avg": {
+                                                "field": "tests.testsuites.testcases.time"
+                                            }
                                         },
                                     },
                                 },
-                            }
-                        },
-                    }
+                            },
+                        }
+                    },
                 }
             },
         },

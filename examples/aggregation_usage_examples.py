@@ -12,7 +12,7 @@ instead of fetching all job documents.
 search_dci_jobs_example_1 = {
     "query": "((created_at>='2026-03-01') and (created_at<'2026-04-01'))",
     "limit": 1,  # Minimal job documents, focus on aggregation stats
-    "aggs": {"aggs": {"by_status": {"terms": {"field": "status", "size": 10}}}},
+    "aggs": {"by_status": {"terms": {"field": "status", "size": 10}}},
 }
 
 # Expected response:
@@ -37,14 +37,12 @@ search_dci_jobs_example_2 = {
     "query": "((created_at>='2026-04-13'))",
     "limit": 1,
     "aggs": {
-        "aggs": {
-            "daily": {
-                "date_histogram": {"field": "created_at", "calendar_interval": "day"},
-                "aggs": {
-                    "by_status": {"terms": {"field": "status"}},
-                    "avg_duration": {"avg": {"field": "duration"}},
-                },
-            }
+        "daily": {
+            "date_histogram": {"field": "created_at", "calendar_interval": "day"},
+            "aggs": {
+                "by_status": {"terms": {"field": "status"}},
+                "avg_duration": {"avg": {"field": "duration"}},
+            },
         }
     },
 }
@@ -78,20 +76,18 @@ search_dci_jobs_example_3 = {
     "query": "((tags in ['daily']))",
     "limit": 1,
     "aggs": {
-        "aggs": {
-            "components_agg": {
-                "nested": {"path": "components"},
-                "aggs": {
-                    "ocp_only": {
-                        "filter": {"term": {"components.type": "ocp"}},
-                        "aggs": {
-                            "versions": {
-                                "terms": {"field": "components.version", "size": 50}
-                            }
-                        },
-                    }
-                },
-            }
+        "components_agg": {
+            "nested": {"path": "components"},
+            "aggs": {
+                "ocp_only": {
+                    "filter": {"term": {"components.type": "ocp"}},
+                    "aggs": {
+                        "versions": {
+                            "terms": {"field": "components.version", "size": 50}
+                        }
+                    },
+                }
+            },
         }
     },
 }
@@ -120,33 +116,29 @@ search_dci_jobs_example_4 = {
     "query": "((tags in ['daily']) and (created_at>='2026-04-01'))",
     "limit": 1,
     "aggs": {
-        "aggs": {
-            "test_results": {
-                "nested": {"path": "tests"},
-                "aggs": {
-                    "testsuites": {
-                        "nested": {"path": "tests.testsuites"},
-                        "aggs": {
-                            "testcases": {
-                                "nested": {"path": "tests.testsuites.testcases"},
-                                "aggs": {
-                                    "by_action": {
-                                        "terms": {
-                                            "field": "tests.testsuites.testcases.action",
-                                            "size": 10,
-                                        }
-                                    },
-                                    "avg_time": {
-                                        "avg": {
-                                            "field": "tests.testsuites.testcases.time"
-                                        }
-                                    },
+        "test_results": {
+            "nested": {"path": "tests"},
+            "aggs": {
+                "testsuites": {
+                    "nested": {"path": "tests.testsuites"},
+                    "aggs": {
+                        "testcases": {
+                            "nested": {"path": "tests.testsuites.testcases"},
+                            "aggs": {
+                                "by_action": {
+                                    "terms": {
+                                        "field": "tests.testsuites.testcases.action",
+                                        "size": 10,
+                                    }
                                 },
-                            }
-                        },
-                    }
-                },
-            }
+                                "avg_time": {
+                                    "avg": {"field": "tests.testsuites.testcases.time"}
+                                },
+                            },
+                        }
+                    },
+                }
+            },
         }
     },
 }
@@ -179,21 +171,19 @@ search_dci_jobs_example_5 = {
     "query": "((created_at>='2026-03-01'))",
     "limit": 1,
     "aggs": {
-        "aggs": {
-            "by_team": {
-                "terms": {"field": "team_id", "size": 20},
-                "aggs": {
-                    "avg_duration": {"avg": {"field": "duration"}},
-                    "success_rate": {
+        "by_team": {
+            "terms": {"field": "team_id", "size": 20},
+            "aggs": {
+                "avg_duration": {"avg": {"field": "duration"}},
+                "success_rate": {
+                    "filters": {
                         "filters": {
-                            "filters": {
-                                "success": {"term": {"status": "success"}},
-                                "failure": {"terms": {"status": ["failure", "error"]}},
-                            }
+                            "success": {"term": {"status": "success"}},
+                            "failure": {"terms": {"status": ["failure", "error"]}},
                         }
-                    },
+                    }
                 },
-            }
+            },
         }
     },
 }
@@ -205,12 +195,10 @@ search_dci_jobs_example_6 = {
     "query": "((status='success') and (created_at>='2026-04-01'))",
     "limit": 1,
     "aggs": {
-        "aggs": {
-            "duration_stats": {"stats": {"field": "duration"}},
-            "duration_percentiles": {
-                "percentiles": {"field": "duration", "percents": [50, 90, 95, 99]}
-            },
-        }
+        "duration_stats": {"stats": {"field": "duration"}},
+        "duration_percentiles": {
+            "percentiles": {"field": "duration", "percents": [50, 90, 95, 99]}
+        },
     },
 }
 
@@ -243,9 +231,7 @@ search_dci_jobs_example_7 = {
     "limit": 1,  # Get the latest failed job
     "fields": ["id", "name", "status", "status_reason", "created_at"],
     "sort": "-created_at",
-    "aggs": {
-        "aggs": {"failure_reasons": {"terms": {"field": "status_reason", "size": 20}}}
-    },
+    "aggs": {"failure_reasons": {"terms": {"field": "status_reason", "size": 20}}},
 }
 
 # Response includes both hits (1 job) and aggregations (stats)

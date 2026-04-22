@@ -65,8 +65,8 @@ class DCIJobService(DCIBaseService):
             if includes is not None:
                 kwargs["includes"] = includes
             if aggs is not None:
-                # Serialize aggregation dict to JSON string for json-aggs parameter
-                kwargs["json-aggs"] = json.dumps(aggs)
+                # Wrap in {"aggs": ...} as expected by dci-control-server
+                kwargs["json-aggs"] = json.dumps({"aggs": aggs})
             return job.search(context, **kwargs).json()
         except Exception as e:
             return {"error": str(e), "message": "Failed to list jobs."}

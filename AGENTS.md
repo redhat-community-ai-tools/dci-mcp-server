@@ -63,7 +63,7 @@ The `search_dci_jobs` tool supports ElasticSearch 7.16 aggregations for efficien
 **When to use aggregations:**
 - User asks for statistics, counts, trends, or distributions (not individual job documents)
 - Examples: "How many jobs failed?", "Show daily trend", "Average duration", "Count by OCP version"
-- Set `limit=0` when using aggregations to save bandwidth (only get stats, not documents)
+- Set `limit=1` with `fields=['id']` when using aggregations to minimize bandwidth (limit=0 is auto-set to 1 since the DCI server requires limit >= 1)
 
 **Resources available:**
 - **ES Mapping Resource**: `dci://elasticsearch/mapping` - Full ElasticSearch mapping showing field types and nested structures

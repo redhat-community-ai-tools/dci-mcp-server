@@ -69,23 +69,21 @@ async def test_uc1_weekly_failure_analysis(mcp_client):
             "query": f"((status in ['failure', 'error']) and (created_at>='{start_date}'))",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "total_failures": {"value_count": {"field": "id"}},
-                    "by_pipeline": {
-                        "nested": {"path": "pipeline"},
-                        "aggs": {
-                            "names": {"terms": {"field": "pipeline.name", "size": 20}}
-                        },
+                "total_failures": {"value_count": {"field": "id"}},
+                "by_pipeline": {
+                    "nested": {"path": "pipeline"},
+                    "aggs": {
+                        "names": {"terms": {"field": "pipeline.name", "size": 20}}
                     },
-                    "daily_trend": {
-                        "date_histogram": {
-                            "field": "created_at",
-                            "calendar_interval": "day",
-                        },
-                        "aggs": {"by_status": {"terms": {"field": "status"}}},
+                },
+                "daily_trend": {
+                    "date_histogram": {
+                        "field": "created_at",
+                        "calendar_interval": "day",
                     },
-                    "duration_stats": {"stats": {"field": "duration"}},
-                }
+                    "aggs": {"by_status": {"terms": {"field": "status"}}},
+                },
+                "duration_stats": {"stats": {"field": "duration"}},
             },
         },
     )
@@ -134,57 +132,55 @@ async def test_uc2_component_adoption_tracking(mcp_client):
             "query": "(created_at>='2026-03-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "components_agg": {
-                        "nested": {"path": "components"},
-                        "aggs": {
-                            "ocp_416": {
-                                "filter": {
-                                    "bool": {
-                                        "must": [
-                                            {"term": {"components.type": "ocp"}},
-                                            {"prefix": {"components.version": "4.16"}},
-                                        ]
-                                    }
-                                },
-                                "aggs": {
-                                    "versions": {
-                                        "terms": {
-                                            "field": "components.version",
-                                            "size": 20,
-                                        },
-                                        "aggs": {
-                                            "back_to_jobs": {
-                                                "reverse_nested": {},
-                                                "aggs": {
-                                                    "by_status": {
-                                                        "terms": {"field": "status"}
-                                                    },
-                                                    "by_team": {
-                                                        "nested": {"path": "team"},
-                                                        "aggs": {
-                                                            "names": {
-                                                                "terms": {
-                                                                    "field": "team.name",
-                                                                    "size": 20,
-                                                                }
+                "components_agg": {
+                    "nested": {"path": "components"},
+                    "aggs": {
+                        "ocp_416": {
+                            "filter": {
+                                "bool": {
+                                    "must": [
+                                        {"term": {"components.type": "ocp"}},
+                                        {"prefix": {"components.version": "4.16"}},
+                                    ]
+                                }
+                            },
+                            "aggs": {
+                                "versions": {
+                                    "terms": {
+                                        "field": "components.version",
+                                        "size": 20,
+                                    },
+                                    "aggs": {
+                                        "back_to_jobs": {
+                                            "reverse_nested": {},
+                                            "aggs": {
+                                                "by_status": {
+                                                    "terms": {"field": "status"}
+                                                },
+                                                "by_team": {
+                                                    "nested": {"path": "team"},
+                                                    "aggs": {
+                                                        "names": {
+                                                            "terms": {
+                                                                "field": "team.name",
+                                                                "size": 20,
                                                             }
-                                                        },
-                                                    },
-                                                    "weekly_trend": {
-                                                        "date_histogram": {
-                                                            "field": "created_at",
-                                                            "calendar_interval": "week",
                                                         }
                                                     },
                                                 },
-                                            }
-                                        },
-                                    }
-                                },
-                            }
-                        },
-                    }
+                                                "weekly_trend": {
+                                                    "date_histogram": {
+                                                        "field": "created_at",
+                                                        "calendar_interval": "week",
+                                                    }
+                                                },
+                                            },
+                                        }
+                                    },
+                                }
+                            },
+                        }
+                    },
                 }
             },
         },
@@ -237,38 +233,32 @@ async def test_uc3_performance_monitoring(mcp_client):
             "query": "((status='success') and (created_at>='2026-04-01') and (duration>=7200))",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "slow_jobs_count": {"value_count": {"field": "id"}},
-                    "duration_stats": {"stats": {"field": "duration"}},
-                    "by_pipeline": {
-                        "nested": {"path": "pipeline"},
-                        "aggs": {
-                            "names": {
-                                "terms": {"field": "pipeline.name", "size": 20},
-                                "aggs": {
-                                    "back_to_jobs": {
-                                        "reverse_nested": {},
-                                        "aggs": {
-                                            "avg_duration": {
-                                                "avg": {"field": "duration"}
-                                            },
-                                            "max_duration": {
-                                                "max": {"field": "duration"}
-                                            },
-                                        },
-                                    }
-                                },
-                            }
-                        },
+                "slow_jobs_count": {"value_count": {"field": "id"}},
+                "duration_stats": {"stats": {"field": "duration"}},
+                "by_pipeline": {
+                    "nested": {"path": "pipeline"},
+                    "aggs": {
+                        "names": {
+                            "terms": {"field": "pipeline.name", "size": 20},
+                            "aggs": {
+                                "back_to_jobs": {
+                                    "reverse_nested": {},
+                                    "aggs": {
+                                        "avg_duration": {"avg": {"field": "duration"}},
+                                        "max_duration": {"max": {"field": "duration"}},
+                                    },
+                                }
+                            },
+                        }
                     },
-                    "weekly_trend": {
-                        "date_histogram": {
-                            "field": "created_at",
-                            "calendar_interval": "week",
-                        },
-                        "aggs": {"avg_duration": {"avg": {"field": "duration"}}},
+                },
+                "weekly_trend": {
+                    "date_histogram": {
+                        "field": "created_at",
+                        "calendar_interval": "week",
                     },
-                }
+                    "aggs": {"avg_duration": {"avg": {"field": "duration"}}},
+                },
             },
         },
     )
@@ -304,36 +294,34 @@ async def test_uc4_daily_jobs_health_dashboard(mcp_client):
             "query": "((tags in ['daily']) and (created_at>='2026-03-20'))",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "total_count": {"value_count": {"field": "id"}},
-                    "by_status": {"terms": {"field": "status", "size": 10}},
-                    "by_pipeline": {
-                        "nested": {"path": "pipeline"},
-                        "aggs": {
-                            "names": {
-                                "terms": {"field": "pipeline.name", "size": 30},
-                                "aggs": {
-                                    "back_to_jobs": {
-                                        "reverse_nested": {},
-                                        "aggs": {
-                                            "by_status": {"terms": {"field": "status"}}
-                                        },
-                                    }
-                                },
-                            }
-                        },
+                "total_count": {"value_count": {"field": "id"}},
+                "by_status": {"terms": {"field": "status", "size": 10}},
+                "by_pipeline": {
+                    "nested": {"path": "pipeline"},
+                    "aggs": {
+                        "names": {
+                            "terms": {"field": "pipeline.name", "size": 30},
+                            "aggs": {
+                                "back_to_jobs": {
+                                    "reverse_nested": {},
+                                    "aggs": {
+                                        "by_status": {"terms": {"field": "status"}}
+                                    },
+                                }
+                            },
+                        }
                     },
-                    "daily_trend": {
-                        "date_histogram": {
-                            "field": "created_at",
-                            "calendar_interval": "day",
-                        },
-                        "aggs": {
-                            "by_status": {"terms": {"field": "status"}},
-                            "avg_duration": {"avg": {"field": "duration"}},
-                        },
+                },
+                "daily_trend": {
+                    "date_histogram": {
+                        "field": "created_at",
+                        "calendar_interval": "day",
                     },
-                }
+                    "aggs": {
+                        "by_status": {"terms": {"field": "status"}},
+                        "avg_duration": {"avg": {"field": "duration"}},
+                    },
+                },
             },
         },
     )
@@ -369,29 +357,25 @@ async def test_uc5_infrastructure_utilization(mcp_client):
             "query": "(created_at>='2026-04-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "by_remoteci": {
-                        "nested": {"path": "remoteci"},
-                        "aggs": {
-                            "names": {
-                                "terms": {"field": "remoteci.name", "size": 50},
-                                "aggs": {
-                                    "back_to_jobs": {
-                                        "reverse_nested": {},
-                                        "aggs": {
-                                            "by_status": {"terms": {"field": "status"}},
-                                            "avg_duration": {
-                                                "avg": {"field": "duration"}
-                                            },
-                                            "total_duration": {
-                                                "sum": {"field": "duration"}
-                                            },
+                "by_remoteci": {
+                    "nested": {"path": "remoteci"},
+                    "aggs": {
+                        "names": {
+                            "terms": {"field": "remoteci.name", "size": 50},
+                            "aggs": {
+                                "back_to_jobs": {
+                                    "reverse_nested": {},
+                                    "aggs": {
+                                        "by_status": {"terms": {"field": "status"}},
+                                        "avg_duration": {"avg": {"field": "duration"}},
+                                        "total_duration": {
+                                            "sum": {"field": "duration"}
                                         },
-                                    }
-                                },
-                            }
-                        },
-                    }
+                                    },
+                                }
+                            },
+                        }
+                    },
                 }
             },
         },
@@ -432,25 +416,23 @@ async def test_uc6_component_combination_analysis(mcp_client):
             "query": "((components.type='ocp') and (created_at>='2026-04-01'))",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "components_agg": {
-                        "nested": {"path": "components"},
-                        "aggs": {
-                            "by_type": {
-                                "terms": {"field": "components.type", "size": 20},
-                                "aggs": {
-                                    "versions": {
-                                        "terms": {
-                                            "field": "components.version",
-                                            "size": 10,
-                                        }
+                "components_agg": {
+                    "nested": {"path": "components"},
+                    "aggs": {
+                        "by_type": {
+                            "terms": {"field": "components.type", "size": 20},
+                            "aggs": {
+                                "versions": {
+                                    "terms": {
+                                        "field": "components.version",
+                                        "size": 10,
                                     }
-                                },
-                            }
-                        },
+                                }
+                            },
+                        }
                     },
-                    "by_status": {"terms": {"field": "status"}},
-                }
+                },
+                "by_status": {"terms": {"field": "status"}},
             },
         },
     )

@@ -44,7 +44,7 @@ def register_job_tools(mcp: FastMCP) -> None:
         limit: Annotated[
             int,
             Field(
-                description="Page size: max job rows in the response `hits` array (default 20, max 200). Use limit=0 with aggs to get only aggregation results (no job documents). For a cheap global count, use limit=1 with minimal fields and read the match count from `total` (integer, or `total['value']` if `total` is an object).",
+                description="Page size: max job rows in the response `hits` array (default 20, max 200). When using aggregations, limit is auto-set to 1 if 0 (DCI server requires limit >= 1 for aggregations). For a cheap global count, use limit=1 with minimal fields and read the match count from `total` (integer, or `total['value']` if `total` is an object).",
                 ge=0,
                 le=200,
             ),
@@ -65,7 +65,7 @@ def register_job_tools(mcp: FastMCP) -> None:
         aggs: Annotated[
             dict | None,
             Field(
-                description="ElasticSearch 7.16 aggregation JSON (dict). Use this when the user asks for statistics, counts, trends, or aggregated data instead of individual job documents. When provided, response includes 'aggregations' field. Use limit=0 for optimal bandwidth (only aggregation results, no job documents)."
+                description="ElasticSearch 7.16 aggregation JSON (dict). Use this when the user asks for statistics, counts, trends, or aggregated data instead of individual job documents. When provided, response includes 'aggregations' field. Set limit=1 with fields=['id'] for minimal bandwidth (1 job document + aggregation results)."
             ),
         ] = None,
     ) -> str:
@@ -264,16 +264,16 @@ def register_job_tools(mcp: FastMCP) -> None:
         - User asks for counts, statistics, trends, distributions, or averages
         - Examples: "How many jobs failed?", "Show daily trend", "Average duration", "Count by status"
         - Aggregations compute stats server-side (much faster than fetching all documents)
-        - Use `limit=0` with aggregations to get only stats (no job documents returned)
+        - Use `limit=1` with `fields=['id']` for aggregations to minimize bandwidth (limit=0 is auto-set to 1)
 
         **Aggregation syntax (ElasticSearch 7.16):**
-        The aggs parameter takes a dict with this structure: `{"aggs": {"<agg_name>": {"<agg_type>": {...}}}}`
+        The aggs parameter takes a dict with aggregation definitions: `{"<agg_name>": {"<agg_type>": {...}}}`
 
         **Simple field aggregations (keyword, date, numeric fields):**
-        - Terms (group by): `{"aggs": {"by_status": {"terms": {"field": "status", "size": 10}}}}`
-        - Date histogram: `{"aggs": {"daily": {"date_histogram": {"field": "created_at", "calendar_interval": "day"}}}}`
-        - Stats (avg, min, max, sum): `{"aggs": {"duration_stats": {"stats": {"field": "duration"}}}}`
-        - Count: `{"aggs": {"total": {"value_count": {"field": "id"}}}}`
+        - Terms (group by): `{"by_status": {"terms": {"field": "status", "size": 10}}}`
+        - Date histogram: `{"daily": {"date_histogram": {"field": "created_at", "calendar_interval": "day"}}}`
+        - Stats (avg, min, max, sum): `{"duration_stats": {"stats": {"field": "duration"}}}`
+        - Count: `{"total": {"value_count": {"field": "id"}}}`
 
         **Nested field aggregations (components, tests, team, remoteci, pipeline, topic, files, keys_values, nodes):**
         Nested fields require special nested aggregation syntax:
@@ -281,7 +281,7 @@ def register_job_tools(mcp: FastMCP) -> None:
         - Step 2: Add filter or terms aggregation inside
         - Example for components.version:
           ```
-          {"aggs": {
+          {
             "components_agg": {
               "nested": {"path": "components"},
               "aggs": {
@@ -293,13 +293,13 @@ def register_job_tools(mcp: FastMCP) -> None:
                 }
               }
             }
-          }}
+          }
           ```
 
         **Triple-nested: tests.testsuites.testcases (test results):**
         Test data requires three levels of nested aggregations:
         ```
-        {"aggs": {
+        {
           "tests_agg": {
             "nested": {"path": "tests"},
             "aggs": {
@@ -316,7 +316,7 @@ def register_job_tools(mcp: FastMCP) -> None:
               }
             }
           }
-        }}
+        }
         ```
 
         **Available aggregation fields by type:**
@@ -334,17 +334,17 @@ def register_job_tools(mcp: FastMCP) -> None:
           - nodes → kernel: (nested within nested)
 
         **Common aggregation patterns:**
-        - "How many jobs by status?" → `{"aggs": {"by_status": {"terms": {"field": "status"}}}}`
-        - "Daily job count last week" → `{"aggs": {"daily": {"date_histogram": {"field": "created_at", "calendar_interval": "day"}}}}`
-        - "Average job duration" → `{"aggs": {"avg_duration": {"avg": {"field": "duration"}}}}`
-        - "Count by team" → `{"aggs": {"by_team": {"terms": {"field": "team_id"}}}}`
+        - "How many jobs by status?" → `{"by_status": {"terms": {"field": "status"}}}`
+        - "Daily job count last week" → `{"daily": {"date_histogram": {"field": "created_at", "calendar_interval": "day"}}}`
+        - "Average job duration" → `{"avg_duration": {"avg": {"field": "duration"}}}`
+        - "Count by team" → `{"by_team": {"terms": {"field": "team_id"}}}`
         - "OCP version distribution" → Use nested aggregation on components (see example above)
         - "Test failure rate" → Use triple-nested aggregation on tests.testsuites.testcases (see example above)
 
         **Combining aggregations with sub-aggregations:**
         You can nest aggregations for multi-dimensional analysis:
         ```
-        {"aggs": {
+        {
           "daily": {
             "date_histogram": {"field": "created_at", "calendar_interval": "day"},
             "aggs": {
@@ -352,7 +352,7 @@ def register_job_tools(mcp: FastMCP) -> None:
               "avg_duration": {"avg": {"field": "duration"}}
             }
           }
-        }}
+        }
         ```
 
         **Response format with aggregations:**
@@ -442,6 +442,10 @@ def register_job_tools(mcp: FastMCP) -> None:
         """
         try:
             service = DCIJobService()
+
+            # DCI server requires limit >= 1 to return aggregations
+            if aggs is not None and limit == 0:
+                limit = 1
 
             # Convert fields list to server-side includes parameter
             includes = ",".join(fields) if fields else None

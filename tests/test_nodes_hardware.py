@@ -56,23 +56,21 @@ async def test_cpu_vendor_aggregation(mcp_client):
             "query": "(created_at>='2026-01-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "nodes_agg": {
-                        "nested": {"path": "nodes"},
-                        "aggs": {
-                            "hardware": {
-                                "nested": {"path": "nodes.hardware"},
-                                "aggs": {
-                                    "cpu_vendors": {
-                                        "terms": {
-                                            "field": "nodes.hardware.cpu_vendor",
-                                            "size": 10,
-                                        }
+                "nodes_agg": {
+                    "nested": {"path": "nodes"},
+                    "aggs": {
+                        "hardware": {
+                            "nested": {"path": "nodes.hardware"},
+                            "aggs": {
+                                "cpu_vendors": {
+                                    "terms": {
+                                        "field": "nodes.hardware.cpu_vendor",
+                                        "size": 10,
                                     }
-                                },
-                            }
-                        },
-                    }
+                                }
+                            },
+                        }
+                    },
                 }
             },
         },
@@ -95,23 +93,21 @@ async def test_cpu_model_distribution(mcp_client):
             "query": "(created_at>='2026-01-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "nodes_agg": {
-                        "nested": {"path": "nodes"},
-                        "aggs": {
-                            "hardware": {
-                                "nested": {"path": "nodes.hardware"},
-                                "aggs": {
-                                    "cpu_models": {
-                                        "terms": {
-                                            "field": "nodes.hardware.cpu_model",
-                                            "size": 20,
-                                        }
+                "nodes_agg": {
+                    "nested": {"path": "nodes"},
+                    "aggs": {
+                        "hardware": {
+                            "nested": {"path": "nodes.hardware"},
+                            "aggs": {
+                                "cpu_models": {
+                                    "terms": {
+                                        "field": "nodes.hardware.cpu_model",
+                                        "size": 20,
                                     }
-                                },
-                            }
-                        },
-                    }
+                                }
+                            },
+                        }
+                    },
                 }
             },
         },
@@ -134,22 +130,18 @@ async def test_memory_size_statistics(mcp_client):
             "query": "(created_at>='2026-01-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "nodes_agg": {
-                        "nested": {"path": "nodes"},
-                        "aggs": {
-                            "hardware": {
-                                "nested": {"path": "nodes.hardware"},
-                                "aggs": {
-                                    "memory_stats": {
-                                        "stats": {
-                                            "field": "nodes.hardware.memory_total_gb"
-                                        }
-                                    }
-                                },
-                            }
-                        },
-                    }
+                "nodes_agg": {
+                    "nested": {"path": "nodes"},
+                    "aggs": {
+                        "hardware": {
+                            "nested": {"path": "nodes.hardware"},
+                            "aggs": {
+                                "memory_stats": {
+                                    "stats": {"field": "nodes.hardware.memory_total_gb"}
+                                }
+                            },
+                        }
+                    },
                 }
             },
         },
@@ -175,23 +167,21 @@ async def test_bios_vendor_distribution(mcp_client):
             "query": "(created_at>='2026-01-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "nodes_agg": {
-                        "nested": {"path": "nodes"},
-                        "aggs": {
-                            "hardware": {
-                                "nested": {"path": "nodes.hardware"},
-                                "aggs": {
-                                    "bios_vendors": {
-                                        "terms": {
-                                            "field": "nodes.hardware.bios_vendor",
-                                            "size": 15,
-                                        }
+                "nodes_agg": {
+                    "nested": {"path": "nodes"},
+                    "aggs": {
+                        "hardware": {
+                            "nested": {"path": "nodes.hardware"},
+                            "aggs": {
+                                "bios_vendors": {
+                                    "terms": {
+                                        "field": "nodes.hardware.bios_vendor",
+                                        "size": 15,
                                     }
-                                },
-                            }
-                        },
-                    }
+                                }
+                            },
+                        }
+                    },
                 }
             },
         },
@@ -214,28 +204,24 @@ async def test_cpu_cores_statistics(mcp_client):
             "query": "(created_at>='2026-01-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "nodes_agg": {
-                        "nested": {"path": "nodes"},
-                        "aggs": {
-                            "hardware": {
-                                "nested": {"path": "nodes.hardware"},
-                                "aggs": {
-                                    "cores_stats": {
-                                        "stats": {
-                                            "field": "nodes.hardware.cpu_total_cores"
-                                        }
-                                    },
-                                    "cores_distribution": {
-                                        "terms": {
-                                            "field": "nodes.hardware.cpu_total_cores",
-                                            "size": 20,
-                                        }
-                                    },
+                "nodes_agg": {
+                    "nested": {"path": "nodes"},
+                    "aggs": {
+                        "hardware": {
+                            "nested": {"path": "nodes.hardware"},
+                            "aggs": {
+                                "cores_stats": {
+                                    "stats": {"field": "nodes.hardware.cpu_total_cores"}
                                 },
-                            }
-                        },
-                    }
+                                "cores_distribution": {
+                                    "terms": {
+                                        "field": "nodes.hardware.cpu_total_cores",
+                                        "size": 20,
+                                    }
+                                },
+                            },
+                        }
+                    },
                 }
             },
         },
@@ -259,23 +245,21 @@ async def test_kernel_version_distribution(mcp_client):
             "query": "(created_at>='2026-01-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "nodes_agg": {
-                        "nested": {"path": "nodes"},
-                        "aggs": {
-                            "kernel": {
-                                "nested": {"path": "nodes.kernel"},
-                                "aggs": {
-                                    "versions": {
-                                        "terms": {
-                                            "field": "nodes.kernel.version",
-                                            "size": 30,
-                                        }
+                "nodes_agg": {
+                    "nested": {"path": "nodes"},
+                    "aggs": {
+                        "kernel": {
+                            "nested": {"path": "nodes.kernel"},
+                            "aggs": {
+                                "versions": {
+                                    "terms": {
+                                        "field": "nodes.kernel.version",
+                                        "size": 30,
                                     }
-                                },
-                            }
-                        },
-                    }
+                                }
+                            },
+                        }
+                    },
                 }
             },
         },
@@ -298,33 +282,31 @@ async def test_hardware_with_job_status(mcp_client):
             "query": "(created_at>='2026-04-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "nodes_agg": {
-                        "nested": {"path": "nodes"},
-                        "aggs": {
-                            "hardware": {
-                                "nested": {"path": "nodes.hardware"},
-                                "aggs": {
-                                    "cpu_vendors": {
-                                        "terms": {
-                                            "field": "nodes.hardware.cpu_vendor",
-                                            "size": 10,
-                                        },
-                                        "aggs": {
-                                            "back_to_jobs": {
-                                                "reverse_nested": {},
-                                                "aggs": {
-                                                    "by_status": {
-                                                        "terms": {"field": "status"}
-                                                    }
-                                                },
-                                            }
-                                        },
-                                    }
-                                },
-                            }
-                        },
-                    }
+                "nodes_agg": {
+                    "nested": {"path": "nodes"},
+                    "aggs": {
+                        "hardware": {
+                            "nested": {"path": "nodes.hardware"},
+                            "aggs": {
+                                "cpu_vendors": {
+                                    "terms": {
+                                        "field": "nodes.hardware.cpu_vendor",
+                                        "size": 10,
+                                    },
+                                    "aggs": {
+                                        "back_to_jobs": {
+                                            "reverse_nested": {},
+                                            "aggs": {
+                                                "by_status": {
+                                                    "terms": {"field": "status"}
+                                                }
+                                            },
+                                        }
+                                    },
+                                }
+                            },
+                        }
+                    },
                 }
             },
         },
@@ -354,44 +336,38 @@ async def test_combined_hardware_metrics(mcp_client):
             "query": "(created_at>='2026-04-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "nodes_agg": {
-                        "nested": {"path": "nodes"},
-                        "aggs": {
-                            "hardware": {
-                                "nested": {"path": "nodes.hardware"},
-                                "aggs": {
-                                    "cpu_vendors": {
-                                        "terms": {
-                                            "field": "nodes.hardware.cpu_vendor",
-                                            "size": 5,
-                                        }
-                                    },
-                                    "memory_stats": {
-                                        "stats": {
-                                            "field": "nodes.hardware.memory_total_gb"
-                                        }
-                                    },
-                                    "cores_avg": {
-                                        "avg": {
-                                            "field": "nodes.hardware.cpu_total_cores"
-                                        }
-                                    },
-                                },
-                            },
-                            "kernel": {
-                                "nested": {"path": "nodes.kernel"},
-                                "aggs": {
-                                    "versions": {
-                                        "terms": {
-                                            "field": "nodes.kernel.version",
-                                            "size": 10,
-                                        }
+                "nodes_agg": {
+                    "nested": {"path": "nodes"},
+                    "aggs": {
+                        "hardware": {
+                            "nested": {"path": "nodes.hardware"},
+                            "aggs": {
+                                "cpu_vendors": {
+                                    "terms": {
+                                        "field": "nodes.hardware.cpu_vendor",
+                                        "size": 5,
                                     }
+                                },
+                                "memory_stats": {
+                                    "stats": {"field": "nodes.hardware.memory_total_gb"}
+                                },
+                                "cores_avg": {
+                                    "avg": {"field": "nodes.hardware.cpu_total_cores"}
                                 },
                             },
                         },
-                    }
+                        "kernel": {
+                            "nested": {"path": "nodes.kernel"},
+                            "aggs": {
+                                "versions": {
+                                    "terms": {
+                                        "field": "nodes.kernel.version",
+                                        "size": 10,
+                                    }
+                                }
+                            },
+                        },
+                    },
                 }
             },
         },

@@ -237,10 +237,8 @@ async def test_pagination_with_aggregations(mcp_client):
             "limit": 5,
             "offset": 10,
             "aggs": {
-                "aggs": {
-                    "by_status": {"terms": {"field": "status", "size": 10}},
-                    "total_count": {"value_count": {"field": "id"}},
-                }
+                "by_status": {"terms": {"field": "status", "size": 10}},
+                "total_count": {"value_count": {"field": "id"}},
             },
         },
     )

@@ -56,13 +56,11 @@ async def test_components_type_aggregation(mcp_client):
             "query": "(created_at>='2026-01-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "component_types": {
-                        "nested": {"path": "components"},
-                        "aggs": {
-                            "types": {"terms": {"field": "components.type", "size": 20}}
-                        },
-                    }
+                "component_types": {
+                    "nested": {"path": "components"},
+                    "aggs": {
+                        "types": {"terms": {"field": "components.type", "size": 20}}
+                    },
                 }
             },
         },
@@ -95,23 +93,21 @@ async def test_ocp_version_distribution(mcp_client):
             "query": "(created_at>='2026-01-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "components_agg": {
-                        "nested": {"path": "components"},
-                        "aggs": {
-                            "ocp_only": {
-                                "filter": {"term": {"components.type": "ocp"}},
-                                "aggs": {
-                                    "versions": {
-                                        "terms": {
-                                            "field": "components.version",
-                                            "size": 50,
-                                        }
+                "components_agg": {
+                    "nested": {"path": "components"},
+                    "aggs": {
+                        "ocp_only": {
+                            "filter": {"term": {"components.type": "ocp"}},
+                            "aggs": {
+                                "versions": {
+                                    "terms": {
+                                        "field": "components.version",
+                                        "size": 50,
                                     }
-                                },
-                            }
-                        },
-                    }
+                                }
+                            },
+                        }
+                    },
                 }
             },
         },
@@ -143,13 +139,11 @@ async def test_component_names_aggregation(mcp_client):
             "query": "(created_at>='2026-04-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "component_names": {
-                        "nested": {"path": "components"},
-                        "aggs": {
-                            "names": {"terms": {"field": "components.name", "size": 30}}
-                        },
-                    }
+                "component_names": {
+                    "nested": {"path": "components"},
+                    "aggs": {
+                        "names": {"terms": {"field": "components.name", "size": 30}}
+                    },
                 }
             },
         },
@@ -175,13 +169,11 @@ async def test_component_tags_aggregation(mcp_client):
             "query": "(created_at>='2026-01-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "component_tags": {
-                        "nested": {"path": "components"},
-                        "aggs": {
-                            "tags": {"terms": {"field": "components.tags", "size": 30}}
-                        },
-                    }
+                "component_tags": {
+                    "nested": {"path": "components"},
+                    "aggs": {
+                        "tags": {"terms": {"field": "components.tags", "size": 30}}
+                    },
                 }
             },
         },
@@ -204,13 +196,9 @@ async def test_team_name_aggregation(mcp_client):
             "query": "(created_at>='2026-01-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "teams": {
-                        "nested": {"path": "team"},
-                        "aggs": {
-                            "by_name": {"terms": {"field": "team.name", "size": 30}}
-                        },
-                    }
+                "teams": {
+                    "nested": {"path": "team"},
+                    "aggs": {"by_name": {"terms": {"field": "team.name", "size": 30}}},
                 }
             },
         },
@@ -240,13 +228,11 @@ async def test_remoteci_name_aggregation(mcp_client):
             "query": "(created_at>='2026-01-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "remotecis": {
-                        "nested": {"path": "remoteci"},
-                        "aggs": {
-                            "by_name": {"terms": {"field": "remoteci.name", "size": 50}}
-                        },
-                    }
+                "remotecis": {
+                    "nested": {"path": "remoteci"},
+                    "aggs": {
+                        "by_name": {"terms": {"field": "remoteci.name", "size": 50}}
+                    },
                 }
             },
         },
@@ -272,13 +258,11 @@ async def test_pipeline_name_aggregation(mcp_client):
             "query": "(created_at>='2026-01-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "pipelines": {
-                        "nested": {"path": "pipeline"},
-                        "aggs": {
-                            "by_name": {"terms": {"field": "pipeline.name", "size": 50}}
-                        },
-                    }
+                "pipelines": {
+                    "nested": {"path": "pipeline"},
+                    "aggs": {
+                        "by_name": {"terms": {"field": "pipeline.name", "size": 50}}
+                    },
                 }
             },
         },
@@ -304,13 +288,9 @@ async def test_topic_name_aggregation(mcp_client):
             "query": "(created_at>='2026-01-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "topics": {
-                        "nested": {"path": "topic"},
-                        "aggs": {
-                            "by_name": {"terms": {"field": "topic.name", "size": 30}}
-                        },
-                    }
+                "topics": {
+                    "nested": {"path": "topic"},
+                    "aggs": {"by_name": {"terms": {"field": "topic.name", "size": 30}}},
                 }
             },
         },
@@ -336,13 +316,9 @@ async def test_files_mime_aggregation(mcp_client):
             "query": "(created_at>='2026-01-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "file_types": {
-                        "nested": {"path": "files"},
-                        "aggs": {
-                            "by_mime": {"terms": {"field": "files.mime", "size": 30}}
-                        },
-                    }
+                "file_types": {
+                    "nested": {"path": "files"},
+                    "aggs": {"by_mime": {"terms": {"field": "files.mime", "size": 30}}},
                 }
             },
         },
@@ -365,11 +341,9 @@ async def test_files_size_stats(mcp_client):
             "query": "(created_at>='2026-01-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "file_stats": {
-                        "nested": {"path": "files"},
-                        "aggs": {"size_stats": {"stats": {"field": "files.size"}}},
-                    }
+                "file_stats": {
+                    "nested": {"path": "files"},
+                    "aggs": {"size_stats": {"stats": {"field": "files.size"}}},
                 }
             },
         },
@@ -397,36 +371,34 @@ async def test_multi_nested_aggregations(mcp_client):
             "query": "(created_at>='2026-04-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "by_pipeline": {
-                        "nested": {"path": "pipeline"},
-                        "aggs": {
-                            "names": {"terms": {"field": "pipeline.name", "size": 20}}
-                        },
+                "by_pipeline": {
+                    "nested": {"path": "pipeline"},
+                    "aggs": {
+                        "names": {"terms": {"field": "pipeline.name", "size": 20}}
                     },
-                    "by_remoteci": {
-                        "nested": {"path": "remoteci"},
-                        "aggs": {
-                            "names": {"terms": {"field": "remoteci.name", "size": 20}}
-                        },
+                },
+                "by_remoteci": {
+                    "nested": {"path": "remoteci"},
+                    "aggs": {
+                        "names": {"terms": {"field": "remoteci.name", "size": 20}}
                     },
-                    "by_ocp_version": {
-                        "nested": {"path": "components"},
-                        "aggs": {
-                            "ocp_filter": {
-                                "filter": {"term": {"components.type": "ocp"}},
-                                "aggs": {
-                                    "versions": {
-                                        "terms": {
-                                            "field": "components.version",
-                                            "size": 20,
-                                        }
+                },
+                "by_ocp_version": {
+                    "nested": {"path": "components"},
+                    "aggs": {
+                        "ocp_filter": {
+                            "filter": {"term": {"components.type": "ocp"}},
+                            "aggs": {
+                                "versions": {
+                                    "terms": {
+                                        "field": "components.version",
+                                        "size": 20,
                                     }
-                                },
-                            }
-                        },
+                                }
+                            },
+                        }
                     },
-                }
+                },
             },
         },
     )
@@ -456,33 +428,31 @@ async def test_reverse_nested_components_to_status(mcp_client):
             "query": "(created_at>='2026-04-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "components_agg": {
-                        "nested": {"path": "components"},
-                        "aggs": {
-                            "ocp_versions": {
-                                "filter": {"term": {"components.type": "ocp"}},
-                                "aggs": {
-                                    "versions": {
-                                        "terms": {
-                                            "field": "components.version",
-                                            "size": 10,
-                                        },
-                                        "aggs": {
-                                            "back_to_jobs": {
-                                                "reverse_nested": {},
-                                                "aggs": {
-                                                    "by_status": {
-                                                        "terms": {"field": "status"}
-                                                    }
-                                                },
-                                            }
-                                        },
-                                    }
-                                },
-                            }
-                        },
-                    }
+                "components_agg": {
+                    "nested": {"path": "components"},
+                    "aggs": {
+                        "ocp_versions": {
+                            "filter": {"term": {"components.type": "ocp"}},
+                            "aggs": {
+                                "versions": {
+                                    "terms": {
+                                        "field": "components.version",
+                                        "size": 10,
+                                    },
+                                    "aggs": {
+                                        "back_to_jobs": {
+                                            "reverse_nested": {},
+                                            "aggs": {
+                                                "by_status": {
+                                                    "terms": {"field": "status"}
+                                                }
+                                            },
+                                        }
+                                    },
+                                }
+                            },
+                        }
+                    },
                 }
             },
         },
@@ -518,26 +488,22 @@ async def test_pipeline_with_status_subagg(mcp_client):
             "query": "(created_at>='2026-04-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "pipelines": {
-                        "nested": {"path": "pipeline"},
-                        "aggs": {
-                            "by_name": {
-                                "terms": {"field": "pipeline.name", "size": 10},
-                                "aggs": {
-                                    "back_to_jobs": {
-                                        "reverse_nested": {},
-                                        "aggs": {
-                                            "by_status": {"terms": {"field": "status"}},
-                                            "avg_duration": {
-                                                "avg": {"field": "duration"}
-                                            },
-                                        },
-                                    }
-                                },
-                            }
-                        },
-                    }
+                "pipelines": {
+                    "nested": {"path": "pipeline"},
+                    "aggs": {
+                        "by_name": {
+                            "terms": {"field": "pipeline.name", "size": 10},
+                            "aggs": {
+                                "back_to_jobs": {
+                                    "reverse_nested": {},
+                                    "aggs": {
+                                        "by_status": {"terms": {"field": "status"}},
+                                        "avg_duration": {"avg": {"field": "duration"}},
+                                    },
+                                }
+                            },
+                        }
+                    },
                 }
             },
         },
@@ -569,23 +535,21 @@ async def test_component_version_per_type(mcp_client):
             "query": "(created_at>='2026-04-01')",
             "limit": 1,
             "aggs": {
-                "aggs": {
-                    "components_agg": {
-                        "nested": {"path": "components"},
-                        "aggs": {
-                            "by_type": {
-                                "terms": {"field": "components.type", "size": 10},
-                                "aggs": {
-                                    "versions": {
-                                        "terms": {
-                                            "field": "components.version",
-                                            "size": 10,
-                                        }
+                "components_agg": {
+                    "nested": {"path": "components"},
+                    "aggs": {
+                        "by_type": {
+                            "terms": {"field": "components.type", "size": 10},
+                            "aggs": {
+                                "versions": {
+                                    "terms": {
+                                        "field": "components.version",
+                                        "size": 10,
                                     }
-                                },
-                            }
-                        },
-                    }
+                                }
+                            },
+                        }
+                    },
                 }
             },
         },
