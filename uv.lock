@@ -374,6 +374,7 @@ dependencies = [
     { name = "pygithub" },
     { name = "python-dateutil" },
     { name = "python-dotenv" },
+    { name = "python-gitlab" },
     { name = "uvicorn" },
 ]
 
@@ -427,6 +428,7 @@ requires-dist = [
     { name = "pytest-mock", marker = "extra == 'dev'", specifier = ">=3.14.1" },
     { name = "python-dateutil", specifier = ">=2.9.0.post0" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
+    { name = "python-gitlab", specifier = ">=5.1.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.12.8" },
     { name = "uvicorn", specifier = ">=0.35.0" },
 ]
@@ -1636,6 +1638,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f0/26/19cadc79a718c5edbec86fd4919a6b6d3f681039a2f6d66d14be94e75fb9/python_dotenv-1.2.1.tar.gz", hash = "sha256:42667e897e16ab0d66954af0e60a9caa94f0fd4ecf3aaf6d2d260eec1aa36ad6", size = 44221, upload-time = "2025-10-26T15:12:10.434Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/14/1b/a298b06749107c305e1fe0f814c6c74aea7b2f1e10989cb30f544a1b3253/python_dotenv-1.2.1-py3-none-any.whl", hash = "sha256:b81ee9561e9ca4004139c6cbba3a238c32b03e4894671e181b671e8cb8425d61", size = 21230, upload-time = "2025-10-26T15:12:09.109Z" },
+]
+
+[[package]]
+name = "python-gitlab"
+version = "8.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+    { name = "requests-toolbelt" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/77/9c/ec0073c260812bca170418e8e259a2ed0728200af4b3f7120badf2e6f05a/python_gitlab-8.2.0.tar.gz", hash = "sha256:de874dc538db6dceb48929f4c8fb55d6064dd19cb3ffdad1100190f835c5b674", size = 407110, upload-time = "2026-03-28T01:50:07.66Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/38/ee/a61bb562bdf6f0bc6c51cdcf80ab5503cbb4b2f5053fa4b054cc0a56e48a/python_gitlab-8.2.0-py3-none-any.whl", hash = "sha256:884618d4d60beadb21bb0c5f0cca46e70c6e501784f136bf0b6f85f5bc15ce62", size = 147477, upload-time = "2026-03-28T01:50:06.237Z" },
 ]
 
 [[package]]
