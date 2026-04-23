@@ -270,6 +270,7 @@ class GitLabService:
         mr_iid: int,
         max_files: int = 100,
         offset: int = 0,
+        context_lines: int | None = None,
     ) -> dict[str, Any]:
         """
         Get the diff/patch for a merge request.
@@ -279,6 +280,9 @@ class GitLabService:
             mr_iid: Merge request internal ID
             max_files: Maximum number of files to return (default: 100)
             offset: Number of files to skip for pagination (default: 0)
+            context_lines: Number of context lines around each change.
+                          GitLab default is 3. Use higher values to see more
+                          surrounding code.
 
         Returns:
             Dictionary containing MR summary and per-file diffs
@@ -287,7 +291,10 @@ class GitLabService:
             project = self.gl.projects.get(project_path)
             mr = project.mergerequests.get(mr_iid)
 
-            changes_data = mr.changes()
+            changes_kwargs: dict[str, Any] = {}
+            if context_lines is not None:
+                changes_kwargs["query_data"] = {"context_lines": context_lines}
+            changes_data = mr.changes(**changes_kwargs)
             file_changes = changes_data.get("changes", [])
             total_files = len(file_changes)
 

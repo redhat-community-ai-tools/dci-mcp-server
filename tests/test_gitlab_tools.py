@@ -587,6 +587,40 @@ def test_get_mr_diff_computes_total_stats():
     assert result["deletions"] == 3
 
 
+@pytest.mark.unit
+def test_get_mr_diff_context_lines():
+    """Test that context_lines is passed to the GitLab API."""
+    svc = _make_gitlab_service()
+
+    changes = [_make_mock_change()]
+    mock_mr = _make_mock_mr(iid=10, changes=changes)
+
+    mock_project = MagicMock()
+    mock_project.mergerequests.get.return_value = mock_mr
+    svc.gl.projects.get.return_value = mock_project
+
+    svc.get_mr_diff("group/project", 10, context_lines=10)
+
+    mock_mr.changes.assert_called_once_with(query_data={"context_lines": 10})
+
+
+@pytest.mark.unit
+def test_get_mr_diff_context_lines_default():
+    """Test that context_lines is not passed when not specified."""
+    svc = _make_gitlab_service()
+
+    changes = [_make_mock_change()]
+    mock_mr = _make_mock_mr(iid=10, changes=changes)
+
+    mock_project = MagicMock()
+    mock_project.mergerequests.get.return_value = mock_mr
+    svc.gl.projects.get.return_value = mock_project
+
+    svc.get_mr_diff("group/project", 10)
+
+    mock_mr.changes.assert_called_once_with()
+
+
 # -- get_project_info tests --
 
 

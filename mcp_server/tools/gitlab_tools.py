@@ -426,6 +426,13 @@ def register_gitlab_tools(mcp: FastMCP) -> None:
                 ge=0,
             ),
         ] = 0,
+        context_lines: Annotated[
+            int | None,
+            Field(
+                description="Number of unchanged context lines around each change (default: 3, GitLab server default). Use higher values to see more surrounding code.",
+                ge=0,
+            ),
+        ] = None,
     ) -> str:
         """Get the diff/patch for a GitLab merge request.
 
@@ -483,7 +490,11 @@ def register_gitlab_tools(mcp: FastMCP) -> None:
             normalized_project = validate_project_path(project)
             gitlab_service = GitLabService(gitlab_url=gitlab_url)
             mr_diff = gitlab_service.get_mr_diff(
-                normalized_project, mr_iid, max_files, offset
+                normalized_project,
+                mr_iid,
+                max_files,
+                offset,
+                context_lines=context_lines,
             )
             return json.dumps(mr_diff, indent=2)
 
