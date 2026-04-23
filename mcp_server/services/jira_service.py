@@ -480,3 +480,207 @@ class JiraService:
             raise Exception(f"Jira project error: {e.text}") from e
         except Exception as e:
             raise Exception(f"Error retrieving project {project_key}: {str(e)}") from e
+
+    def get_filter(self, filter_id: str) -> dict[str, Any]:
+        """Get a saved filter's definition by ID.
+
+        Returns:
+            Dictionary with filter id, name, jql, description, and owner.
+        """
+        try:
+            f = self.jira.filter(filter_id)
+            return {
+                "id": f.id,
+                "name": f.name,
+                "jql": getattr(f, "jql", None),
+                "description": getattr(f, "description", None),
+                "owner": getattr(getattr(f, "owner", None), "displayName", None),
+                "favourite": getattr(f, "favourite", None),
+                "url": getattr(f, "viewUrl", None),
+            }
+        except JIRAError as e:
+            raise Exception(f"Jira API error: {e.text}") from e
+        except Exception as e:
+            raise Exception(f"Error retrieving filter {filter_id}: {str(e)}") from e
+
+    def get_favourite_filters(self) -> list[dict[str, Any]]:
+        """Get the authenticated user's favourite filters.
+
+        Returns:
+            List of filter dictionaries with id, name, jql, description.
+        """
+        try:
+            filters = self.jira.favourite_filters()
+            return [
+                {
+                    "id": f.id,
+                    "name": f.name,
+                    "jql": getattr(f, "jql", None),
+                    "description": getattr(f, "description", None),
+                    "owner": getattr(getattr(f, "owner", None), "displayName", None),
+                    "url": getattr(f, "viewUrl", None),
+                }
+                for f in filters
+            ]
+        except JIRAError as e:
+            raise Exception(f"Jira API error: {e.text}") from e
+        except Exception as e:
+            raise Exception(f"Error retrieving favourite filters: {str(e)}") from e
+
+    def get_project_components(self, project_key: str) -> list[dict[str, Any]]:
+        """Get components for a project.
+
+        Returns:
+            List of component dictionaries with id, name, description, lead.
+        """
+        try:
+            components = self.jira.project_components(project_key)
+            return [
+                {
+                    "id": c.id,
+                    "name": c.name,
+                    "description": getattr(c, "description", None),
+                    "lead": getattr(getattr(c, "lead", None), "displayName", None),
+                    "assignee_type": getattr(c, "assigneeType", None),
+                }
+                for c in components
+            ]
+        except JIRAError as e:
+            raise Exception(f"Jira API error: {e.text}") from e
+        except Exception as e:
+            raise Exception(
+                f"Error retrieving components for {project_key}: {str(e)}"
+            ) from e
+
+    def get_project_versions(self, project_key: str) -> list[dict[str, Any]]:
+        """Get versions for a project.
+
+        Returns:
+            List of version dictionaries with id, name, released, archived, dates.
+        """
+        try:
+            versions = self.jira.project_versions(project_key)
+            return [
+                {
+                    "id": v.id,
+                    "name": v.name,
+                    "description": getattr(v, "description", None),
+                    "released": getattr(v, "released", None),
+                    "archived": getattr(v, "archived", None),
+                    "release_date": getattr(v, "releaseDate", None),
+                    "start_date": getattr(v, "startDate", None),
+                }
+                for v in versions
+            ]
+        except JIRAError as e:
+            raise Exception(f"Jira API error: {e.text}") from e
+        except Exception as e:
+            raise Exception(
+                f"Error retrieving versions for {project_key}: {str(e)}"
+            ) from e
+
+    def get_issue_types_for_project(self, project_key: str) -> list[dict[str, Any]]:
+        """Get available issue types for a project.
+
+        Returns:
+            List of issue type dictionaries with id, name, subtask, description.
+        """
+        try:
+            issue_types = self.jira.issue_types_for_project(project_key)
+            return [
+                {
+                    "id": it.id,
+                    "name": it.name,
+                    "subtask": getattr(it, "subtask", False),
+                    "description": getattr(it, "description", None),
+                }
+                for it in issue_types
+            ]
+        except JIRAError as e:
+            raise Exception(f"Jira API error: {e.text}") from e
+        except Exception as e:
+            raise Exception(
+                f"Error retrieving issue types for {project_key}: {str(e)}"
+            ) from e
+
+    def get_boards(
+        self,
+        project_key: str | None = None,
+        board_type: str | None = None,
+        name: str | None = None,
+        max_results: int = 50,
+        start_at: int = 0,
+    ) -> dict[str, Any]:
+        """Get boards, optionally filtered by project, type, or name.
+
+        Returns:
+            Dictionary with total and items list of board dictionaries.
+        """
+        try:
+            boards = self.jira.boards(
+                startAt=start_at,
+                maxResults=max_results,
+                type=board_type,
+                name=name,
+                projectKeyOrID=project_key,
+            )
+            return {
+                "total": getattr(boards, "total", len(boards)),
+                "start_at": start_at,
+                "max_results": max_results,
+                "items": [
+                    {
+                        "id": b.id,
+                        "name": b.name,
+                        "type": getattr(b, "type", None),
+                    }
+                    for b in boards
+                ],
+            }
+        except JIRAError as e:
+            raise Exception(f"Jira API error: {e.text}") from e
+        except Exception as e:
+            raise Exception(f"Error retrieving boards: {str(e)}") from e
+
+    def get_sprints(
+        self,
+        board_id: int,
+        state: str | None = None,
+        max_results: int = 50,
+        start_at: int = 0,
+    ) -> dict[str, Any]:
+        """Get sprints for a board.
+
+        Returns:
+            Dictionary with total and items list of sprint dictionaries.
+        """
+        try:
+            sprints = self.jira.sprints(
+                board_id=board_id,
+                startAt=start_at,
+                maxResults=max_results,
+                state=state,
+            )
+            return {
+                "total": getattr(sprints, "total", len(sprints)),
+                "start_at": start_at,
+                "max_results": max_results,
+                "items": [
+                    {
+                        "id": s.id,
+                        "name": s.name,
+                        "state": getattr(s, "state", None),
+                        "start_date": getattr(s, "startDate", None),
+                        "end_date": getattr(s, "endDate", None),
+                        "complete_date": getattr(s, "completeDate", None),
+                        "goal": getattr(s, "goal", None),
+                    }
+                    for s in sprints
+                ],
+            }
+        except JIRAError as e:
+            raise Exception(f"Jira API error: {e.text}") from e
+        except Exception as e:
+            raise Exception(
+                f"Error retrieving sprints for board {board_id}: {str(e)}"
+            ) from e
