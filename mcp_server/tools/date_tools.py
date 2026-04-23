@@ -46,7 +46,7 @@ def register_date_tools(mcp: FastMCP) -> None:
         """
         # return the time in UTC timezone with the DCI expected format
         current_time = datetime.datetime.now(datetime.UTC).strftime(
-            "%Y-%m-%dT%H:%M:%S.%6N"
+            "%Y-%m-%dT%H:%M:%S.%f"
         )
         return json.dumps({"now": current_time}, indent=2)
 

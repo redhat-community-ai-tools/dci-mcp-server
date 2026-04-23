@@ -1,0 +1,544 @@
+{
+    "jobs-1776673202.390706": {
+        "mappings": {
+            "_meta": {
+                "first_sync_date": "2025-04-21T08:06:39.581282"
+            },
+            "dynamic_templates": [
+                {
+                    "strings_as_keyword": {
+                        "mapping": {
+                            "type": "keyword"
+                        },
+                        "match_mapping_type": "string"
+                    }
+                },
+                {
+                    "nodes_to_nested": {
+                        "mapping": {
+                            "type": "nested"
+                        },
+                        "match_mapping_type": "object",
+                        "path_match": "nodes.*"
+                    }
+                }
+            ],
+            "properties": {
+                "client_version": {
+                    "type": "keyword"
+                },
+                "comment": {
+                    "type": "keyword"
+                },
+                "components": {
+                    "properties": {
+                        "canonical_project_name": {
+                            "type": "keyword"
+                        },
+                        "created_at": {
+                            "type": "date"
+                        },
+                        "display_name": {
+                            "type": "keyword"
+                        },
+                        "etag": {
+                            "type": "keyword"
+                        },
+                        "id": {
+                            "type": "keyword"
+                        },
+                        "message": {
+                            "type": "keyword"
+                        },
+                        "name": {
+                            "type": "keyword"
+                        },
+                        "released_at": {
+                            "type": "date"
+                        },
+                        "state": {
+                            "type": "keyword"
+                        },
+                        "tags": {
+                            "type": "keyword"
+                        },
+                        "team_id": {
+                            "type": "keyword"
+                        },
+                        "title": {
+                            "type": "keyword"
+                        },
+                        "topic_id": {
+                            "type": "keyword"
+                        },
+                        "type": {
+                            "type": "keyword"
+                        },
+                        "uid": {
+                            "type": "keyword"
+                        },
+                        "updated_at": {
+                            "type": "date"
+                        },
+                        "url": {
+                            "type": "keyword"
+                        },
+                        "version": {
+                            "type": "keyword"
+                        }
+                    },
+                    "type": "nested"
+                },
+                "configuration": {
+                    "type": "keyword"
+                },
+                "created_at": {
+                    "type": "date"
+                },
+                "duration": {
+                    "type": "long"
+                },
+                "etag": {
+                    "type": "keyword"
+                },
+                "files": {
+                    "properties": {
+                        "created_at": {
+                            "type": "date"
+                        },
+                        "etag": {
+                            "type": "keyword"
+                        },
+                        "id": {
+                            "type": "keyword"
+                        },
+                        "job_id": {
+                            "type": "keyword"
+                        },
+                        "mime": {
+                            "type": "keyword"
+                        },
+                        "name": {
+                            "type": "keyword"
+                        },
+                        "size": {
+                            "type": "long"
+                        },
+                        "state": {
+                            "type": "keyword"
+                        },
+                        "team_id": {
+                            "type": "keyword"
+                        },
+                        "updated_at": {
+                            "type": "date"
+                        }
+                    },
+                    "type": "nested"
+                },
+                "id": {
+                    "type": "keyword"
+                },
+                "jobstates": {
+                    "properties": {
+                        "comment": {
+                            "type": "keyword"
+                        },
+                        "created_at": {
+                            "type": "date"
+                        },
+                        "files": {
+                            "properties": {
+                                "created_at": {
+                                    "type": "date"
+                                },
+                                "etag": {
+                                    "type": "keyword"
+                                },
+                                "id": {
+                                    "type": "keyword"
+                                },
+                                "job_id": {
+                                    "type": "keyword"
+                                },
+                                "jobstate_id": {
+                                    "type": "keyword"
+                                },
+                                "mime": {
+                                    "type": "keyword"
+                                },
+                                "name": {
+                                    "type": "keyword"
+                                },
+                                "size": {
+                                    "type": "long"
+                                },
+                                "state": {
+                                    "type": "keyword"
+                                },
+                                "team_id": {
+                                    "type": "keyword"
+                                },
+                                "updated_at": {
+                                    "type": "date"
+                                }
+                            }
+                        },
+                        "id": {
+                            "type": "keyword"
+                        },
+                        "job_id": {
+                            "type": "keyword"
+                        },
+                        "status": {
+                            "type": "keyword"
+                        }
+                    }
+                },
+                "keys_values": {
+                    "properties": {
+                        "job_id": {
+                            "type": "keyword"
+                        },
+                        "key": {
+                            "type": "keyword"
+                        },
+                        "value": {
+                            "type": "float"
+                        }
+                    },
+                    "type": "nested"
+                },
+                "name": {
+                    "type": "keyword"
+                },
+                "nodes": {
+                    "properties": {
+                        "hardware": {
+                            "type": "nested"
+                        },
+                        "kernel": {
+                            "type": "nested"
+                        }
+                    },
+                    "type": "nested"
+                },
+                "pipeline": {
+                    "properties": {
+                        "created_at": {
+                            "type": "date"
+                        },
+                        "etag": {
+                            "type": "keyword"
+                        },
+                        "id": {
+                            "type": "keyword"
+                        },
+                        "name": {
+                            "type": "keyword"
+                        },
+                        "state": {
+                            "type": "keyword"
+                        },
+                        "team_id": {
+                            "type": "keyword"
+                        },
+                        "updated_at": {
+                            "type": "date"
+                        }
+                    },
+                    "type": "nested"
+                },
+                "pipeline_id": {
+                    "type": "keyword"
+                },
+                "previous_job_id": {
+                    "type": "keyword"
+                },
+                "product": {
+                    "properties": {
+                        "created_at": {
+                            "type": "date"
+                        },
+                        "description": {
+                            "type": "keyword"
+                        },
+                        "etag": {
+                            "type": "keyword"
+                        },
+                        "id": {
+                            "type": "keyword"
+                        },
+                        "label": {
+                            "type": "keyword"
+                        },
+                        "name": {
+                            "type": "keyword"
+                        },
+                        "state": {
+                            "type": "keyword"
+                        },
+                        "updated_at": {
+                            "type": "date"
+                        }
+                    },
+                    "type": "nested"
+                },
+                "product_id": {
+                    "type": "keyword"
+                },
+                "remoteci": {
+                    "properties": {
+                        "created_at": {
+                            "type": "date"
+                        },
+                        "data": {
+                            "type": "object"
+                        },
+                        "etag": {
+                            "type": "keyword"
+                        },
+                        "id": {
+                            "type": "keyword"
+                        },
+                        "last_auth_at": {
+                            "type": "date"
+                        },
+                        "name": {
+                            "type": "keyword"
+                        },
+                        "public": {
+                            "type": "boolean"
+                        },
+                        "state": {
+                            "type": "keyword"
+                        },
+                        "team_id": {
+                            "type": "keyword"
+                        },
+                        "updated_at": {
+                            "type": "date"
+                        }
+                    },
+                    "type": "nested"
+                },
+                "remoteci_id": {
+                    "type": "keyword"
+                },
+                "results": {
+                    "properties": {
+                        "created_at": {
+                            "type": "date"
+                        },
+                        "errors": {
+                            "type": "long"
+                        },
+                        "failures": {
+                            "type": "long"
+                        },
+                        "file_id": {
+                            "type": "keyword"
+                        },
+                        "id": {
+                            "type": "keyword"
+                        },
+                        "job_id": {
+                            "type": "keyword"
+                        },
+                        "name": {
+                            "type": "keyword"
+                        },
+                        "regressions": {
+                            "type": "long"
+                        },
+                        "skips": {
+                            "type": "long"
+                        },
+                        "success": {
+                            "type": "long"
+                        },
+                        "successfixes": {
+                            "type": "long"
+                        },
+                        "time": {
+                            "type": "long"
+                        },
+                        "total": {
+                            "type": "long"
+                        },
+                        "updated_at": {
+                            "type": "date"
+                        }
+                    }
+                },
+                "state": {
+                    "type": "keyword"
+                },
+                "status": {
+                    "type": "keyword"
+                },
+                "status_reason": {
+                    "type": "keyword"
+                },
+                "tags": {
+                    "type": "keyword"
+                },
+                "team": {
+                    "properties": {
+                        "created_at": {
+                            "type": "date"
+                        },
+                        "etag": {
+                            "type": "keyword"
+                        },
+                        "external": {
+                            "type": "boolean"
+                        },
+                        "has_pre_release_access": {
+                            "type": "boolean"
+                        },
+                        "id": {
+                            "type": "keyword"
+                        },
+                        "name": {
+                            "type": "keyword"
+                        },
+                        "state": {
+                            "type": "keyword"
+                        },
+                        "updated_at": {
+                            "type": "date"
+                        }
+                    },
+                    "type": "nested"
+                },
+                "team_id": {
+                    "type": "keyword"
+                },
+                "tests": {
+                    "properties": {
+                        "file_id": {
+                            "type": "keyword"
+                        },
+                        "name": {
+                            "type": "keyword"
+                        },
+                        "testsuites": {
+                            "properties": {
+                                "errors": {
+                                    "type": "long"
+                                },
+                                "failures": {
+                                    "type": "long"
+                                },
+                                "id": {
+                                    "type": "long"
+                                },
+                                "name": {
+                                    "type": "keyword"
+                                },
+                                "properties": {
+                                    "properties": {
+                                        "name": {
+                                            "type": "keyword"
+                                        },
+                                        "value": {
+                                            "type": "keyword"
+                                        }
+                                    }
+                                },
+                                "skipped": {
+                                    "type": "long"
+                                },
+                                "success": {
+                                    "type": "long"
+                                },
+                                "testcases": {
+                                    "properties": {
+                                        "action": {
+                                            "type": "keyword"
+                                        },
+                                        "classname": {
+                                            "type": "keyword"
+                                        },
+                                        "message": {
+                                            "type": "keyword"
+                                        },
+                                        "name": {
+                                            "type": "keyword"
+                                        },
+                                        "time": {
+                                            "type": "float"
+                                        },
+                                        "type": {
+                                            "type": "keyword"
+                                        },
+                                        "value": {
+                                            "type": "keyword"
+                                        }
+                                    },
+                                    "type": "nested"
+                                },
+                                "tests": {
+                                    "type": "long"
+                                },
+                                "time": {
+                                    "type": "float"
+                                }
+                            },
+                            "type": "nested"
+                        }
+                    },
+                    "type": "nested"
+                },
+                "topic": {
+                    "properties": {
+                        "component_types": {
+                            "type": "keyword"
+                        },
+                        "created_at": {
+                            "type": "date"
+                        },
+                        "etag": {
+                            "type": "keyword"
+                        },
+                        "export_control": {
+                            "type": "boolean"
+                        },
+                        "id": {
+                            "type": "keyword"
+                        },
+                        "name": {
+                            "type": "keyword"
+                        },
+                        "next_topic_id": {
+                            "type": "keyword"
+                        },
+                        "product_id": {
+                            "type": "keyword"
+                        },
+                        "state": {
+                            "type": "keyword"
+                        },
+                        "updated_at": {
+                            "type": "date"
+                        }
+                    },
+                    "type": "nested"
+                },
+                "topic_id": {
+                    "type": "keyword"
+                },
+                "updated_at": {
+                    "type": "date"
+                },
+                "url": {
+                    "type": "keyword"
+                },
+                "user_agent": {
+                    "type": "keyword"
+                }
+            }
+        }
+    }
+}

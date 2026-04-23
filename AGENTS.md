@@ -56,6 +56,32 @@ Tools are only registered when their required credentials are available:
 
 This allows the server to run with only a subset of integrations configured.
 
+### ElasticSearch Aggregations Support
+
+The `search_dci_jobs` tool supports ElasticSearch 7.16 aggregations for efficient server-side statistical analysis:
+
+**When to use aggregations:**
+- User asks for statistics, counts, trends, or distributions (not individual job documents)
+- Examples: "How many jobs failed?", "Show daily trend", "Average duration", "Count by OCP version"
+- Set `limit=1` with `fields=['id']` when using aggregations to minimize bandwidth (limit=0 is auto-set to 1 since the DCI server requires limit >= 1)
+
+**Resources available:**
+- **ES Mapping Resource**: `dci://elasticsearch/mapping` - Full ElasticSearch mapping showing field types and nested structures
+- **Aggregation Patterns Guide**: `examples/aggregation_patterns.md` - Common aggregation patterns and examples
+
+**Key concepts:**
+- **Simple fields** (status, tags, team_id, created_at, duration): Use direct aggregations (terms, date_histogram, stats)
+- **Nested fields** (components, tests, team, remoteci, pipeline, topic): Require `nested` aggregation wrapper
+- **Triple-nested fields** (tests.testsuites.testcases): Require three levels of nested aggregations
+- **Sub-aggregations**: Combine aggregations for multi-dimensional analysis
+- **Reverse nested**: Return to parent document level from nested context
+
+**Implementation files:**
+- Service: `mcp_server/services/dci_job_service.py` - `aggs` parameter support
+- Tool: `mcp_server/tools/job_tools.py` - `aggs` parameter with comprehensive documentation
+- Resource: `mcp_server/resources/es_mapping.py` - ES mapping exposure
+- Examples: `examples/aggregation_examples.py`, `examples/aggregation_patterns.md`
+
 # Repository Guidelines
 
 ## Project Structure & Module Organization

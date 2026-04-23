@@ -15,6 +15,7 @@
 
 """DCI job service for managing jobs."""
 
+import json
 from typing import Any
 
 from dciclient.v1.api import job
@@ -32,21 +33,26 @@ class DCIJobService(DCIBaseService):
         offset: int = 0,
         sort: str | None = None,
         includes: str | None = None,
+        aggs: dict | None = None,
     ) -> list:
         """
         List jobs using the advanced search syntax.
 
         Args:
             query: query criteria (e.g., "((components.type='ocp') and (components.version='4.19.0')) and ((components.type='storage') and (components.name='my-storage'))")
-            limit: Maximum number of jobs to return (default: 50)
+            limit: Maximum number of jobs to return (default: 50).
+                   When aggs is provided and limit is not explicitly set, defaults to 0 to save bandwidth.
             offset: Number of jobs to skip (default: 0)
             sort: Sort criteria (e.g., "-created_at")
             includes: Comma-separated list of fields to include in the response
                       (e.g., "id,name,status,components.name"). Uses server-side
                       Elasticsearch _source filtering.
+            aggs: ElasticSearch aggregation JSON (dict). When provided, the response
+                  will include an "aggregations" field with computed statistics.
+                  Example: {"aggs": {"by_status": {"terms": {"field": "status"}}}}
 
         Returns:
-            A dictionary with jobs data or an empty dictionary on error
+            A dictionary with jobs data and/or aggregations, or an error dictionary
         """
         try:
             context = self._get_dci_context()
@@ -58,6 +64,9 @@ class DCIJobService(DCIBaseService):
             }
             if includes is not None:
                 kwargs["includes"] = includes
+            if aggs is not None:
+                # Wrap in {"aggs": ...} as expected by dci-control-server
+                kwargs["json-aggs"] = json.dumps({"aggs": aggs})
             return job.search(context, **kwargs).json()
         except Exception as e:
             return {"error": str(e), "message": "Failed to list jobs."}
