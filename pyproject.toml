@@ -23,6 +23,7 @@ dependencies = [
     "markdown>=3.7.0",
     "jira>=3.8.0",
     "pygithub>=2.8.1",
+    "python-gitlab>=5.1.0",
 ]
 
 [project.optional-dependencies]
