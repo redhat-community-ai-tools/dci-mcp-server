@@ -52,6 +52,30 @@ def register_jira_introspect_tools(mcp: FastMCP) -> None:
             return json.dumps({"error": str(e)}, indent=2)
 
     @mcp.tool()
+    async def search_jira_filters(
+        filter_name: Annotated[
+            str,
+            Field(
+                description="Filter name to search for (partial match, case-insensitive)"
+            ),
+        ],
+    ) -> str:
+        """Search for Jira filters by name.
+
+        Finds saved filters whose name matches the search string.
+        Useful when you know a filter's name but not its numeric ID.
+
+        Returns:
+            JSON string with list of matching filters
+        """
+        try:
+            jira_service = JiraService()
+            result = jira_service.search_filters(filter_name.strip())
+            return json.dumps(result, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e)}, indent=2)
+
+    @mcp.tool()
     async def list_jira_project_components(
         project_key: Annotated[
             str,

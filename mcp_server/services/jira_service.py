@@ -140,12 +140,30 @@ class JiraService:
                 "url": f"{self.jira_url}/browse/{issue.key}",
             }
 
-            # Extract custom fields
+            # Extract custom fields and additional standard fields
+            # not already in ticket_data
             field_map = self._get_field_map()
             raw_fields = issue.raw.get("fields", {})
+            already_extracted = {
+                "summary",
+                "description",
+                "status",
+                "priority",
+                "issuetype",
+                "assignee",
+                "reporter",
+                "created",
+                "updated",
+                "resolution",
+                "labels",
+                "components",
+                "fixVersions",
+                "versions",
+                "comment",
+            }
             custom_fields = {}
             for field_id, raw_value in raw_fields.items():
-                if not field_id.startswith("customfield_"):
+                if field_id in already_extracted:
                     continue
                 if raw_value is None:
                     continue
@@ -526,6 +544,39 @@ class JiraService:
             raise Exception(f"Jira API error: {e.text}") from e
         except Exception as e:
             raise Exception(f"Error retrieving favourite filters: {str(e)}") from e
+
+    def search_filters(self, filter_name: str) -> list[dict[str, Any]]:
+        """Search for Jira filters by name.
+
+        Uses the REST API filter/search endpoint with filterName parameter.
+
+        Returns:
+            List of matching filter dictionaries.
+        """
+        try:
+            resp = self.jira._session.get(
+                f"{self.jira_url}/rest/api/3/filter/search",
+                params={"filterName": filter_name, "expand": "jql,description"},
+            )
+            data = resp.json()
+            return [
+                {
+                    "id": f["id"],
+                    "name": f.get("name"),
+                    "jql": f.get("jql"),
+                    "description": f.get("description"),
+                    "owner": (f.get("owner") or {}).get("displayName"),
+                    "favourite": f.get("favourite"),
+                    "url": f.get("viewUrl"),
+                }
+                for f in data.get("values", [])
+            ]
+        except JIRAError as e:
+            raise Exception(f"Jira API error: {e.text}") from e
+        except Exception as e:
+            raise Exception(
+                f"Error searching filters by name '{filter_name}': {str(e)}"
+            ) from e
 
     def get_project_components(self, project_key: str) -> list[dict[str, Any]]:
         """Get components for a project.

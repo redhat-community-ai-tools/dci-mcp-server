@@ -92,6 +92,66 @@ def test_get_favourite_filters_empty():
     assert result == []
 
 
+# -- search_filters tests --
+
+
+def test_search_filters():
+    svc = _make_jira_service()
+    mock_response = MagicMock()
+    mock_response.json.return_value = {
+        "values": [
+            {
+                "id": "10100",
+                "name": "TELCO-V10N-STORIES-ALL",
+                "jql": "project = V10N AND type = Story",
+                "description": "All V10N stories",
+                "owner": {"displayName": "Test User"},
+                "favourite": False,
+                "viewUrl": "https://jira.example.com/issues/?filter=10100",
+            },
+            {
+                "id": "10101",
+                "name": "TELCO-V10N-BUGS",
+                "jql": "project = V10N AND type = Bug",
+                "description": None,
+                "owner": None,
+                "favourite": True,
+                "viewUrl": None,
+            },
+        ]
+    }
+    svc.jira._session.get.return_value = mock_response
+
+    result = svc.search_filters("TELCO-V10N")
+
+    assert len(result) == 2
+    assert result[0]["id"] == "10100"
+    assert result[0]["name"] == "TELCO-V10N-STORIES-ALL"
+    assert result[0]["jql"] == "project = V10N AND type = Story"
+    assert result[0]["owner"] == "Test User"
+    assert result[1]["id"] == "10101"
+    assert result[1]["owner"] is None
+
+
+def test_search_filters_empty():
+    svc = _make_jira_service()
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"values": []}
+    svc.jira._session.get.return_value = mock_response
+
+    result = svc.search_filters("nonexistent")
+
+    assert result == []
+
+
+def test_search_filters_error():
+    svc = _make_jira_service()
+    svc.jira._session.get.side_effect = Exception("Connection failed")
+
+    with pytest.raises(Exception, match="Error searching filters by name"):
+        svc.search_filters("test")
+
+
 # -- get_project_components tests --
 
 
