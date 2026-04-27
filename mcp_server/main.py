@@ -28,6 +28,7 @@ from .tools.file_tools import register_file_tools
 from .tools.github_tools import register_github_tools
 from .tools.gitlab_tools import register_gitlab_tools
 from .tools.google_drive_tools import register_google_drive_tools
+from .tools.jira_introspect_tools import register_jira_introspect_tools
 from .tools.jira_tools import register_jira_tools
 from .tools.jira_write_tools import register_jira_write_tools
 from .tools.job_tools import register_job_tools
@@ -75,6 +76,7 @@ def create_server() -> FastMCP:
     # Register Jira tools only when credentials are set
     if os.getenv("JIRA_API_TOKEN"):
         register_jira_tools(mcp)
+        register_jira_introspect_tools(mcp)
         # Register Jira write tools only when explicitly enabled
         if os.getenv("JIRA_WRITE_ENABLED", "").lower() == "true":
             register_jira_write_tools(mcp)
