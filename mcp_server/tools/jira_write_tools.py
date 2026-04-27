@@ -135,6 +135,18 @@ def register_jira_write_tools(mcp: FastMCP) -> None:
                 description="Workflow transition name to apply (e.g., 'In Progress', 'Done'). Use list_jira_transitions to see available transitions."
             ),
         ] = None,
+        custom_fields: Annotated[
+            dict[str, str] | None,
+            Field(
+                description=(
+                    "Dictionary of custom field IDs (customfield_NNNNN) or "
+                    "human-readable field names to values. Supports Forge/Connect "
+                    "app fields (e.g. encrypted select fields). "
+                    'Example: {"Escape Reason": "Test doesn\'t exist", '
+                    '"customfield_10982": "Stability"}'
+                )
+            ),
+        ] = None,
     ) -> str:
         """Update an existing Jira ticket.
 
@@ -155,6 +167,8 @@ def register_jira_write_tools(mcp: FastMCP) -> None:
         - **key**: Ticket key
         - **status**: "updated"
         - **url**: Direct link to the ticket
+        - **rendered_values**: (when custom_fields are set) Human-readable values
+          after update, useful for confirming Forge field writes
 
         Returns:
             JSON string with update result
@@ -173,6 +187,7 @@ def register_jira_write_tools(mcp: FastMCP) -> None:
                     components,
                     assignee,
                     transition,
+                    custom_fields,
                 ]
             ):
                 return json.dumps(
@@ -190,6 +205,7 @@ def register_jira_write_tools(mcp: FastMCP) -> None:
                 components=components,
                 assignee=assignee,
                 transition=transition,
+                custom_fields=custom_fields,
             )
             return json.dumps(result, indent=2)
         except ValueError as e:

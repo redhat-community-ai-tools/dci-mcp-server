@@ -217,6 +217,11 @@ def test_get_ticket_data_includes_custom_fields():
     )
     svc.jira.issue.return_value = issue
 
+    # renderedFields call returns empty (no Forge fields)
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"renderedFields": {}}
+    svc.jira._session.get.return_value = mock_resp
+
     result = svc.get_ticket_data("TEST-123")
 
     assert "custom_fields" in result
@@ -238,6 +243,10 @@ def test_get_ticket_data_skips_null_custom_fields():
         }
     )
     svc.jira.issue.return_value = issue
+
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"renderedFields": {}}
+    svc.jira._session.get.return_value = mock_resp
 
     result = svc.get_ticket_data("TEST-123")
 
@@ -276,10 +285,100 @@ def test_get_ticket_data_falls_back_to_raw_id():
     )
     svc.jira.issue.return_value = issue
 
+    # v3 also fails
+    svc.jira._session.get.side_effect = Exception("v3 API error")
+
     result = svc.get_ticket_data("TEST-123")
 
     assert "custom_fields" in result
     assert result["custom_fields"]["customfield_10001"] == "some value"
+
+
+# -- renderedFields for Forge/Connect app custom fields --
+
+
+def test_get_ticket_data_rendered_decrypts_forge_field():
+    """Forge custom fields are decrypted via renderedFields."""
+    svc = _make_jira_service()
+    svc.jira.fields.return_value = [
+        {"id": "customfield_10983", "name": "Escape Reason"},
+    ]
+
+    issue = _make_mock_issue(
+        raw_fields={
+            "customfield_10983": "FjFI4vRDXIGtYHenc...(encrypted)",
+        }
+    )
+    svc.jira.issue.return_value = issue
+
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {
+        "renderedFields": {
+            "customfield_10983": "Feature / code not included in release",
+        }
+    }
+    svc.jira._session.get.return_value = mock_resp
+
+    result = svc.get_ticket_data("TEST-123")
+
+    assert (
+        result["custom_fields"]["Escape Reason"]
+        == "Feature / code not included in release"
+    )
+
+
+def test_get_ticket_data_rendered_decrypts_multiselect():
+    """Multi-select Forge fields are decrypted via renderedFields."""
+    svc = _make_jira_service()
+    svc.jira.fields.return_value = [
+        {"id": "customfield_10994", "name": "Corrective Measures"},
+    ]
+
+    issue = _make_mock_issue(
+        raw_fields={
+            "customfield_10994": [
+                "encrypted-base64-string-1",
+                "encrypted-base64-string-2",
+            ],
+        }
+    )
+    svc.jira.issue.return_value = issue
+
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {
+        "renderedFields": {
+            "customfield_10994": "Add unit test, Improve review",
+        }
+    }
+    svc.jira._session.get.return_value = mock_resp
+
+    result = svc.get_ticket_data("TEST-123")
+
+    assert (
+        result["custom_fields"]["Corrective Measures"]
+        == "Add unit test, Improve review"
+    )
+
+
+def test_get_ticket_data_rendered_fallback_on_failure():
+    """Falls back to raw fields when renderedFields call fails."""
+    svc = _make_jira_service()
+    svc.jira.fields.return_value = [
+        {"id": "customfield_10001", "name": "Sprint"},
+    ]
+
+    issue = _make_mock_issue(
+        raw_fields={
+            "customfield_10001": {"name": "Sprint 42", "id": 100},
+        }
+    )
+    svc.jira.issue.return_value = issue
+
+    svc.jira._session.get.side_effect = Exception("API error")
+
+    result = svc.get_ticket_data("TEST-123")
+
+    assert result["custom_fields"]["Sprint"] == "Sprint 42"
 
 
 # -- Changelog author bug fix --
@@ -508,12 +607,73 @@ def test_update_issue_fields():
     mock_issue.key = "TEST-123"
     svc.jira.issue.return_value = mock_issue
 
+    mock_resp = MagicMock()
+    mock_resp.status_code = 204
+    svc.jira._session.put.return_value = mock_resp
+
     result = svc.update_issue("TEST-123", summary="Updated summary", priority="Major")
 
-    mock_issue.update.assert_called_once_with(
-        fields={"summary": "Updated summary", "priority": {"name": "Major"}}
-    )
+    svc.jira._session.put.assert_called_once()
+    call_json = svc.jira._session.put.call_args[1]["json"]
+    assert call_json["fields"]["summary"] == "Updated summary"
+    assert call_json["fields"]["priority"] == {"name": "Major"}
     assert result["key"] == "TEST-123"
+    assert result["status"] == "updated"
+
+
+def test_update_issue_custom_fields():
+    """Custom fields are resolved and rendered values returned."""
+    svc = _make_jira_service()
+    mock_issue = MagicMock()
+    svc.jira.issue.return_value = mock_issue
+    svc.jira.fields.return_value = [
+        {"id": "customfield_10983", "name": "Escape Reason"},
+    ]
+
+    # PUT returns 204
+    put_resp = MagicMock()
+    put_resp.status_code = 204
+    # GET for rendered values
+    get_resp = MagicMock()
+    get_resp.json.return_value = {
+        "renderedFields": {
+            "customfield_10983": "Test doesn't exist",
+        }
+    }
+    svc.jira._session.put.return_value = put_resp
+    svc.jira._session.get.return_value = get_resp
+
+    result = svc.update_issue(
+        "TEST-123",
+        custom_fields={"Escape Reason": "Test doesn't exist"},
+    )
+
+    call_json = svc.jira._session.put.call_args[1]["json"]
+    assert call_json["fields"]["customfield_10983"] == "Test doesn't exist"
+    assert result["rendered_values"]["Escape Reason"] == "Test doesn't exist"
+
+
+def test_update_issue_custom_fields_by_id():
+    """Custom fields can be passed by customfield_NNNNN ID directly."""
+    svc = _make_jira_service()
+    mock_issue = MagicMock()
+    svc.jira.issue.return_value = mock_issue
+    svc.jira.fields.return_value = []
+
+    put_resp = MagicMock()
+    put_resp.status_code = 204
+    get_resp = MagicMock()
+    get_resp.json.return_value = {"renderedFields": {}}
+    svc.jira._session.put.return_value = put_resp
+    svc.jira._session.get.return_value = get_resp
+
+    result = svc.update_issue(
+        "TEST-123",
+        custom_fields={"customfield_10983": "some value"},
+    )
+
+    call_json = svc.jira._session.put.call_args[1]["json"]
+    assert call_json["fields"]["customfield_10983"] == "some value"
     assert result["status"] == "updated"
 
 
