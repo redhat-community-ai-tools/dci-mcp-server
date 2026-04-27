@@ -327,3 +327,53 @@ async def test_no_result(mcp_client):
     data = parse_response(result)
     # Should return no error and an empty hits array
     assert "error" not in data and "hits" in data and len(data["hits"]) == 0
+
+
+@pytest.mark.integration
+async def test_jira_forge_custom_fields_decrypted(mcp_client):
+    """Forge/Connect app custom fields return readable values, not encrypted blobs."""
+    result = await mcp_client.call_tool(
+        "get_jira_ticket",
+        {"ticket_key": "ECOENGCL-424", "max_comments": 1},
+    )
+    assert not result.is_error
+
+    data = parse_response(result)
+    custom = data.get("custom_fields", {})
+
+    forge_fields = {
+        "Escape Reason": "customfield_10983",
+        "Escape Impact": "customfield_10982",
+        "SDLC stage when introduced": "customfield_10991",
+        "SDLC stage when found": "customfield_10990",
+        "SDLC stage when should've been found": "customfield_10992",
+    }
+    for field_name, field_id in forge_fields.items():
+        value = custom.get(field_name)
+        assert value is not None, (
+            f"{field_name} ({field_id}) missing from custom_fields"
+        )
+        assert not (isinstance(value, str) and value.startswith("FjFI4vRD")), (
+            f"{field_name} still encrypted: {value[:40]}..."
+        )
+        assert isinstance(value, str) and len(value) > 0, (
+            f"{field_name} should be a non-empty readable string, got: {value!r}"
+        )
+
+
+@pytest.mark.integration
+async def test_jira_forge_field_options_discoverable(mcp_client):
+    """Forge custom field options can be discovered via the Forge resolver."""
+    result = await mcp_client.call_tool(
+        "list_jira_custom_field_options",
+        {"ticket_key": "ECOENGCL-424", "field_id": "customfield_10991"},
+    )
+    assert not result.is_error
+
+    data = parse_response(result)
+    assert "error" not in data, f"Tool returned error: {data.get('error')}"
+    assert data["field_id"] == "customfield_10991"
+    assert data["field_name"] == "SDLC stage when introduced"
+    assert isinstance(data["options"], list)
+    assert len(data["options"]) > 0
+    assert any("design" in opt.lower() for opt in data["options"])
