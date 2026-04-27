@@ -55,6 +55,85 @@ class JiraService:
         self._field_map: dict[str, str] | None = None
         self._status_name_map: dict[str, str] | None = None
 
+    def get_forge_field_options(
+        self,
+        ticket_key: str,
+        field_id: str,
+    ) -> dict[str, Any]:
+        """Get known values for a Forge custom field.
+
+        Searches existing tickets in the same project for unique
+        rendered values of the field. This discovers all options that
+        have been used at least once.
+
+        Args:
+            ticket_key: Issue key (e.g. PROJ-123) — the project
+                is derived from this key.
+            field_id: Custom field ID (e.g. customfield_12345).
+
+        Returns:
+            Dict with ``field_name``, ``options`` list and
+            ``total_tickets_sampled``.
+        """
+        field_map = self._get_field_map()
+        field_name = field_map.get(field_id, field_id)
+        project_key = ticket_key.split("-")[0]
+
+        # Determine if multi-select from editmeta schema type
+        multi_select = False
+        try:
+            meta_resp = self.jira._session.get(
+                f"{self.jira_url}/rest/api/2/issue/{ticket_key}/editmeta"
+            )
+            if meta_resp.status_code == 200:
+                meta = meta_resp.json().get("fields", {}).get(field_id, {})
+                multi_select = meta.get("schema", {}).get("type") == "array"
+        except Exception:
+            pass
+
+        # Collect known values from existing tickets via search
+        cf_num = field_id.replace("customfield_", "")
+        jql = (
+            f"project = {project_key} "
+            f"AND cf[{cf_num}] is not EMPTY "
+            f"ORDER BY updated DESC"
+        )
+        resp = self.jira._session.get(
+            f"{self.jira_url}/rest/api/3/search/jql",
+            params={
+                "jql": jql,
+                "maxResults": 100,
+                "fields": field_id,
+                "expand": "renderedFields",
+            },
+        )
+        if resp.status_code != 200:
+            raise Exception(
+                f"Search failed (HTTP {resp.status_code}): {resp.text[:300]}"
+            )
+        data = resp.json()
+        values: set[str] = set()
+        for iss in data.get("issues", []):
+            rendered = iss.get("renderedFields", {}).get(field_id)
+            if not rendered or not isinstance(rendered, str):
+                continue
+            raw = iss.get("fields", {}).get(field_id)
+            if isinstance(raw, list):
+                for part in rendered.split(", "):
+                    stripped = part.strip()
+                    if stripped:
+                        values.add(stripped)
+            else:
+                values.add(rendered)
+
+        return {
+            "field_id": field_id,
+            "field_name": field_name,
+            "multi_select": multi_select,
+            "options": sorted(values),
+            "total_tickets_sampled": data.get("total", 0),
+        }
+
     def _fetch_rendered_fields(self, ticket_key: str) -> dict[str, Any] | None:
         """Fetch renderedFields for an issue.
 

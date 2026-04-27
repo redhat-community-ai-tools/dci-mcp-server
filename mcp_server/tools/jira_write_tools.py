@@ -142,8 +142,8 @@ def register_jira_write_tools(mcp: FastMCP) -> None:
                     "Dictionary of custom field IDs (customfield_NNNNN) or "
                     "human-readable field names to values. Supports Forge/Connect "
                     "app fields (e.g. encrypted select fields). "
-                    'Example: {"Escape Reason": "Test doesn\'t exist", '
-                    '"customfield_10982": "Stability"}'
+                    "Use list_jira_custom_field_options to discover valid values. "
+                    'Example: {"customfield_12345": "some value"}'
                 )
             ),
         ] = None,
@@ -155,7 +155,8 @@ def register_jira_write_tools(mcp: FastMCP) -> None:
 
         Note: `labels` and `components` replace existing values entirely (not append).
         Use `list_jira_transitions` to discover available transition names before
-        attempting a status change.
+        attempting a status change. Use `list_jira_custom_field_options` to discover
+        allowed values for Forge/Connect app select fields before setting custom_fields.
 
         ## Authentication Required
 
@@ -246,6 +247,58 @@ def register_jira_write_tools(mcp: FastMCP) -> None:
             normalized_key = validate_ticket_key(ticket_key)
             jira_service = JiraService()
             result = jira_service.add_comment(normalized_key, body)
+            return json.dumps(result, indent=2)
+        except ValueError as e:
+            return json.dumps({"error": str(e)}, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e)}, indent=2)
+
+    @mcp.tool()
+    async def list_jira_custom_field_options(
+        ticket_key: Annotated[
+            str,
+            Field(
+                description="Jira ticket key for context (e.g., PROJ-123). "
+                "The project determines which options are available."
+            ),
+        ],
+        field_id: Annotated[
+            str,
+            Field(
+                description="Custom field ID (e.g., customfield_12345). "
+                "Use custom_field_ids from get_jira_ticket to find the ID."
+            ),
+        ],
+    ) -> str:
+        """List allowed values for a Forge/Connect app custom field.
+
+        Queries the Forge app's resolver to discover valid option values
+        for select/multi-select custom fields. Options may vary by project
+        and issue type.
+
+        Use the returned options as values when calling update_jira_ticket
+        with the custom_fields parameter.
+
+        ## Authentication Required
+
+        Requires `JIRA_API_TOKEN` environment variable. Uses internal
+        Forge APIs — requires the same access level as the Jira web UI.
+
+        ## Returned Data
+
+        Returns a JSON object with:
+        - **field_id**: The custom field ID
+        - **field_name**: Human-readable field name
+        - **multi_select**: true if multiple values can be set (comma-separated)
+        - **options**: List of allowed string values
+
+        Returns:
+            JSON string with field options
+        """
+        try:
+            normalized_key = validate_ticket_key(ticket_key)
+            jira_service = JiraService()
+            result = jira_service.get_forge_field_options(normalized_key, field_id)
             return json.dumps(result, indent=2)
         except ValueError as e:
             return json.dumps({"error": str(e)}, indent=2)

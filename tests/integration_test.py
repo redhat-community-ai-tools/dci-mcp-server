@@ -359,3 +359,21 @@ async def test_jira_forge_custom_fields_decrypted(mcp_client):
         assert isinstance(value, str) and len(value) > 0, (
             f"{field_name} should be a non-empty readable string, got: {value!r}"
         )
+
+
+@pytest.mark.integration
+async def test_jira_forge_field_options_discoverable(mcp_client):
+    """Forge custom field options can be discovered via the Forge resolver."""
+    result = await mcp_client.call_tool(
+        "list_jira_custom_field_options",
+        {"ticket_key": "ECOENGCL-424", "field_id": "customfield_10991"},
+    )
+    assert not result.is_error
+
+    data = parse_response(result)
+    assert "error" not in data, f"Tool returned error: {data.get('error')}"
+    assert data["field_id"] == "customfield_10991"
+    assert data["field_name"] == "SDLC stage when introduced"
+    assert isinstance(data["options"], list)
+    assert len(data["options"]) > 0
+    assert any("design" in opt.lower() for opt in data["options"])
