@@ -230,6 +230,122 @@ def register_jira_tools(mcp: FastMCP) -> None:
             return json.dumps({"error": str(e)}, indent=2)
 
     @mcp.tool()
+    async def update_jira_ticket(
+        ticket_key: Annotated[
+            str,
+            Field(
+                description="Jira ticket key in format PROJECT-NUMBER (e.g., ECOENGCL-452)"
+            ),
+        ],
+        fields: Annotated[
+            dict,
+            Field(
+                description=(
+                    "Dictionary of field IDs to values. Supports both standard "
+                    "fields and Forge-based custom fields (RCA/EDA dropdowns). "
+                    "Use customfield_NNNNN IDs or human-readable names. "
+                    "Example: {'customfield_10983': \"Test doesn't exist\", "
+                    "'customfield_10982': 'Stability'}"
+                )
+            ),
+        ],
+    ) -> str:
+        """Update fields on a Jira ticket.
+
+        This tool updates one or more fields on an existing Jira ticket.
+        It supports both standard Jira fields and Forge-based custom fields
+        such as the RCA/EDA dropdown fields used in Closed Loop tickets.
+
+        ## Common RCA/EDA Field IDs (ECOENGCL project)
+
+        - `customfield_10983` - **Escape Reason** (single-select)
+        - `customfield_10982` - **Escape Impact** (single-select)
+        - `customfield_10994` - **Corrective Measures** (multi-select, comma-separated)
+        - `customfield_10991` - **SDLC stage when introduced** (single-select)
+        - `customfield_10990` - **SDLC stage when found** (single-select)
+        - `customfield_10992` - **SDLC stage when should've been found** (single-select)
+
+        ## Example Dropdown Values
+
+        **Escape Reason**: "Test doesn't exist", "Test was not executed on the
+        needed Configuration / Platform / Environment / Bug in test",
+        "Defect is a race condition or has lower probability of occurrence",
+        "Requirement missing (...)"
+
+        **Escape Impact**: "Stability", "Performance", "Installability",
+        "Accessibility / Operability"
+
+        **SDLC stages**: "Software implementation phase", "Software Design Phase",
+        "System Test Phase", "Customer / Field",
+        "Customer lab/non-production environment",
+        "Sw component/integration testing (Eng)", "Sw unit testing (Eng)",
+        "Requirement definition phase (PM)"
+
+        **Corrective Measures**: "Add Unit Tests / Integration Test (Eng)",
+        "Clarify Use Case / Requirements / Design Limits (PM)",
+        "Create/Modify Test (QE)", "Describe Additional Use Case / Requirements (PM)"
+
+        Returns:
+            JSON string with update status and rendered field values
+        """
+        try:
+            normalized_key = validate_ticket_key(ticket_key)
+            jira_service = JiraService()
+            result = jira_service.update_ticket(normalized_key, fields)
+            return json.dumps(result, indent=2)
+        except ValueError as e:
+            return json.dumps({"error": str(e)}, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e)}, indent=2)
+
+    @mcp.tool()
+    async def add_jira_comment(
+        ticket_key: Annotated[
+            str,
+            Field(
+                description="Jira ticket key in format PROJECT-NUMBER (e.g., ECOENGCL-452)"
+            ),
+        ],
+        body: Annotated[
+            str,
+            Field(
+                description=(
+                    "Comment body in Jira wiki markup format. "
+                    "Supports h2./h3. headings, *bold*, _italic_, "
+                    "{{monospace}}, [links|url], # ordered lists, * bullet lists."
+                )
+            ),
+        ],
+    ) -> str:
+        """Add a comment to a Jira ticket.
+
+        This tool adds a comment to an existing Jira ticket. The comment body
+        should be in Jira wiki markup format.
+
+        ## Wiki Markup Quick Reference
+
+        - Headings: `h2. Title`, `h3. Subtitle`
+        - Bold: `*bold text*`
+        - Italic: `_italic text_`
+        - Monospace: `{{code}}`
+        - Links: `[display text|https://example.com]`
+        - Ordered list: `# Item 1`, `# Item 2`
+        - Bullet list: `* Item 1`, `* Item 2`
+
+        Returns:
+            JSON string with comment ID and metadata
+        """
+        try:
+            normalized_key = validate_ticket_key(ticket_key)
+            jira_service = JiraService()
+            result = jira_service.add_comment(normalized_key, body)
+            return json.dumps(result, indent=2)
+        except ValueError as e:
+            return json.dumps({"error": str(e)}, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e)}, indent=2)
+
+    @mcp.tool()
     async def get_jira_project_info(
         project_key: Annotated[
             str,
