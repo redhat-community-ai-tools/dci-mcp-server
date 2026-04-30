@@ -107,6 +107,9 @@ def register_jira_tools(mcp: FastMCP) -> None:
         - **Classification**: labels, components, fix_versions, affected_versions
         - **Custom Fields**: custom_fields dict with human-readable field names as keys
           (only non-null custom fields are included)
+        - **Custom Field IDs**: custom_field_ids dict mapping field names to their
+          customfield_NNNNN IDs (use these IDs or names with update_jira_ticket's
+          custom_fields parameter to update values)
         - **total_comments**: Total number of comments on the ticket
         - **Comments**: Comments with author, body, timestamps (paginated)
         - **Changelog**: History of changes with field modifications

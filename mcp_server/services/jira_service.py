@@ -55,6 +55,101 @@ class JiraService:
         self._field_map: dict[str, str] | None = None
         self._status_name_map: dict[str, str] | None = None
 
+    def get_forge_field_options(
+        self,
+        ticket_key: str,
+        field_id: str,
+    ) -> dict[str, Any]:
+        """Get known values for a Forge custom field.
+
+        Searches existing tickets in the same project for unique
+        rendered values of the field. This discovers all options that
+        have been used at least once.
+
+        Args:
+            ticket_key: Issue key (e.g. PROJ-123) — the project
+                is derived from this key.
+            field_id: Custom field ID (e.g. customfield_12345).
+
+        Returns:
+            Dict with ``field_name``, ``options`` list and
+            ``total_tickets_sampled``.
+        """
+        field_map = self._get_field_map()
+        field_name = field_map.get(field_id, field_id)
+        project_key = ticket_key.split("-")[0]
+
+        # Determine if multi-select from editmeta schema type
+        multi_select = False
+        try:
+            meta_resp = self.jira._session.get(
+                f"{self.jira_url}/rest/api/2/issue/{ticket_key}/editmeta"
+            )
+            if meta_resp.status_code == 200:
+                meta = meta_resp.json().get("fields", {}).get(field_id, {})
+                multi_select = meta.get("schema", {}).get("type") == "array"
+        except Exception:
+            pass
+
+        # Collect known values from existing tickets via search
+        cf_num = field_id.replace("customfield_", "")
+        jql = (
+            f"project = {project_key} "
+            f"AND cf[{cf_num}] is not EMPTY "
+            f"ORDER BY updated DESC"
+        )
+        resp = self.jira._session.get(
+            f"{self.jira_url}/rest/api/3/search/jql",
+            params={
+                "jql": jql,
+                "maxResults": 100,
+                "fields": field_id,
+                "expand": "renderedFields",
+            },
+        )
+        if resp.status_code != 200:
+            raise Exception(
+                f"Search failed (HTTP {resp.status_code}): {resp.text[:300]}"
+            )
+        data = resp.json()
+        values: set[str] = set()
+        for iss in data.get("issues", []):
+            rendered = iss.get("renderedFields", {}).get(field_id)
+            if not rendered or not isinstance(rendered, str):
+                continue
+            raw = iss.get("fields", {}).get(field_id)
+            if isinstance(raw, list):
+                for part in rendered.split(", "):
+                    stripped = part.strip()
+                    if stripped:
+                        values.add(stripped)
+            else:
+                values.add(rendered)
+
+        return {
+            "field_id": field_id,
+            "field_name": field_name,
+            "multi_select": multi_select,
+            "options": sorted(values),
+            "total_tickets_sampled": data.get("total", 0),
+        }
+
+    def _fetch_rendered_fields(self, ticket_key: str) -> dict[str, Any] | None:
+        """Fetch renderedFields for an issue.
+
+        Forge/Connect app custom fields return encrypted values through
+        the standard API. The renderedFields expansion asks Jira to
+        server-side render values through the app, returning readable text.
+        """
+        try:
+            resp = self.jira._session.get(
+                f"{self.jira_url}/rest/api/2/issue/{ticket_key}",
+                params={"fields": "*all", "expand": "renderedFields"},
+            )
+            return resp.json().get("renderedFields", {})
+        except Exception:
+            return None
+
     def _get_field_map(self) -> dict[str, str]:
         """Get field ID to name mapping, cached per instance."""
         if self._field_map is None:
@@ -141,9 +236,12 @@ class JiraService:
             }
 
             # Extract custom fields and additional standard fields
-            # not already in ticket_data
+            # not already in ticket_data.
+            # Forge/Connect app fields return encrypted values in the
+            # standard response; renderedFields decrypts them.
             field_map = self._get_field_map()
             raw_fields = issue.raw.get("fields", {})
+            rendered_fields = self._fetch_rendered_fields(ticket_key) or {}
             already_extracted = {
                 "summary",
                 "description",
@@ -162,15 +260,26 @@ class JiraService:
                 "comment",
             }
             custom_fields = {}
+            custom_field_ids = {}
             for field_id, raw_value in raw_fields.items():
                 if field_id in already_extracted:
                     continue
                 if raw_value is None:
                     continue
+                rendered = rendered_fields.get(field_id)
+                if rendered is not None and field_id.startswith("customfield_"):
+                    if isinstance(raw_value, str) and raw_value != rendered:
+                        raw_value = rendered
+                    elif isinstance(raw_value, list) and isinstance(rendered, str):
+                        raw_value = rendered
                 field_name = field_map.get(field_id, field_id)
                 custom_fields[field_name] = _simplify_field_value(raw_value)
+                if field_id.startswith("customfield_"):
+                    custom_field_ids[field_name] = field_id
             if custom_fields:
                 ticket_data["custom_fields"] = custom_fields
+            if custom_field_ids:
+                ticket_data["custom_field_ids"] = custom_field_ids
 
             # Get comments
             comments = self._get_comments(issue, max_comments, comment_offset)
@@ -316,9 +425,14 @@ class JiraService:
         components: list[str] | None = None,
         assignee: str | None = None,
         transition: str | None = None,
+        custom_fields: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Update an existing Jira issue.
+
+        Args:
+            custom_fields: Dict mapping customfield_NNNNN IDs (or human-readable
+                names) to values. Supports Forge/Connect app fields.
 
         Returns:
             Dictionary with updated issue information
@@ -341,8 +455,22 @@ class JiraService:
             if assignee is not None:
                 fields["assignee"] = {"name": assignee}
 
+            # Resolve human-readable custom field names to IDs
+            if custom_fields:
+                field_map = self._get_field_map()
+                name_to_id = {v: k for k, v in field_map.items()}
+                for key, value in custom_fields.items():
+                    field_id = name_to_id.get(key, key)
+                    fields[field_id] = value
+
             if fields:
-                issue.update(fields=fields)
+                resp = self.jira._session.put(
+                    f"{self.jira_url}/rest/api/2/issue/{ticket_key}",
+                    json={"fields": fields},
+                )
+                if resp.status_code not in (200, 204):
+                    error_text = resp.text or f"HTTP {resp.status_code}"
+                    raise Exception(f"Update failed: {error_text}")
 
             # Handle transition separately
             if transition is not None:
@@ -360,16 +488,31 @@ class JiraService:
                     )
                 self.jira.transition_issue(issue, match["id"])
 
-            return {
+            result: dict[str, Any] = {
                 "key": ticket_key,
                 "status": "updated",
                 "url": f"{self.jira_url}/browse/{ticket_key}",
             }
+
+            # Read back rendered values for custom fields
+            cf_ids = [k for k in fields if k.startswith("customfield_")]
+            if cf_ids:
+                rendered = self._fetch_rendered_fields(ticket_key) or {}
+                field_map = self._get_field_map()
+                rendered_vals = {}
+                for fid in cf_ids:
+                    fname = field_map.get(fid, fid)
+                    rendered_vals[fname] = rendered.get(fid)
+                result["rendered_values"] = rendered_vals
+
+            return result
         except JIRAError as e:
             raise Exception(f"Jira API error: {e.text}") from e
         except ValueError:
             raise
         except Exception as e:
+            if "Update failed" in str(e):
+                raise
             raise Exception(f"Error updating issue {ticket_key}: {str(e)}") from e
 
     def add_comment(self, ticket_key: str, body: str) -> dict[str, Any]:
