@@ -574,6 +574,7 @@ def test_create_issue_with_optional_fields():
     mock_issue.key = "TEST-1000"
     mock_issue.fields.summary = "Full ticket"
     svc.jira.create_issue.return_value = mock_issue
+    svc.jira._session.get.return_value.json.return_value = [{"accountId": "abc123"}]
 
     result = svc.create_issue(
         project_key="TEST",
@@ -594,7 +595,7 @@ def test_create_issue_with_optional_fields():
     assert call_fields["priority"] == {"name": "Critical"}
     assert call_fields["labels"] == ["label1", "label2"]
     assert call_fields["components"] == [{"name": "comp1"}]
-    assert call_fields["assignee"] == {"name": "jsmith"}
+    assert call_fields["assignee"] == {"accountId": "abc123"}
     assert result["key"] == "TEST-1000"
 
 
