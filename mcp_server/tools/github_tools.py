@@ -459,3 +459,77 @@ def register_github_tools(mcp: FastMCP) -> None:
             return json.dumps({"error": str(e)}, indent=2)
         except Exception as e:
             return json.dumps({"error": str(e)}, indent=2)
+
+    @mcp.tool()
+    async def get_github_pr_checks(
+        repo: Annotated[
+            str,
+            Field(
+                description="Repository name in format owner/repo (e.g., octocat/Hello-World)"
+            ),
+        ],
+        pull_number: Annotated[
+            int,
+            Field(description="Pull request number", ge=1),
+        ],
+    ) -> str:
+        """Get CI check runs and commit statuses for a GitHub pull request.
+
+        This tool retrieves the CI/CD check status for a pull request, including
+        GitHub Actions workflows, third-party CI integrations, and commit statuses.
+
+        ## Authentication Required
+
+        This tool requires GitHub API authentication. Set the following environment variable:
+        - `GITHUB_TOKEN`: Your GitHub personal access token
+
+        ## Repository Format
+
+        The repository name should be in the format `owner/repo`:
+        - Examples: `octocat/Hello-World`, `torvalds/linux`, `facebook/react`
+        - Case sensitive
+        - Must be a valid repository you have access to
+
+        ## Pull Request Number
+
+        The pull request number (the number after the # in GitHub PR URLs):
+        - Example: For https://github.com/octocat/Hello-World/pull/42, use 42
+
+        ## Returned Data
+
+        The tool returns a JSON object containing:
+        - **number**: PR number
+        - **title**: PR title
+        - **state**: Current state (open, closed)
+        - **head_sha**: SHA of the head commit being checked
+        - **url**: Direct link to the PR
+        - **check_runs**: Array of check run objects, each containing:
+          - **id**: Check run ID
+          - **name**: Check run name (e.g., "ansible-lint", "unit-tests")
+          - **status**: Check status (queued, in_progress, completed)
+          - **conclusion**: Check conclusion (success, failure, neutral, cancelled, skipped, timed_out, action_required, null if not completed)
+          - **started_at**: Start timestamp
+          - **completed_at**: Completion timestamp
+          - **html_url**: Link to the check run on GitHub
+          - **details_url**: Link to external CI details (if applicable)
+        - **total_check_runs**: Number of check runs
+        - **commit_statuses**: Array of commit status objects (older status API), each with:
+          - **context**: Status context (e.g., "ci/prow")
+          - **state**: Status state (pending, success, error, failure)
+          - **description**: Status description
+          - **target_url**: Link to CI details
+        - **combined_status**: Combined state of all commit statuses (pending, success, failure)
+
+        Returns:
+            JSON string with PR check status data
+        """
+        try:
+            normalized_repo = validate_repo_name(repo)
+            github_service = GitHubService()
+            pr_checks = github_service.get_pr_checks(normalized_repo, pull_number)
+            return json.dumps(pr_checks, indent=2)
+
+        except ValueError as e:
+            return json.dumps({"error": str(e)}, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e)}, indent=2)

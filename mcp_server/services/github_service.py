@@ -268,6 +268,66 @@ class GitHubService:
                 f"Error retrieving PR diff {repo_full_name}#{pull_number}: {str(e)}"
             ) from e
 
+    def get_pr_checks(self, repo_full_name: str, pull_number: int) -> dict[str, Any]:
+        """Get CI check runs and commit statuses for a pull request."""
+        try:
+            repo = self.github.get_repo(repo_full_name)
+            pr = repo.get_pull(number=pull_number)
+
+            commit = repo.get_commit(pr.head.sha)
+
+            check_runs_list = []
+            for cr in commit.get_check_runs():
+                check_runs_list.append(
+                    {
+                        "id": cr.id,
+                        "name": cr.name,
+                        "status": cr.status,
+                        "conclusion": cr.conclusion,
+                        "started_at": (
+                            cr.started_at.isoformat() if cr.started_at else None
+                        ),
+                        "completed_at": (
+                            cr.completed_at.isoformat() if cr.completed_at else None
+                        ),
+                        "html_url": cr.html_url,
+                        "details_url": cr.details_url,
+                    }
+                )
+
+            combined = commit.get_combined_status()
+            commit_statuses = []
+            for s in combined.statuses:
+                commit_statuses.append(
+                    {
+                        "context": s.context,
+                        "state": s.state,
+                        "description": s.description,
+                        "target_url": s.target_url,
+                    }
+                )
+
+            return {
+                "number": pr.number,
+                "title": pr.title,
+                "state": pr.state,
+                "head_sha": pr.head.sha,
+                "url": pr.html_url,
+                "check_runs": check_runs_list,
+                "total_check_runs": len(check_runs_list),
+                "commit_statuses": commit_statuses,
+                "combined_status": combined.state,
+            }
+
+        except RateLimitExceededException as e:
+            raise Exception(self._format_rate_limit_error(e)) from e
+        except GithubException as e:
+            raise Exception(f"GitHub API error: {e.data.get('message', str(e))}") from e
+        except Exception as e:
+            raise Exception(
+                f"Error retrieving PR checks {repo_full_name}#{pull_number}: {str(e)}"
+            ) from e
+
     @staticmethod
     def _format_rate_limit_error(e: RateLimitExceededException) -> str:
         """Build an actionable error message from a rate limit exception."""

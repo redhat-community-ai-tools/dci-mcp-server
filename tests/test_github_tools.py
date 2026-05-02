@@ -587,3 +587,137 @@ def test_get_rate_limit_status_github_exception():
 
     with pytest.raises(Exception, match="GitHub API error"):
         svc.get_rate_limit_status()
+
+
+# -- get_pr_checks tests --
+
+
+def _make_mock_check_run(
+    name="test-check",
+    status="completed",
+    conclusion="success",
+    cr_id=1,
+):
+    cr = MagicMock()
+    cr.id = cr_id
+    cr.name = name
+    cr.status = status
+    cr.conclusion = conclusion
+    cr.started_at = datetime(2026, 5, 1, 10, 0, 0)
+    cr.completed_at = datetime(2026, 5, 1, 10, 5, 0)
+    cr.html_url = f"https://github.com/owner/repo/runs/{cr_id}"
+    cr.details_url = f"https://ci.example.com/runs/{cr_id}"
+    return cr
+
+
+@pytest.mark.unit
+def test_get_pr_checks_basic():
+    svc = _make_github_service()
+    mock_pr = MagicMock()
+    mock_pr.number = 42
+    mock_pr.title = "feat: test PR"
+    mock_pr.state = "open"
+    mock_pr.head.sha = "abc123"
+    mock_pr.html_url = "https://github.com/owner/repo/pull/42"
+
+    mock_commit = MagicMock()
+    mock_commit.get_check_runs.return_value = [
+        _make_mock_check_run("lint", "completed", "success", 1),
+        _make_mock_check_run("tests", "completed", "failure", 2),
+    ]
+    mock_combined = MagicMock()
+    mock_combined.state = "success"
+    mock_combined.statuses = []
+    mock_commit.get_combined_status.return_value = mock_combined
+
+    svc.github.get_repo.return_value.get_pull.return_value = mock_pr
+    svc.github.get_repo.return_value.get_commit.return_value = mock_commit
+
+    result = svc.get_pr_checks("owner/repo", 42)
+
+    assert result["number"] == 42
+    assert result["title"] == "feat: test PR"
+    assert result["state"] == "open"
+    assert result["head_sha"] == "abc123"
+    assert result["total_check_runs"] == 2
+    assert result["check_runs"][0]["name"] == "lint"
+    assert result["check_runs"][0]["conclusion"] == "success"
+    assert result["check_runs"][0]["html_url"] == "https://github.com/owner/repo/runs/1"
+    assert result["check_runs"][1]["name"] == "tests"
+    assert result["check_runs"][1]["conclusion"] == "failure"
+    assert result["combined_status"] == "success"
+
+
+@pytest.mark.unit
+def test_get_pr_checks_with_statuses():
+    svc = _make_github_service()
+    mock_pr = MagicMock()
+    mock_pr.number = 10
+    mock_pr.title = "fix: something"
+    mock_pr.state = "open"
+    mock_pr.head.sha = "def456"
+    mock_pr.html_url = "https://github.com/owner/repo/pull/10"
+
+    mock_commit = MagicMock()
+    mock_commit.get_check_runs.return_value = []
+
+    mock_status = MagicMock()
+    mock_status.context = "ci/prow"
+    mock_status.state = "success"
+    mock_status.description = "Build passed"
+    mock_status.target_url = "https://prow.example.com/123"
+
+    mock_combined = MagicMock()
+    mock_combined.state = "success"
+    mock_combined.statuses = [mock_status]
+    mock_commit.get_combined_status.return_value = mock_combined
+
+    svc.github.get_repo.return_value.get_pull.return_value = mock_pr
+    svc.github.get_repo.return_value.get_commit.return_value = mock_commit
+
+    result = svc.get_pr_checks("owner/repo", 10)
+
+    assert result["total_check_runs"] == 0
+    assert len(result["commit_statuses"]) == 1
+    assert result["commit_statuses"][0]["context"] == "ci/prow"
+    assert result["commit_statuses"][0]["target_url"] == "https://prow.example.com/123"
+    assert result["combined_status"] == "success"
+
+
+@pytest.mark.unit
+def test_get_pr_checks_no_checks():
+    svc = _make_github_service()
+    mock_pr = MagicMock()
+    mock_pr.number = 5
+    mock_pr.title = "docs: update readme"
+    mock_pr.state = "open"
+    mock_pr.head.sha = "ghi789"
+    mock_pr.html_url = "https://github.com/owner/repo/pull/5"
+
+    mock_commit = MagicMock()
+    mock_commit.get_check_runs.return_value = []
+    mock_combined = MagicMock()
+    mock_combined.state = "pending"
+    mock_combined.statuses = []
+    mock_commit.get_combined_status.return_value = mock_combined
+
+    svc.github.get_repo.return_value.get_pull.return_value = mock_pr
+    svc.github.get_repo.return_value.get_commit.return_value = mock_commit
+
+    result = svc.get_pr_checks("owner/repo", 5)
+
+    assert result["total_check_runs"] == 0
+    assert result["check_runs"] == []
+    assert result["commit_statuses"] == []
+    assert result["combined_status"] == "pending"
+
+
+@pytest.mark.unit
+def test_get_pr_checks_rate_limit():
+    svc = _make_github_service()
+    svc.github.get_repo.side_effect = RateLimitExceededException(
+        403, {"message": "rate limit"}, {"x-ratelimit-reset": "1700000000"}
+    )
+
+    with pytest.raises(Exception, match="rate limit"):
+        svc.get_pr_checks("owner/repo", 1)
