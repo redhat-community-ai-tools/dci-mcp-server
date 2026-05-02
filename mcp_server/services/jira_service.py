@@ -54,6 +54,28 @@ class JiraService:
             self.jira = JIRA(server=self.jira_url, token_auth=self.jira_token)
         self._field_map: dict[str, str] | None = None
         self._status_name_map: dict[str, str] | None = None
+        self._is_cloud = "atlassian.net" in self.jira_url
+
+    def _resolve_assignee(self, assignee: str) -> dict[str, str]:
+        """Resolve an assignee string to the correct Jira field format.
+
+        Jira Cloud requires {"accountId": "..."} while Jira Server/DC
+        uses {"name": "..."}.
+        """
+        if not self._is_cloud:
+            return {"name": assignee}
+
+        users = self.jira._session.get(
+            f"{self.jira_url}/rest/api/2/user/search",
+            params={"query": assignee, "maxResults": 1},
+        ).json()
+        if users:
+            return {"accountId": users[0]["accountId"]}
+
+        raise ValueError(
+            f"Could not find Jira Cloud user matching '{assignee}'. "
+            "Provide an email address or display name."
+        )
 
     def get_forge_field_options(
         self,
@@ -402,7 +424,7 @@ class JiraService:
             if components is not None:
                 fields["components"] = [{"name": c} for c in components]
             if assignee is not None:
-                fields["assignee"] = {"name": assignee}
+                fields["assignee"] = self._resolve_assignee(assignee)
 
             issue = self.jira.create_issue(fields=fields)
             return {
@@ -453,7 +475,7 @@ class JiraService:
             if components is not None:
                 fields["components"] = [{"name": c} for c in components]
             if assignee is not None:
-                fields["assignee"] = {"name": assignee}
+                fields["assignee"] = self._resolve_assignee(assignee)
 
             # Resolve human-readable custom field names to IDs
             if custom_fields:
