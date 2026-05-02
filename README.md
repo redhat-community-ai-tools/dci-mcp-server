@@ -294,6 +294,7 @@ Enabled by default. Set `DATE_TOOLS_ENABLED=false` to disable.
 - `get_github_issue(repo, issue_number, max_comments)`: Get comprehensive issue/PR data including comments and PR-specific information
 - `get_github_repository_info(repo)`: Get repository information and statistics
 - `get_github_pr_diff(repo, pull_number, max_files)`: Get the diff/patch for a pull request with per-file unified diffs
+- `get_github_pr_checks(repo, pull_number)`: Get CI check runs and commit statuses for a pull request, including status, conclusion, and links to each CI job
 
 **Note**: GitHub tools require `GITHUB_TOKEN` environment variable to be set.
 
