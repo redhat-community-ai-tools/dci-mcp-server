@@ -170,6 +170,31 @@ for change in ticket_data['changelog']:
         print(f"  {item['field']}: {item['from_string']} -> {item['to_string']}")
 ```
 
+### 4. Trace Requirements to Test Tickets
+
+Traverse a Jira hierarchy (e.g. TELCOSTRAT requirements → CNF Epics → CNF Stories) in a single call:
+
+```python
+result = await search_jira_child_tickets(
+    parent_jql="project = TELCOSTRAT AND fixVersion = openshift-4.20",
+    child_jql='project = CNF AND (summary ~ Automation OR summary ~ Regression)',
+    parent_link_field="parent",       # Epics link to TELCOSTRAT via "parent"
+    child_link_field="parentEpic",    # Stories link to Epics via "parentEpic"
+)
+
+# Top-level requirements
+for gp in result['grandparent_tickets']:
+    print(f"{gp['key']}: {gp['summary']} ({gp['status']})")
+
+# Leaf tickets with full ancestry
+for ticket in result['tickets']:
+    print(f"{ticket['key']}: {ticket['summary']}")
+    print(f"  Requirement: {ticket['grandparent_key']} - {ticket['grandparent_summary']}")
+    print(f"  Epic: {ticket['parent_key']}")
+```
+
+The tool auto-paginates all three levels and returns leaf tickets enriched with their grandparent context (key, summary, status, labels).
+
 ## Security Considerations
 
 - **Token Security**: Keep your Jira API token secure and never commit it to version control

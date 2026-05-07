@@ -1,5 +1,11 @@
 # DCI MCP Server - Change Log
 
+## [2026-05-06]
+
+### New Features
+
+- Add `search_jira_child_tickets` tool: traverses a 2-level Jira parent-child hierarchy (e.g. TELCOSTRAT → Epics → Stories) in a single call, returning leaf tickets with full ancestry context. Auto-paginates all three levels.
+
 ## [2026-04-05]
 
 ### Improvements

@@ -756,3 +756,109 @@ def test_get_transitions():
     assert result[0] == {"id": "11", "name": "To Do"}
     assert result[1] == {"id": "21", "name": "In Progress"}
     assert result[2] == {"id": "31", "name": "Done"}
+
+
+# -- search_child_tickets tests --
+
+
+def _mock_issue(key, summary="Test", status_name="Open", labels=None, assignee=None):
+    """Create a mock Jira issue."""
+    issue = MagicMock()
+    issue.key = key
+    issue.fields.summary = summary
+    issue.fields.status.name = status_name
+    issue.fields.status.id = "1"
+    issue.fields.labels = labels or []
+    issue.fields.assignee = None
+    if assignee:
+        issue.fields.assignee = MagicMock()
+        issue.fields.assignee.displayName = assignee
+    issue.fields.created = "2025-01-01"
+    issue.fields.updated = "2025-01-02"
+    return issue
+
+
+def _mock_search_result(issues):
+    """Wrap issues in a mock search result with .total and __iter__."""
+    result = MagicMock()
+    result.total = len(issues)
+    result.__iter__ = MagicMock(return_value=iter(issues))
+    return result
+
+
+@pytest.mark.unit
+def test_search_child_tickets_happy_path():
+    svc = _make_jira_service()
+    svc._status_name = lambda s: s.name
+
+    gp = _mock_issue("TELCOSTRAT-1", "Requirement 1", "Closed", ["label1"])
+    epic = _mock_issue("CNF-100", "Epic 1", "Done")
+    story = _mock_issue("CNF-200", "Automation story", "Closed", assignee="Alice")
+
+    def search_side_effect(jql, **kwargs):
+        if "TELCOSTRAT" in jql and "fixVersion" in jql:
+            return _mock_search_result([gp])
+        if "parent = TELCOSTRAT-1" in jql:
+            return _mock_search_result([epic])
+        if "parentEpic = CNF-100" in jql:
+            return _mock_search_result([story])
+        return _mock_search_result([])
+
+    svc.jira.search_issues.side_effect = search_side_effect
+
+    result = svc.search_child_tickets(
+        parent_jql='project = TELCOSTRAT AND fixVersion = "openshift-4.20"',
+        child_jql="project = CNF AND summary ~ Automation",
+    )
+
+    assert result["total_grandparents"] == 1
+    assert result["total_intermediates"] == 1
+    assert result["total_tickets"] == 1
+    assert result["tickets"][0]["key"] == "CNF-200"
+    assert result["tickets"][0]["grandparent_key"] == "TELCOSTRAT-1"
+    assert result["tickets"][0]["parent_key"] == "CNF-100"
+    assert result["tickets"][0]["grandparent_summary"] == "Requirement 1"
+    assert result["tickets"][0]["grandparent_labels"] == ["label1"]
+
+
+@pytest.mark.unit
+def test_search_child_tickets_empty_grandparents():
+    svc = _make_jira_service()
+    svc._status_name = lambda s: s.name
+    svc.jira.search_issues.return_value = _mock_search_result([])
+
+    result = svc.search_child_tickets(
+        parent_jql="project = TELCOSTRAT AND fixVersion = none",
+        child_jql="project = CNF",
+    )
+
+    assert result["total_grandparents"] == 0
+    assert result["total_intermediates"] == 0
+    assert result["total_tickets"] == 0
+
+
+@pytest.mark.unit
+def test_search_child_tickets_no_matching_stories():
+    svc = _make_jira_service()
+    svc._status_name = lambda s: s.name
+
+    gp = _mock_issue("TELCOSTRAT-1", "Req", "Open")
+    epic = _mock_issue("CNF-100", "Epic", "Open")
+
+    def search_side_effect(jql, **kwargs):
+        if "TELCOSTRAT" in jql and "fixVersion" in jql:
+            return _mock_search_result([gp])
+        if "parent = TELCOSTRAT-1" in jql:
+            return _mock_search_result([epic])
+        return _mock_search_result([])
+
+    svc.jira.search_issues.side_effect = search_side_effect
+
+    result = svc.search_child_tickets(
+        parent_jql='project = TELCOSTRAT AND fixVersion = "4.20"',
+        child_jql="summary ~ Automation",
+    )
+
+    assert result["total_grandparents"] == 1
+    assert result["total_intermediates"] == 1
+    assert result["total_tickets"] == 0

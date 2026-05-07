@@ -639,6 +639,144 @@ class JiraService:
         except Exception as e:
             raise Exception(f"Error searching tickets: {str(e)}") from e
 
+    def _search_all(self, jql: str, fields: str) -> list[Any]:
+        """Search Jira and auto-paginate to collect all results."""
+        all_issues: list[Any] = []
+        start = 0
+        batch = 100
+        while True:
+            issues = self.jira.search_issues(
+                jql, startAt=start, maxResults=batch, fields=fields
+            )
+            all_issues.extend(issues)
+            if start + batch >= issues.total:
+                break
+            start += batch
+        return all_issues
+
+    def search_child_tickets(
+        self,
+        parent_jql: str,
+        child_jql: str,
+        parent_link_field: str = "parent",
+        child_link_field: str = "parentEpic",
+        max_results: int = 200,
+    ) -> dict[str, Any]:
+        """Traverse a 2-level Jira hierarchy and return leaf tickets with ancestry.
+
+        Level 0 (grandparents): found via parent_jql
+        Level 1 (intermediates): found via ``{parent_link_field} = <grandparent>``
+        Level 2 (leaves): found via ``{child_link_field} = <intermediate> AND {child_jql}``
+
+        Returns:
+            Dict with grandparent_tickets, intermediate_tickets, tickets, and counts.
+        """
+        try:
+            # Level 0: grandparents
+            gp_issues = self._search_all(parent_jql, "summary,status,labels")
+            grandparent_tickets = []
+            gp_keys = []
+            for issue in gp_issues:
+                gp_data = {
+                    "key": issue.key,
+                    "summary": issue.fields.summary,
+                    "status": self._status_name(issue.fields.status),
+                    "labels": issue.fields.labels if issue.fields.labels else [],
+                }
+                grandparent_tickets.append(gp_data)
+                gp_keys.append(issue.key)
+
+            if not gp_keys:
+                return {
+                    "grandparent_tickets": [],
+                    "intermediate_tickets": [],
+                    "tickets": [],
+                    "total_grandparents": 0,
+                    "total_intermediates": 0,
+                    "total_tickets": 0,
+                }
+
+            # Level 1: intermediates (e.g. epics) — one search per grandparent
+            intermediate_tickets = []
+            int_keys = []
+            int_to_gp: dict[str, str] = {}
+            for gp_key in gp_keys:
+                jql = f"{parent_link_field} = {gp_key}"
+                issues = self._search_all(jql, "summary,status")
+                for issue in issues:
+                    int_data = {
+                        "key": issue.key,
+                        "summary": issue.fields.summary,
+                        "status": self._status_name(issue.fields.status),
+                        "grandparent_key": gp_key,
+                    }
+                    intermediate_tickets.append(int_data)
+                    int_keys.append(issue.key)
+                    int_to_gp[issue.key] = gp_key
+
+            if not int_keys:
+                return {
+                    "grandparent_tickets": grandparent_tickets,
+                    "intermediate_tickets": [],
+                    "tickets": [],
+                    "total_grandparents": len(grandparent_tickets),
+                    "total_intermediates": 0,
+                    "total_tickets": 0,
+                }
+
+            # Build grandparent lookup for enrichment
+            gp_lookup = {gp["key"]: gp for gp in grandparent_tickets}
+
+            # Level 2: leaves — one search per intermediate
+            tickets = []
+            for int_key in int_keys:
+                jql = f"{child_link_field} = {int_key}"
+                if child_jql:
+                    jql += f" AND {child_jql}"
+                issues = self._search_all(
+                    jql, "summary,status,assignee,created,updated"
+                )
+                gp_key = int_to_gp[int_key]
+                gp_data = gp_lookup.get(gp_key, {})
+                for issue in issues:
+                    ticket = {
+                        "key": issue.key,
+                        "summary": issue.fields.summary,
+                        "status": self._status_name(issue.fields.status),
+                        "assignee": (
+                            getattr(issue.fields.assignee, "displayName", None)
+                            if issue.fields.assignee
+                            else None
+                        ),
+                        "created": issue.fields.created,
+                        "updated": issue.fields.updated,
+                        "url": f"{self.jira_url}/browse/{issue.key}",
+                        "parent_key": int_key,
+                        "grandparent_key": gp_key,
+                        "grandparent_summary": gp_data.get("summary"),
+                        "grandparent_status": gp_data.get("status"),
+                        "grandparent_labels": gp_data.get("labels", []),
+                    }
+                    tickets.append(ticket)
+                    if len(tickets) >= max_results:
+                        break
+                if len(tickets) >= max_results:
+                    break
+
+            return {
+                "grandparent_tickets": grandparent_tickets,
+                "intermediate_tickets": intermediate_tickets,
+                "tickets": tickets,
+                "total_grandparents": len(grandparent_tickets),
+                "total_intermediates": len(intermediate_tickets),
+                "total_tickets": len(tickets),
+            }
+
+        except JIRAError as e:
+            raise Exception(f"Jira search error: {e.text}") from e
+        except Exception as e:
+            raise Exception(f"Error in child ticket search: {str(e)}") from e
+
     def get_project_info(self, project_key: str) -> dict[str, Any]:
         """
         Get project information.
