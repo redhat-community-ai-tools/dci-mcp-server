@@ -283,3 +283,83 @@ def register_jira_tools(mcp: FastMCP) -> None:
 
         except Exception as e:
             return json.dumps({"error": str(e)}, indent=2)
+
+    @mcp.tool()
+    async def search_jira_child_tickets(
+        parent_jql: Annotated[
+            str,
+            Field(
+                description="JQL to find top-level (grandparent) tickets. "
+                'Example: "project = TELCOSTRAT AND fixVersion = openshift-4.20"'
+            ),
+        ],
+        child_jql: Annotated[
+            str,
+            Field(
+                description="JQL filter applied to leaf-level tickets. "
+                'Example: "project = CNF AND (summary ~ Automation OR summary ~ Regression)"'
+            ),
+        ],
+        parent_link_field: Annotated[
+            str,
+            Field(
+                description='Jira field linking intermediate tickets to grandparents (default: "parent")'
+            ),
+        ] = "parent",
+        child_link_field: Annotated[
+            str,
+            Field(
+                description='Jira field linking leaf tickets to intermediates (default: "parentEpic")'
+            ),
+        ] = "parentEpic",
+        max_results: Annotated[
+            int,
+            Field(
+                description="Maximum leaf tickets to return (default: 200, max: 500)",
+                ge=1,
+                le=500,
+            ),
+        ] = 200,
+    ) -> str:
+        """Traverse a 2-level Jira hierarchy and return leaf tickets with ancestry.
+
+        Performs a top-down search through three levels of Jira tickets:
+        1. **Grandparents** (level 0): Found via `parent_jql`
+        2. **Intermediates** (level 1): Found via `{parent_link_field} = <grandparent key>`
+        3. **Leaves** (level 2): Found via `{child_link_field} = <intermediate key> AND {child_jql}`
+
+        Each leaf ticket includes its full ancestry (parent and grandparent keys,
+        summary, status, labels).
+
+        ## Use Case
+
+        Useful for tracing requirements down to test/automation tickets through
+        an Epic hierarchy. For example: TELCOSTRAT requirements -> CNF Epics -> CNF Stories.
+
+        ## Authentication Required
+
+        Requires `JIRA_API_TOKEN` environment variable.
+
+        ## Returned Data
+
+        Returns a JSON object with:
+        - **grandparent_tickets**: List of top-level tickets (key, summary, status, labels)
+        - **intermediate_tickets**: List of mid-level tickets (key, summary, status, grandparent_key)
+        - **tickets**: List of leaf tickets with full ancestry info
+        - **total_grandparents**, **total_intermediates**, **total_tickets**: Counts
+
+        Returns:
+            JSON string with hierarchical ticket data
+        """
+        try:
+            jira_service = JiraService()
+            results = jira_service.search_child_tickets(
+                parent_jql=parent_jql,
+                child_jql=child_jql,
+                parent_link_field=parent_link_field,
+                child_link_field=child_link_field,
+                max_results=max_results,
+            )
+            return json.dumps(results, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e)}, indent=2)

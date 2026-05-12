@@ -276,6 +276,7 @@ Enabled by default. Set `DATE_TOOLS_ENABLED=false` to disable.
 - `get_jira_ticket(ticket_key, max_comments)`: Get comprehensive ticket data including comments and changelog
 - `search_jira_tickets(jql, max_results)`: Search tickets using JQL (Jira Query Language)
 - `get_jira_project_info(project_key)`: Get project information and metadata
+- `search_jira_child_tickets(parent_jql, child_jql, ...)`: Traverse a 2-level Jira hierarchy (e.g. TELCOSTRAT → Epics → Stories) in a single call, returning leaf tickets with full ancestry info
 
 **Note**: Jira tools require `JIRA_API_TOKEN` environment variable to be set.
 
