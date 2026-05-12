@@ -26,6 +26,9 @@ dependencies = [
     "python-gitlab>=5.1.0",
 ]
 
+[project.scripts]
+dci-mcp-server = "mcp_server.main:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.4.1",
