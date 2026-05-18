@@ -83,7 +83,7 @@ Add to your `~/.cursor/mcp.json`:
   "mcpServers": {
     "dci": {
       "command": "uv",
-      "args": ["run", "python", "/path/to/dci-mcp-server/main.py"],
+      "args": ["run", "--directory", "/path/to/dci-mcp-server", "main.py"],
       "env": {
         "DCI_CLIENT_ID": "your-client-id",
         "DCI_API_SECRET": "your-secret"
