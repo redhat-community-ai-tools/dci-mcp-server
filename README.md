@@ -21,7 +21,7 @@ It allows AI models to interact with [DCI](https://doc.distributed-ci.io/) for c
 
 ```bash
 # Clone the repository
-git clone https://github.com/redhat-ai-tools/dci-mcp-server
+git clone https://github.com/redhat-community-ai-tools/dci-mcp-server
 cd dci-mcp-server
 
 # Install dependencies
@@ -75,6 +75,32 @@ Add to your `~/.cursor/mcp.json`:
   }
 }
 ```
+
+#### Claude Desktop (`~/.claude.json`)
+
+```json
+{
+  "mcpServers": {
+    "dci": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/dci-mcp-server", "main.py"],
+      "env": {
+        "DCI_CLIENT_ID": "your-client-id",
+        "DCI_API_SECRET": "your-secret",
+        "DCI_CS_URL": "https://api.distributed-ci.io"
+      }
+    }
+  }
+}
+```
+
+#### Claude CLI (`~/.claude.json`)
+
+- close the claude cli
+- include the block above in the ~/.claude.json file
+- start a claude session from the /path/to/dci-mcp-server/ directory
+- verify MCP is connected with /mcp
+
 
 #### Web-based Integration (SSE transport)
 
