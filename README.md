@@ -86,7 +86,8 @@ Add to your `~/.cursor/mcp.json`:
       "args": ["run", "--directory", "/path/to/dci-mcp-server", "main.py"],
       "env": {
         "DCI_CLIENT_ID": "your-client-id",
-        "DCI_API_SECRET": "your-secret"
+        "DCI_API_SECRET": "your-secret",
+        "DCI_CS_URL": "https://api.distributed-ci.io"
       }
     }
   }
