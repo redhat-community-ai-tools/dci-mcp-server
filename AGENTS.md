@@ -104,6 +104,8 @@ The `search_dci_jobs` tool supports ElasticSearch 7.16 aggregations for efficien
 - Tests: `uv run pytest -v` or `uv run pytest -m "not slow"`.
 - Single test: `uv run pytest tests/test_file.py::test_function -v`.
 - Test with markers: `uv run pytest -m unit` or `-m integration`.
+- Evals: `uv run pytest -m eval -v` (requires `claude` CLI and API keys, included in `run-checks.sh`/pre-commit).
+- Evals with different model: `EVAL_MODEL=haiku uv run pytest -m eval -v`.
 
 ## Python Dependency Management
 
@@ -225,8 +227,17 @@ Prompts are defined in `mcp_server/prompts/prompts.py` and registered via `regis
 
 - Framework: pytest (+pytest-asyncio for async).
 - Naming: files `test_*.py` or `*_test.py`; functions `test_*`; classes `Test*`.
-- Markers: `@pytest.mark.unit`, `@pytest.mark.integration`, `@pytest.mark.slow` (see `pytest.ini`).
+- Markers: `@pytest.mark.unit`, `@pytest.mark.integration`, `@pytest.mark.slow`, `@pytest.mark.eval` (see `pytest.ini`).
 - Run subsets: `uv run pytest -m unit` or `-m "not slow"`.
+
+### Evaluation Tests
+
+Eval tests (`tests/test_evals.py`) verify that Claude correctly selects and uses MCP tools when given natural language prompts. They use `claude -p` (non-interactive mode) to run the full stack end-to-end.
+
+- Run evals: `uv run pytest -m eval -v`.
+- Override model: `EVAL_MODEL=haiku uv run pytest -m eval -v` (default: sonnet).
+- Each eval case declares a `requires` field (`date`, `dci`, `jira`, `github`, `gitlab`, `support_case`). Cases are auto-skipped when credentials are missing from `.env`.
+- To add a new eval case, append to the `EVAL_CASES` list in `tests/test_evals.py` with: `id`, `prompt`, `requires`, `allowed_tools`, `expected_tools`, and optionally `expected_params` and `answer_contains`.
 
 ## Commit & Pull Request Guidelines
 

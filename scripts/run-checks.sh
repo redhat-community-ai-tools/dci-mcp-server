@@ -86,8 +86,13 @@ fi
 
 # Run tests
 if [ "$RUN_TEST" = true ]; then
+    echo "🤖 Running eval tests (parallel)..."
+    $PYTHON_CMD -m pytest tests/ -v -m "eval" -n auto || {
+        echo "❌ Eval tests failed"
+        exit 1
+    }
     echo "🧪 Running tests..."
-    $PYTHON_CMD -m pytest tests/ -v || {
+    $PYTHON_CMD -m pytest tests/ -v -m "not eval" || {
         echo "❌ Tests failed"
         exit 1
     }

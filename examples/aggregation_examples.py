@@ -402,32 +402,30 @@ ptp_ocp419_full_analysis = {
 
 
 # Usage examples (once implemented):
-
-"""
-from dciclient.v1.api import job
-
-# Simple aggregation
-result = job.aggregate(
-    context,
-    query="(status='failure')",
-    aggs=aggregations_by_status
-)
-print(result.json()["aggregations"])
-
-# Complex PTP analysis
-result = job.aggregate(
-    context,
-    query="(topic.name='OCP-4.19')",
-    aggs=ptp_ocp419_full_analysis
-)
-ptp_stats = result.json()["aggregations"]
-
-# Via MCP tool (once implemented)
-result = await aggregate_dci_jobs(
-    query="(topic.name='OCP-4.19')",
-    aggregations=ptp_ocp419_full_analysis
-)
-"""
+#
+# from dciclient.v1.api import job
+#
+# # Simple aggregation
+# result = job.aggregate(
+#     context,
+#     query="(status='failure')",
+#     aggs=aggregations_by_status
+# )
+# print(result.json()["aggregations"])
+#
+# # Complex PTP analysis
+# result = job.aggregate(
+#     context,
+#     query="(topic.name='OCP-4.19')",
+#     aggs=ptp_ocp419_full_analysis
+# )
+# ptp_stats = result.json()["aggregations"]
+#
+# # Via MCP tool (once implemented)
+# result = await aggregate_dci_jobs(
+#     query="(topic.name='OCP-4.19')",
+#     aggregations=ptp_ocp419_full_analysis
+# )
 
 
 if __name__ == "__main__":

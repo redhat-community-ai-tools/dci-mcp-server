@@ -17,7 +17,7 @@ def register_team_tools(mcp: FastMCP) -> None:
         query: Annotated[
             str,
             Field(
-                description="search criteria (e.g., and(ilike(name,qa),contains(tags,ga))"
+                description="search criteria (e.g., and(ilike(name,qa),contains(tags,ga))). To list all, use ilike(name,%)"
             ),
         ],
         sort: Annotated[str, Field(description="Sort criteria")] = "-created_at",
@@ -40,9 +40,12 @@ def register_team_tools(mcp: FastMCP) -> None:
         """
         Lookup DCI teams with an advanced query language.
 
+        **Listing all teams**: To list all teams, use `ilike(name,%)` as the query.
+
         The query language is based on this DSL:
 
             eq(<field>,<value>) to lookup resources with a <field> having the value <value>.
+            IMPORTANT: Values must NOT be quoted. Use eq(name,DCI) not eq(name,'DCI').
 
             You can use the comparison functions gt (greater than), ge (greater or equal),
             lt (less than) or le (less or equal) using the same syntax as eq: <op>(<field>,<value>).
@@ -70,6 +73,8 @@ def register_team_tools(mcp: FastMCP) -> None:
             - updated_at: The last update timestamp. Use `today` tool to compute relative dates.
 
             - tags: list of tags associated with the team.
+
+        **Listing all teams**: To list all teams, use `ilike(name,%)` as the query.
 
         **Counting Teams**: To get the total count of teams matching a query, set `limit=1` and read the `count` field in the `_meta` section of the response.
 
