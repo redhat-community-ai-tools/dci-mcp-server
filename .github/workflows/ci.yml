@@ -35,6 +35,12 @@ jobs:
           uv run isort --check-only .
           uv run ruff check .
 
+      - name: Run type checking
+        run: uv run mypy mcp_server/
+
+      - name: Run security scanning
+        run: uv run bandit -r mcp_server/ -c pyproject.toml
+
       - name: Run unit tests
         run: uv run pytest tests/ -v -m "unit"
         # Note: Integration tests are not run in CI as they require DCI credentials

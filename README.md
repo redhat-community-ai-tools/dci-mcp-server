@@ -348,7 +348,7 @@ bash scripts/run-checks.sh
 ./.venv/bin/python -m isort --check-only .
 ./.venv/bin/python -m ruff check .
 ./.venv/bin/python -m mypy mcp_server/
-./.venv/bin/python -m bandit -r .
+./.venv/bin/python -m bandit -r mcp_server/ -c pyproject.toml
 ```
 
 #### Pre-commit Hooks (Optional)

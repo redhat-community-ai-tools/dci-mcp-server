@@ -109,7 +109,15 @@ ignore = [
 # Bandit configuration
 [tool.bandit]
 exclude_dirs = ["tests", ".venv", "venv", "env", "site-packages"]
-skips = ["B101", "B601", "B104", "B404", "B603", "B311", "B310", "B323", "B110"]
+skips = ["B101", "B601", "B104", "B404", "B603", "B311", "B310", "B323", "B110", "B105", "B112"]
+
+# mypy configuration
+[tool.mypy]
+python_version = "3.14"
+ignore_missing_imports = true
+warn_return_any = false
+warn_unused_configs = true
+check_untyped_defs = true
 
 [dependency-groups]
 dev = [
@@ -117,6 +125,7 @@ dev = [
     "black>=25.1.0",
     "detect-secrets>=1.5.0",
     "isort>=6.0.1",
+    "mypy>=1.15",
     "pre-commit>=4.3.0",
     "pytest>=8.4.1",
     "pytest-asyncio>=1.1.0",

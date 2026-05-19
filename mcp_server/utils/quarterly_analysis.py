@@ -111,8 +111,8 @@ def generate_statistics(
         Dictionary containing all computed statistics, including debug job stats if provided
     """
     # Initialize counters
-    pipeline_counts = Counter()
-    pipeline_status = defaultdict(
+    pipeline_counts: Counter[str] = Counter()
+    pipeline_status: defaultdict[str, dict[str, int]] = defaultdict(
         lambda: {
             "success": 0,
             "failure": 0,
@@ -123,8 +123,8 @@ def generate_statistics(
         }
     )
 
-    topic_counts = Counter()
-    topic_status = defaultdict(
+    topic_counts: Counter[str] = Counter()
+    topic_status: defaultdict[str, dict[str, int]] = defaultdict(
         lambda: {
             "success": 0,
             "failure": 0,
@@ -135,23 +135,35 @@ def generate_statistics(
         }
     )
 
-    component_counts = Counter()
-    component_versions = defaultdict(Counter)
-    component_types = Counter()
+    component_counts: Counter[str] = Counter()
+    component_versions: defaultdict[str, Counter[str]] = defaultdict(Counter)
+    component_types: Counter[str] = Counter()
 
-    status_reasons = Counter()
-    status_breakdown = Counter()
+    status_reasons: Counter[str] = Counter()
+    status_breakdown: Counter[str] = Counter()
 
-    daily_counts = defaultdict(int)
-    daily_status = defaultdict(lambda: {"success": 0, "failure": 0})
-    weekly_counts = defaultdict(int)
-    weekly_status = defaultdict(lambda: {"success": 0, "failure": 0})
+    daily_counts: defaultdict[str, int] = defaultdict(int)
+    daily_status: defaultdict[str, dict[str, int]] = defaultdict(
+        lambda: {"success": 0, "failure": 0}
+    )
+    weekly_counts: defaultdict[str, int] = defaultdict(int)
+    weekly_status: defaultdict[str, dict[str, int]] = defaultdict(
+        lambda: {"success": 0, "failure": 0}
+    )
 
     # Pipeline and topic frequency trends over time
-    pipeline_weekly_counts = defaultdict(lambda: defaultdict(int))
-    topic_weekly_counts = defaultdict(lambda: defaultdict(int))
-    pipeline_monthly_counts = defaultdict(lambda: defaultdict(int))
-    topic_monthly_counts = defaultdict(lambda: defaultdict(int))
+    pipeline_weekly_counts: defaultdict[str, defaultdict[str, int]] = defaultdict(
+        lambda: defaultdict(int)
+    )
+    topic_weekly_counts: defaultdict[str, defaultdict[str, int]] = defaultdict(
+        lambda: defaultdict(int)
+    )
+    pipeline_monthly_counts: defaultdict[str, defaultdict[str, int]] = defaultdict(
+        lambda: defaultdict(int)
+    )
+    topic_monthly_counts: defaultdict[str, defaultdict[str, int]] = defaultdict(
+        lambda: defaultdict(int)
+    )
 
     # Process each job
     for job in jobs:
@@ -243,8 +255,8 @@ def generate_statistics(
     avg_duration = sum(durations) / len(durations) if durations else 0
 
     # Process development pipelines from regular jobs (pr- and gr- pipelines)
-    dev_pipeline_counts = Counter()
-    dev_pipeline_status = defaultdict(
+    dev_pipeline_counts: Counter[str] = Counter()
+    dev_pipeline_status: defaultdict[str, dict[str, int]] = defaultdict(
         lambda: {
             "success": 0,
             "failure": 0,
@@ -266,9 +278,9 @@ def generate_statistics(
     # Process debug jobs if provided
     debug_stats = {}
     if debug_jobs:
-        debug_status_breakdown = Counter()
-        debug_pipeline_counts = Counter()
-        debug_topic_counts = Counter()
+        debug_status_breakdown: Counter[str] = Counter()
+        debug_pipeline_counts: Counter[str] = Counter()
+        debug_topic_counts: Counter[str] = Counter()
 
         for job in debug_jobs:
             status = job.get("status", "unknown")
@@ -306,7 +318,7 @@ def generate_statistics(
         )
     elif dev_pipeline_counts:
         # If no debug jobs but we have dev pipelines, create debug stats
-        dev_status_breakdown = Counter()
+        dev_status_breakdown: Counter[str] = Counter()
         for _pipeline_name, status_dict in dev_pipeline_status.items():
             for status, count in status_dict.items():
                 dev_status_breakdown[status] += count

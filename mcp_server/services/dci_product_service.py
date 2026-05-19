@@ -37,7 +37,7 @@ class DCIProductService(DCIBaseService):
         limit: int = 50,
         offset: int = 0,
         sort: str | None = None,
-    ) -> list:
+    ) -> Any:
         """
         List products using the advanced query syntax.
 

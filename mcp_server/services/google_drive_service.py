@@ -4,6 +4,7 @@ import io
 import os
 import tempfile
 from pathlib import Path
+from typing import Any
 
 import markdown
 from google.auth.transport.requests import Request
@@ -30,11 +31,13 @@ class GoogleDriveService:
             credentials_path: Path to the Google OAuth2 credentials JSON file
             token_path: Path to store/load the OAuth2 token
         """
-        self.credentials_path = credentials_path or os.getenv(
+        self.credentials_path: str = credentials_path or os.getenv(
             "GOOGLE_CREDENTIALS_PATH", "credentials.json"
-        )
-        self.token_path = token_path or os.getenv("GOOGLE_TOKEN_PATH", "token.json")
-        self.service = None
+        )  # type: ignore[assignment]
+        self.token_path: str = token_path or os.getenv(
+            "GOOGLE_TOKEN_PATH", "token.json"
+        )  # type: ignore[assignment]
+        self.service: Any = None
         self._authenticate()
 
     def _authenticate(self) -> None:
@@ -118,7 +121,7 @@ class GoogleDriveService:
             query = " and ".join(query_parts)
 
             # Prepare request parameters
-            request_params = {
+            request_params: dict[str, Any] = {
                 "q": query,
                 "fields": "files(id, name, parents)",
             }
@@ -201,7 +204,7 @@ class GoogleDriveService:
 
             try:
                 # Step 3: Prepare file metadata
-                file_metadata = {
+                file_metadata: dict[str, Any] = {
                     "name": doc_title,
                     "mimeType": "application/vnd.google-apps.document",
                 }

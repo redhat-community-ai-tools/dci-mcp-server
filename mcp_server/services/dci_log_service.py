@@ -13,6 +13,8 @@ from ..models.types import LogResult
 class DCILogService:
     """Service class for DCI log retrieval."""
 
+    base_url: str
+
     async def get_job_logs(self, job_id: str) -> LogResult:
         """Get logs for a specific DCI job.
 

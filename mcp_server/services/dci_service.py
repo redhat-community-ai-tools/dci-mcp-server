@@ -10,6 +10,14 @@ from ..models.types import ProwJob  # Reusing the same type for compatibility
 class DCIService:
     """Service class for DCI API interactions."""
 
+    api_key: str | None
+    user_id: str | None
+    user_secret: str | None
+
+    def _convert_dci_to_prow_job(self, dci_job: Any) -> ProwJob | None:
+        """Convert a DCI job to a ProwJob format."""
+        return None
+
     def _get_dci_context(self) -> Any:
         """Get DCI context for API calls."""
         from dciclient.v1.api.context import build_dci_context
