@@ -17,7 +17,7 @@ def register_component_tools(mcp: FastMCP) -> None:
         query: Annotated[
             str,
             Field(
-                description="search criteria (e.g., and(ilike(name,ocp),contains(tags,ga))"
+                description="search criteria (e.g., and(ilike(name,ocp),contains(tags,ga))). To list all, use ilike(name,%)"
             ),
         ],
         sort: Annotated[str, Field(description="Sort criteria")] = "-created_at",
@@ -40,9 +40,12 @@ def register_component_tools(mcp: FastMCP) -> None:
         """
         Lookup DCI components with an advanced query language.
 
+        **Listing all components**: To list all components, use `ilike(name,%)` as the query.
+
         The query language is based on this DSL:
 
             eq(<field>,<value>) to lookup resources with a <field> having the value <value>.
+            IMPORTANT: Values must NOT be quoted. Use eq(type,ocp) not eq(type,'ocp').
 
             You can use the comparison functions gt (greater than), ge (greater or equal),
             lt (less than) or le (less or equal) using the same syntax as eq: <op>(<field>,<value>).
@@ -78,6 +81,8 @@ def register_component_tools(mcp: FastMCP) -> None:
             - url: The URL of the component, if applicable.
 
             - tags: list of tags associated with the component. For components of type ocp, it has a build status tag like `build:dev` (also called engineering candidate or ec), `build:candidate` (also called release candidate or rc), `build:ga` or `build:nightly`.
+
+        **Listing all components**: To list all components, use `ilike(name,%)` as the query.
 
         **Counting Components**: To get the total count of components matching a query, set `limit=1` and read the `count` field in the `_meta` section of the response.
 

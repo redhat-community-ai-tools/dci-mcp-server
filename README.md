@@ -374,6 +374,21 @@ mcp_server/
     └── http_client.py
 ```
 
+### Testing
+
+```bash
+# Run all checks (format, lint, tests + evals)
+bash scripts/run-checks.sh
+
+# Run evals only
+uv run pytest -m eval -v
+
+# Run evals with a different model
+EVAL_MODEL=haiku uv run pytest -m eval -v
+```
+
+Eval tests use `claude -p` to verify that Claude selects the correct MCP tools for natural language prompts. Each eval case is automatically skipped if its required credentials (DCI, Jira, GitHub, etc.) are not configured in `.env`.
+
 ### Adding New Tools
 
 1. Create a new service in `mcp_server/services/` if needed
