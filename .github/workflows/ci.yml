@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12"]
+        python-version: ["3.14"]
 
     steps:
       - uses: actions/checkout@v4
@@ -40,3 +40,24 @@ jobs:
         # Note: Integration tests are not run in CI as they require DCI credentials
         # Run integration tests locally with: uv run pytest tests/ -v -m "integration"
         # Or use: bash scripts/run-checks.sh (runs all tests including integration)
+
+  container-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - containerfile: Containerfile
+            image: dci-mcp-server-test
+          - containerfile: Containerfile.sse
+            image: dci-mcp-server-sse-test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build container image (${{ matrix.containerfile }})
+        run: docker build -t ${{ matrix.image }} -f ${{ matrix.containerfile }} .
+
+      - name: Smoke-test container image (${{ matrix.containerfile }})
+        run: |
+          docker run --rm ${{ matrix.image }} \
+            uv run python -c "from mcp_server.main import create_server; s = create_server(); print(s.name)"
