@@ -17,7 +17,7 @@ def register_component_tools(mcp: FastMCP) -> None:
         query: Annotated[
             str,
             Field(
-                description="search criteria (e.g., and(ilike(name,ocp),contains(tags,ga))). To list all, use ilike(name,%)"
+                description="search criteria (e.g., eq(type,ocp) for OpenShift components, and(eq(type,ocp),contains(tags,build:ga)) for GA builds). To list all, use ilike(name,%)"
             ),
         ],
         sort: Annotated[str, Field(description="Sort criteria")] = "-created_at",
@@ -40,7 +40,10 @@ def register_component_tools(mcp: FastMCP) -> None:
         """
         Lookup DCI components with an advanced query language.
 
-        **Listing all components**: To list all components, use `ilike(name,%)` as the query.
+        **Common queries**:
+        - List OCP/OpenShift components: `eq(type,ocp)` (filter by type, NOT by name)
+        - List all components: `ilike(name,%)`
+        - List GA OCP components: `and(eq(type,ocp),contains(tags,build:ga))`
 
         The query language is based on this DSL:
 
@@ -68,7 +71,7 @@ def register_component_tools(mcp: FastMCP) -> None:
 
             - name: name of the component
 
-            - type: type of the component. `ocp` is the type of component for OpenShift release components.
+            - type: type of the component. Use `eq(type,ocp)` to query OpenShift components (do NOT use name for this).
 
             - team_id: The ID of the team that owns the component. Use the `query_dci_teams` tool to get it.
 
@@ -81,8 +84,6 @@ def register_component_tools(mcp: FastMCP) -> None:
             - url: The URL of the component, if applicable.
 
             - tags: list of tags associated with the component. For components of type ocp, it has a build status tag like `build:dev` (also called engineering candidate or ec), `build:candidate` (also called release candidate or rc), `build:ga` or `build:nightly`.
-
-        **Listing all components**: To list all components, use `ilike(name,%)` as the query.
 
         **Counting Components**: To get the total count of components matching a query, set `limit=1` and read the `count` field in the `_meta` section of the response.
 

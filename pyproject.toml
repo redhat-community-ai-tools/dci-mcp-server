@@ -7,7 +7,7 @@ name = "dci-mcp-server"
 version = "0.3.0"
 description = "DCI MCP Server"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = [
     "fastmcp>=2.11.3",
     "httpx>=0.28.1",
@@ -48,7 +48,7 @@ only-include = ["mcp_server/", "main.py"]
 # Black configuration
 [tool.black]
 line-length = 88
-target-version = ['py312']
+target-version = ['py314']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -81,7 +81,7 @@ src_paths = ["mcp_server", "tests", "main.py"]
 
 # Ruff configuration
 [tool.ruff]
-target-version = "py312"
+target-version = "py314"
 line-length = 88
 
 [tool.ruff.lint]

@@ -193,7 +193,7 @@ bash scripts/run-checks.sh
 
 ## Coding Style & Naming Conventions
 
-- Python 3.12+, 4‑space indentation, max line length 88.
+- Python 3.14+, 4‑space indentation, max line length 88.
 - Formatting: Ruff format; Imports: isort (profile=black); Lint: Ruff (E,W,F,I,B,C4,UP) with ignores in `pyproject.toml`.
 - Modules: snake_case files; classes PascalCase; functions/vars snake_case; constants UPPER_SNAKE.
 - Tool files: `mcp_server/tools/<domain>_tools.py` with `register_<domain>_tools(mcp)` function.
@@ -238,6 +238,7 @@ Eval tests (`tests/test_evals.py`) verify that Claude correctly selects and uses
 - Override model: `EVAL_MODEL=haiku uv run pytest -m eval -v` (default: sonnet).
 - Each eval case declares a `requires` field (`date`, `dci`, `jira`, `github`, `gitlab`, `support_case`). Cases are auto-skipped when credentials are missing from `.env`.
 - To add a new eval case, append to the `EVAL_CASES` list in `tests/test_evals.py` with: `id`, `prompt`, `requires`, `allowed_tools`, `expected_tools`, and optionally `expected_params` and `answer_contains`.
+- **When an eval fails with "Too many turns"**: This means the LLM retried because its first query failed — the tool description or examples are misleading. **Never** bump `max_turns` to work around the failure. Instead, reproduce the failure, capture the wrong query the LLM tried first, and fix the tool description (docstring, field description, or inline examples) so the LLM constructs the correct query on the first attempt.
 
 ## Commit & Pull Request Guidelines
 
