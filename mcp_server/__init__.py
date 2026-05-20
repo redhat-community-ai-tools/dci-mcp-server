@@ -1,8 +1,8 @@
 """
-MCP Server for Prow CI/CD integration.
+MCP Server for DCI (Distributed CI) integration.
 
-This package provides tools for interacting with Prow CI systems,
-retrieving build logs, and diagnosing PR build issues.
+This package provides tools for interacting with DCI systems,
+retrieving job data, and integrating with GitHub, Jira, and other services.
 """
 
 __version__ = "1.0.0"
