@@ -121,7 +121,7 @@ def main() -> None:
         port = int(os.getenv("MCP_PORT", "8000"))
         show_banner = os.getenv("MCP_SHOW_BANNER", "true").lower() == "true"
         print(f"Starting {transport} server on {host}:{port}")
-        mcp.run(transport=transport, host=host, port=port, show_banner=show_banner)
+        mcp.run(transport=transport, host=host, port=port, show_banner=show_banner)  # type: ignore[arg-type]
     elif transport == "tcp":
         host = os.getenv("MCP_HOST", "localhost")
         port = int(os.getenv("MCP_PORT", "8000"))

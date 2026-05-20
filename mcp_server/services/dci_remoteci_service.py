@@ -37,7 +37,7 @@ class DCIRemoteCIService(DCIBaseService):
         limit: int = 50,
         offset: int = 0,
         sort: str | None = None,
-    ) -> list:
+    ) -> Any:
         """
         List remotecis using the advanced query syntax.
 

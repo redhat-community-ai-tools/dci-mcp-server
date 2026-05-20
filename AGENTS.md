@@ -101,6 +101,8 @@ The `search_dci_jobs` tool supports ElasticSearch 7.16 aggregations for efficien
 - Format code: `uv run ruff format .` (auto-fix formatting issues).
 - Sort imports: `uv run isort .` (auto-fix import order).
 - Lint: `uv run ruff check .` or `uv run ruff check --fix .` (auto-fix linting issues).
+- Type check: `uv run mypy mcp_server/`.
+- Security scan: `uv run bandit -r mcp_server/ -c pyproject.toml`.
 - Tests: `uv run pytest -v` or `uv run pytest -m "not slow"`.
 - Single test: `uv run pytest tests/test_file.py::test_function -v`.
 - Test with markers: `uv run pytest -m unit` or `-m integration`.
@@ -189,7 +191,7 @@ bash scripts/run-checks.sh
 - Verify imports are properly sorted with isort
 - Ensure all tests pass
 
-**Note**: mypy type checking and bandit security scanning are currently disabled in the automated checks but can be run manually if needed.
+**Note**: mypy type checking and bandit security scanning are enabled in CI and `run-checks.sh --lint`. All new code must pass both checks.
 
 ## Coding Style & Naming Conventions
 
@@ -249,7 +251,8 @@ Eval tests (`tests/test_evals.py`) verify that Claude correctly selects and uses
 ## Security & Configuration
 
 - Store secrets in `.env`; never commit it. Use `env.example` as a template.
-- Optional scans: `uv run bandit -r . -f json -o bandit-report.json` and `uv run detect-secrets scan`.
+- Security scanning: `uv run bandit -r mcp_server/ -c pyproject.toml` (runs in CI; config in `pyproject.toml` `[tool.bandit]`).
+- Secret detection: `uv run detect-secrets scan` (optional, run manually).
 - Container builds: see `Containerfile`/`Containerfile.sse` if packaging is needed.
 
 ## Partner Names and Confidentiality

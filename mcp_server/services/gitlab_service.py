@@ -28,13 +28,14 @@ class GitLabService:
             gitlab_url or os.environ.get("GITLAB_URL") or "https://gitlab.com"
         )
 
+        self.ssl_verify: bool | str
         if ssl_verify is not None:
             self.ssl_verify = ssl_verify
         else:
             env_val = os.environ.get("GITLAB_SSL_VERIFY")
             if env_val is not None:
                 if env_val.lower() in ("false", "0", "no"):
-                    self.ssl_verify: bool | str = False
+                    self.ssl_verify = False
                 elif env_val.lower() in ("true", "1", "yes"):
                     self.ssl_verify = True
                 else:

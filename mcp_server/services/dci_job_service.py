@@ -34,7 +34,7 @@ class DCIJobService(DCIBaseService):
         sort: str | None = None,
         includes: str | None = None,
         aggs: dict | None = None,
-    ) -> list:
+    ) -> Any:
         """
         List jobs using the advanced search syntax.
 
@@ -77,7 +77,7 @@ class DCIJobService(DCIBaseService):
         limit: int = 50,
         offset: int = 0,
         sort: str | None = None,
-    ) -> list:
+    ) -> Any:
         """
         List jobs using the advanced query syntax.
 

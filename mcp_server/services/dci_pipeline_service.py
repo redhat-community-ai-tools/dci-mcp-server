@@ -37,7 +37,7 @@ class DCIPipelineService(DCIBaseService):
         limit: int = 50,
         offset: int = 0,
         sort: str | None = None,
-    ) -> list:
+    ) -> Any:
         """
         List pipelines using the advanced query syntax.
 

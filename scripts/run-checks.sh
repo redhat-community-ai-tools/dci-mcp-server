@@ -83,10 +83,16 @@ if [ "$RUN_LINT" = true ]; then
     }
 
     echo "🔍 Type checking with mypy..."
-    echo "⏭️  mypy disabled for now"
+    $PYTHON_CMD -m mypy mcp_server/ || {
+        echo "⚠️  mypy found type errors. Fix them before committing."
+        exit 1
+    }
 
     echo "🔒 Security scanning with bandit..."
-    echo "⏭️ bandit disabled for now. You can run it manually with $PYTHON_CMD -m bandit -r . -f json -o bandit-report.json"
+    $PYTHON_CMD -m bandit -r mcp_server/ -c pyproject.toml || {
+        echo "⚠️  bandit found security issues. Fix them before committing."
+        exit 1
+    }
 fi
 
 # Run tests
