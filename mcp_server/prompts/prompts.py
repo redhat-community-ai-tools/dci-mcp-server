@@ -71,14 +71,27 @@ Before narrowing down, consider causes across these categories to avoid tunnel v
 - **Environment**: DNS, certificates, external service dependencies
 - **Timing/Race Condition**: ordering issues, timeouts, concurrency problems
 
-## Step 3: Cross-validation
+## Step 3: Adversarial Challenge
 
-Before finalizing your root cause:
-- Verify your causal chain is consistent with the timeline from events.txt.
-- Check if the same root cause explains ALL the failures in the job, not just the first one.
-- Look for earlier warnings or errors that preceded the main failure.
-- If must_gather is available, confirm your hypothesis with cluster state.
-- **Counterfactual check**: If this root cause had been absent, would the job have succeeded? If not, you may have found a contributing factor rather than the root cause.
+Before finalizing your root cause, actively try to DISPROVE it:
+
+1. **Generate an alternative hypothesis** from a DIFFERENT category than your root cause. If your root cause is "Software Bug," propose an Infrastructure or Timing explanation that fits the same evidence. If it's "Infrastructure," propose a Configuration explanation.
+
+2. **Find evidence that supports the alternative** — look in the logs for anything consistent with the alternative and inconsistent with your primary hypothesis.
+
+3. **Apply the counterfactual test to BOTH hypotheses**:
+   - If root cause A had been absent, would the job have succeeded?
+   - If alternative B had been absent, would the job have succeeded?
+   - If both pass the counterfactual test, you may have two contributing factors rather than one root cause.
+
+4. **Timeline consistency**: Verify your causal chain against events.txt. Does the root cause PRECEDE all its consequences? If not, you have the causation direction wrong.
+
+5. **Cross-failure check**: Does the root cause explain ALL failures in the job, not just the first one? Unexplained failures suggest a deeper cause.
+
+6. **State your confidence with criteria**:
+   - HIGH: root cause has direct log evidence, alternative was investigated and ruled out, timeline is consistent
+   - MEDIUM: root cause fits the evidence but alternative was not fully ruled out, or some log evidence is missing
+   - LOW: multiple hypotheses fit equally well, or key evidence (must_gather, events.txt) is unavailable
 
 ## Step 4: Report
 
