@@ -105,11 +105,15 @@ def register_jira_tools(mcp: FastMCP) -> None:
         - **People**: assignee, reporter
         - **Dates**: created, updated
         - **Classification**: labels, components, fix_versions, affected_versions
+        - **Parent**: parent ticket (key, summary, issue_type) or null
         - **Custom Fields**: custom_fields dict with human-readable field names as keys
           (only non-null custom fields are included)
         - **Custom Field IDs**: custom_field_ids dict mapping field names to their
           customfield_NNNNN IDs (use these IDs or names with update_jira_ticket's
           custom_fields parameter to update values)
+        - **Web Links**: web_links list with url and title for each remote link
+        - **Issue Links**: issue_links list with key, summary, direction, link_type
+          for each linked Jira ticket
         - **total_comments**: Total number of comments on the ticket
         - **Comments**: Comments with author, body, timestamps (paginated)
         - **Changelog**: History of changes with field modifications
@@ -231,6 +235,40 @@ def register_jira_tools(mcp: FastMCP) -> None:
 
         except Exception as e:
             return json.dumps({"error": str(e)}, indent=2)
+
+    @mcp.tool()
+    async def count_jira_tickets(
+        jql: Annotated[
+            str,
+            Field(
+                description="JQL (Jira Query Language) query string. Examples: 'project = CILAB AND status = Open', 'assignee = currentUser() AND status != Closed'"
+            ),
+        ],
+    ) -> str:
+        """Count Jira tickets matching a JQL query.
+
+        Returns the total number of tickets matching the query without
+        fetching ticket data. Use this instead of search_jira_tickets
+        when you only need the count.
+
+        ## Authentication Required
+
+        Requires `JIRA_API_TOKEN` environment variable.
+
+        ## Returned Data
+
+        Returns a JSON object with:
+        - **count**: Total number of matching tickets
+
+        Returns:
+            JSON string with count
+        """
+        try:
+            jira_service = JiraService()
+            count = jira_service.count_tickets(jql)
+            return json.dumps({"count": count})
+        except Exception as e:
+            return json.dumps({"error": str(e)})
 
     @mcp.tool()
     async def get_jira_project_info(

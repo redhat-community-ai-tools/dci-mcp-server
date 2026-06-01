@@ -254,6 +254,51 @@ def register_jira_write_tools(mcp: FastMCP) -> None:
             return json.dumps({"error": str(e)}, indent=2)
 
     @mcp.tool()
+    async def add_jira_weblink(
+        ticket_key: Annotated[
+            str,
+            Field(
+                description="Jira ticket key in format PROJECT-NUMBER (e.g., CILAB-1234)"
+            ),
+        ],
+        url: Annotated[
+            str,
+            Field(description="URL to link to"),
+        ],
+        title: Annotated[
+            str,
+            Field(description="Display title for the link"),
+        ],
+    ) -> str:
+        """Add a web link to a Jira ticket.
+
+        Adds a remote/web link visible in the ticket's link section.
+
+        ## Authentication Required
+
+        Requires `JIRA_API_TOKEN` and `JIRA_WRITE_ENABLED=true` environment variables.
+
+        ## Returned Data
+
+        Returns a JSON object with:
+        - **link_id**: ID of the created link
+        - **url**: The linked URL
+        - **title**: Display title of the link
+
+        Returns:
+            JSON string with link data
+        """
+        try:
+            normalized_key = validate_ticket_key(ticket_key)
+            jira_service = JiraService()
+            result = jira_service.add_weblink(normalized_key, url, title)
+            return json.dumps(result, indent=2)
+        except ValueError as e:
+            return json.dumps({"error": str(e)}, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e)}, indent=2)
+
+    @mcp.tool()
     async def list_jira_custom_field_options(
         ticket_key: Annotated[
             str,

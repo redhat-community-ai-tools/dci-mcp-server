@@ -211,6 +211,7 @@ EVAL_CASES = [
         "allowed_tools": [
             "mcp__dci__search_jira_tickets",
             "mcp__dci__get_jira_ticket",
+            "mcp__dci__count_jira_tickets",
         ],
         "expected_tools": ["mcp__dci__search_jira_tickets"],
         "expected_params": {"jql": "CILAB"},
