@@ -105,11 +105,15 @@ def register_jira_tools(mcp: FastMCP) -> None:
         - **People**: assignee, reporter
         - **Dates**: created, updated
         - **Classification**: labels, components, fix_versions, affected_versions
+        - **Parent**: parent ticket (key, summary, issue_type) or null
         - **Custom Fields**: custom_fields dict with human-readable field names as keys
           (only non-null custom fields are included)
         - **Custom Field IDs**: custom_field_ids dict mapping field names to their
           customfield_NNNNN IDs (use these IDs or names with update_jira_ticket's
           custom_fields parameter to update values)
+        - **Web Links**: web_links list with url and title for each remote link
+        - **Issue Links**: issue_links list with key, summary, direction, link_type
+          for each linked Jira ticket
         - **total_comments**: Total number of comments on the ticket
         - **Comments**: Comments with author, body, timestamps (paginated)
         - **Changelog**: History of changes with field modifications

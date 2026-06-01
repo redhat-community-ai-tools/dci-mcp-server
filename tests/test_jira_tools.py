@@ -779,6 +779,122 @@ def test_add_comment():
     assert result["created"] == "2025-01-01T00:00:00Z"
 
 
+# -- add_weblink tests --
+
+
+def test_add_weblink():
+    svc = _make_jira_service()
+    mock_link = MagicMock()
+    mock_link.id = "99"
+    svc.jira.add_simple_link.return_value = mock_link
+
+    result = svc.add_weblink("TEST-123", "https://example.com", "Example Link")
+
+    svc.jira.add_simple_link.assert_called_once_with(
+        "TEST-123", {"url": "https://example.com", "title": "Example Link"}
+    )
+    assert result["link_id"] == "99"
+    assert result["url"] == "https://example.com"
+    assert result["title"] == "Example Link"
+
+
+# -- _get_parent tests --
+
+
+def test_get_parent():
+    svc = _make_jira_service()
+    issue = MagicMock()
+    issue.fields.parent.key = "EPIC-1"
+    issue.fields.parent.fields.summary = "Parent epic"
+    issue.fields.parent.fields.issuetype.name = "Epic"
+
+    result = svc._get_parent(issue)
+
+    assert result == {
+        "key": "EPIC-1",
+        "summary": "Parent epic",
+        "issue_type": "Epic",
+    }
+
+
+def test_get_parent_none():
+    svc = _make_jira_service()
+    issue = MagicMock()
+    issue.fields.parent = None
+
+    result = svc._get_parent(issue)
+
+    assert result is None
+
+
+# -- _get_web_links / _get_issue_links tests --
+
+
+def test_get_web_links():
+    svc = _make_jira_service()
+    link1 = MagicMock()
+    link1.object.url = "https://example.com"
+    link1.object.title = "Example"
+    link2 = MagicMock()
+    link2.object.url = "https://other.com"
+    link2.object.title = "Other"
+    svc.jira.remote_links.return_value = [link1, link2]
+
+    result = svc._get_web_links("TEST-123")
+
+    assert len(result) == 2
+    assert result[0] == {"url": "https://example.com", "title": "Example"}
+    assert result[1] == {"url": "https://other.com", "title": "Other"}
+
+
+def test_get_web_links_empty():
+    svc = _make_jira_service()
+    svc.jira.remote_links.return_value = []
+
+    result = svc._get_web_links("TEST-123")
+
+    assert result == []
+
+
+def test_get_issue_links():
+    svc = _make_jira_service()
+    issue = MagicMock()
+
+    outward_link = MagicMock()
+    outward_link.type.name = "Blocks"
+    outward_link.type.outward = "blocks"
+    outward_link.outwardIssue.key = "TEST-456"
+    outward_link.outwardIssue.fields.summary = "Blocked ticket"
+    del outward_link.inwardIssue
+
+    inward_link = MagicMock()
+    inward_link.type.name = "Blocks"
+    inward_link.type.inward = "is blocked by"
+    inward_link.inwardIssue.key = "TEST-789"
+    inward_link.inwardIssue.fields.summary = "Blocking ticket"
+    del inward_link.outwardIssue
+
+    issue.fields.issuelinks = [outward_link, inward_link]
+
+    result = svc._get_issue_links(issue)
+
+    assert len(result) == 2
+    assert result[0]["key"] == "TEST-456"
+    assert result[0]["direction"] == "blocks"
+    assert result[1]["key"] == "TEST-789"
+    assert result[1]["direction"] == "is blocked by"
+
+
+def test_get_issue_links_empty():
+    svc = _make_jira_service()
+    issue = MagicMock()
+    issue.fields.issuelinks = []
+
+    result = svc._get_issue_links(issue)
+
+    assert result == []
+
+
 # -- get_transitions tests --
 
 

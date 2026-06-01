@@ -253,6 +253,7 @@ class JiraService:
                     if issue.fields.versions
                     else []
                 ),
+                "parent": self._get_parent(issue),
                 "total_comments": total_comments,
                 "url": f"{self.jira_url}/browse/{issue.key}",
             }
@@ -280,6 +281,8 @@ class JiraService:
                 "fixVersions",
                 "versions",
                 "comment",
+                "parent",
+                "issuelinks",
             }
             custom_fields = {}
             custom_field_ids = {}
@@ -303,6 +306,12 @@ class JiraService:
             if custom_field_ids:
                 ticket_data["custom_field_ids"] = custom_field_ids
 
+            # Get web links (remote links)
+            ticket_data["web_links"] = self._get_web_links(ticket_key)
+
+            # Get issue links (linked Jira tickets)
+            ticket_data["issue_links"] = self._get_issue_links(issue)
+
             # Get comments
             comments = self._get_comments(issue, max_comments, comment_offset)
             ticket_data["comments"] = comments
@@ -310,6 +319,11 @@ class JiraService:
             # Get changelog/history
             changelog = self._get_changelog(issue)
             ticket_data["changelog"] = changelog
+
+            # Get remote links (web links)
+            remote_links = self._get_remote_links(ticket_key)
+            if remote_links:
+                ticket_data["remote_links"] = remote_links
 
             return ticket_data
 
@@ -340,6 +354,30 @@ class JiraService:
 
         return comments
 
+    def _get_remote_links(self, ticket_key: str) -> list[dict[str, Any]]:
+        """Fetch remote links (web links) for an issue."""
+        try:
+            links = self.jira.remote_links(ticket_key)
+            result = []
+            for link in links:
+                link_obj = getattr(link, "object", None) or {}
+                if isinstance(link_obj, dict):
+                    url = link_obj.get("url")
+                    title = link_obj.get("title")
+                else:
+                    url = getattr(link_obj, "url", None)
+                    title = getattr(link_obj, "title", None)
+                result.append(
+                    {
+                        "id": getattr(link, "id", None),
+                        "url": url,
+                        "title": title,
+                    }
+                )
+            return result
+        except Exception:
+            return []
+
     def _get_changelog(self, issue: Any) -> list[dict[str, Any]]:
         """Extract changelog/history from the issue."""
         changelog = []
@@ -369,6 +407,62 @@ class JiraService:
                 changelog.append(history_data)
 
         return changelog
+
+    def _get_parent(self, issue: Any) -> dict[str, str | None] | None:
+        """Extract parent ticket info (Epic, Story, etc.)."""
+        parent = getattr(issue.fields, "parent", None)
+        if parent is None:
+            return None
+        return {
+            "key": parent.key,
+            "summary": getattr(parent.fields, "summary", None),
+            "issue_type": (
+                getattr(parent.fields.issuetype, "name", None)
+                if getattr(parent.fields, "issuetype", None)
+                else None
+            ),
+        }
+
+    def _get_web_links(self, ticket_key: str) -> list[dict[str, str]]:
+        """Fetch remote (web) links for an issue."""
+        try:
+            remote_links = self.jira.remote_links(ticket_key)
+            return [
+                {
+                    "url": link.object.url,
+                    "title": getattr(link.object, "title", link.object.url),
+                }
+                for link in remote_links
+                if hasattr(link, "object") and hasattr(link.object, "url")
+            ]
+        except Exception:
+            return []
+
+    def _get_issue_links(self, issue: Any) -> list[dict[str, str | None]]:
+        """Extract issue links (linked Jira tickets) from an issue."""
+        links: list[dict[str, str | None]] = []
+        issue_links = getattr(issue.fields, "issuelinks", None)
+        if not issue_links:
+            return links
+        for link in issue_links:
+            link_type = getattr(link.type, "name", "Related")
+            if hasattr(link, "outwardIssue"):
+                target = link.outwardIssue
+                direction = getattr(link.type, "outward", link_type)
+            elif hasattr(link, "inwardIssue"):
+                target = link.inwardIssue
+                direction = getattr(link.type, "inward", link_type)
+            else:
+                continue
+            links.append(
+                {
+                    "key": target.key,
+                    "summary": getattr(target.fields, "summary", None),
+                    "direction": direction,
+                    "link_type": link_type,
+                }
+            )
+        return links
 
     def _get_status_name_map(self) -> dict[str, str]:
         """Fetch status ID → English name map from Jira REST API v3.
@@ -555,6 +649,24 @@ class JiraService:
             raise Exception(f"Jira API error: {e.text}") from e
         except Exception as e:
             raise Exception(f"Error adding comment to {ticket_key}: {str(e)}") from e
+
+    def add_weblink(self, ticket_key: str, url: str, title: str) -> dict[str, Any]:
+        """Add a web link (remote link) to a Jira issue.
+
+        Returns:
+            Dictionary with link ID and URL
+        """
+        try:
+            link = self.jira.add_simple_link(ticket_key, {"url": url, "title": title})
+            return {
+                "link_id": link.id if hasattr(link, "id") else str(link),
+                "url": url,
+                "title": title,
+            }
+        except JIRAError as e:
+            raise Exception(f"Jira API error: {e.text}") from e
+        except Exception as e:
+            raise Exception(f"Error adding web link to {ticket_key}: {str(e)}") from e
 
     def get_transitions(self, ticket_key: str) -> list[dict[str, Any]]:
         """
