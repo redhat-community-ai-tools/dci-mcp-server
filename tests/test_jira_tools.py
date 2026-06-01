@@ -465,6 +465,46 @@ def test_search_tickets_with_offset():
     )
 
 
+# -- count_tickets tests --
+
+
+@pytest.mark.unit
+def test_count_tickets_cloud():
+    """On Jira Cloud, count_tickets uses the approximate-count endpoint."""
+    svc = _make_jira_service()
+    svc._is_cloud = True
+    svc.jira_url = "https://example.atlassian.net"
+
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"count": 1234}
+    mock_resp.raise_for_status = MagicMock()
+    svc.jira._session.post = MagicMock(return_value=mock_resp)
+
+    result = svc.count_tickets("project = TEST")
+
+    assert result == 1234
+    svc.jira._session.post.assert_called_once_with(
+        "https://example.atlassian.net/rest/api/3/search/approximate-count",
+        json={"jql": "project = TEST"},
+    )
+
+
+@pytest.mark.unit
+def test_count_tickets_server():
+    """On Jira Server/DC, count_tickets uses search_issues with maxResults=0."""
+    svc = _make_jira_service()
+    svc._is_cloud = False
+
+    mock_issues = MagicMock()
+    mock_issues.total = 500
+    svc.jira.search_issues.return_value = mock_issues
+
+    result = svc.count_tickets("project = TEST")
+
+    assert result == 500
+    svc.jira.search_issues.assert_called_once_with("project = TEST", maxResults=0)
+
+
 # -- _get_comments pagination tests --
 
 

@@ -233,6 +233,40 @@ def register_jira_tools(mcp: FastMCP) -> None:
             return json.dumps({"error": str(e)}, indent=2)
 
     @mcp.tool()
+    async def count_jira_tickets(
+        jql: Annotated[
+            str,
+            Field(
+                description="JQL (Jira Query Language) query string. Examples: 'project = CILAB AND status = Open', 'assignee = currentUser() AND status != Closed'"
+            ),
+        ],
+    ) -> str:
+        """Count Jira tickets matching a JQL query.
+
+        Returns the total number of tickets matching the query without
+        fetching ticket data. Use this instead of search_jira_tickets
+        when you only need the count.
+
+        ## Authentication Required
+
+        Requires `JIRA_API_TOKEN` environment variable.
+
+        ## Returned Data
+
+        Returns a JSON object with:
+        - **count**: Total number of matching tickets
+
+        Returns:
+            JSON string with count
+        """
+        try:
+            jira_service = JiraService()
+            count = jira_service.count_tickets(jql)
+            return json.dumps({"count": count})
+        except Exception as e:
+            return json.dumps({"error": str(e)})
+
+    @mcp.tool()
     async def get_jira_project_info(
         project_key: Annotated[
             str,

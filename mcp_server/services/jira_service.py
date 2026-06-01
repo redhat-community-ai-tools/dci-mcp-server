@@ -639,6 +639,23 @@ class JiraService:
         except Exception as e:
             raise Exception(f"Error searching tickets: {str(e)}") from e
 
+    def count_tickets(self, jql: str) -> int:
+        """Count tickets matching a JQL query.
+
+        On Jira Cloud uses the approximate-count endpoint.
+        On Jira Server/DC uses a minimal search with maxResults=0.
+        """
+        if self._is_cloud:
+            resp = self.jira._session.post(
+                f"{self.jira_url}/rest/api/3/search/approximate-count",
+                json={"jql": jql},
+            )
+            resp.raise_for_status()
+            return resp.json().get("count", 0)
+
+        issues = self.jira.search_issues(jql, maxResults=0)
+        return issues.total
+
     def _search_all(self, jql: str, fields: str) -> list[Any]:
         """Search Jira and auto-paginate to collect all results."""
         all_issues: list[Any] = []
