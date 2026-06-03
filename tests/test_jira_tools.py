@@ -662,6 +662,24 @@ def test_update_issue_fields():
     assert result["status"] == "updated"
 
 
+@pytest.mark.parametrize("value", ["none", "None", "unassigned", "  none  ", ""])
+def test_update_issue_unassign(value):
+    svc = _make_jira_service()
+    mock_issue = MagicMock()
+    mock_issue.key = "TEST-123"
+    svc.jira.issue.return_value = mock_issue
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 204
+    svc.jira._session.put.return_value = mock_resp
+
+    result = svc.update_issue("TEST-123", assignee=value)
+
+    call_json = svc.jira._session.put.call_args[1]["json"]
+    assert call_json["fields"]["assignee"] is None
+    assert result["status"] == "updated"
+
+
 def test_update_issue_custom_fields():
     """Custom fields are resolved and rendered values returned."""
     svc = _make_jira_service()
