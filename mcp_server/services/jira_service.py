@@ -56,12 +56,15 @@ class JiraService:
         self._status_name_map: dict[str, str] | None = None
         self._is_cloud = "atlassian.net" in self.jira_url
 
-    def _resolve_assignee(self, assignee: str) -> dict[str, str]:
+    def _resolve_assignee(self, assignee: str) -> dict[str, str] | None:
         """Resolve an assignee string to the correct Jira field format.
 
         Jira Cloud requires {"accountId": "..."} while Jira Server/DC
-        uses {"name": "..."}.
+        uses {"name": "..."}.  Pass an empty string or "none" to unassign.
         """
+        if assignee.strip().lower() in ("", "none", "unassigned"):
+            return None
+
         if not self._is_cloud:
             return {"name": assignee}
 

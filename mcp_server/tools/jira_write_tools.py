@@ -126,7 +126,7 @@ def register_jira_write_tools(mcp: FastMCP) -> None:
         assignee: Annotated[
             str | None,
             Field(
-                description="New assignee username (Jira Server/DC) or account ID (Jira Cloud)"
+                description='New assignee username (Jira Server/DC) or account ID (Jira Cloud). Use "none" to unassign'
             ),
         ] = None,
         transition: Annotated[
