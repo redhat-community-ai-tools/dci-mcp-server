@@ -15,39 +15,17 @@
 
 """Prompts for the DCI MCP server."""
 
+import fnmatch
+import logging
 from typing import Annotated
 
+from ..services.dci_job_service import DCIJobService
 
-def register_prompts(mcp):
-    """Register prompts with the MCP server."""
+logger = logging.getLogger(__name__)
 
-    @mcp.prompt()
-    async def rca(
-        dci_job_id: Annotated[
-            str, "The DCI job ID for which to perform root cause analysis (RCA)."
-        ],
-    ) -> str:
-        """
-        Prompt for instructions on how to do a Root Cause Analysis (RCA) of a failing DCI job. Always use this prompt when analysing a failing DCI job.
-
-        Returns:
-            A prompt message with instructions on how to perform RCA of a failing DCI job.
-        """
-        return f"""Conduct a root cause analysis (RCA) on the following DCI job: {dci_job_id}. Store all the downloaded files at /tmp/dci/<job id>, so as not to download them twice. Create a report with your findings at /tmp/dci/rca-<job id>.md. Be sure to include details about the timeline of events and the DCI job information in the report, such as the components, the topic, and the pipeline name. If there is a CILAB-<num> comment, replace it with https://redhat.atlassian.net/browse/CILAB-<num>. Include a hyperlink in the form https://distributed-ci.io/jobs/<job id> each time you refer to the DCI job ID.
-
-## Step 1: Evidence Gathering
-
-First step is to review ansible.log (overview of the CI job execution). Then the logjuicer.txt (for regular files) and logjuicer_omg.txt (for must_gather) files that compare the logs from a previous successful run. For each difference flagged by logjuicer, determine whether it is a cause, a consequence, or unrelated to the failure.
-
-Later always download events.txt if it is available to understand the timeline.
-
-And lately, always validate your findings using the must_gather file and the omc utility if the must_gather file is available. Extract the must_gather file using the command: `tar -xf <must_gather_file>`. You can then use the omc utility to analyze the must_gather data using `omc use <extracted_must_gather_directory>`.
-
-Avoid looking at the DCI task files or failed_task.txt or play_recap, as they contain the same information as ansible.log.
-
-Do not hesitate to download any extra files that you think are relevant to the RCA.
-
-## Step 2: Root Cause Analysis using the 5 Whys Method
+# Shared RCA methodology text (Steps 2-4) used by both the static
+# fallback prompt and the dynamic prompt to avoid duplication.
+_RCA_METHODOLOGY = """## Step 2: Root Cause Analysis using the 5 Whys Method
 
 After gathering evidence, apply the "5 Whys" technique to drill down to the true root cause. Do not stop at the first error you find — that is usually a symptom, not the cause.
 
@@ -107,6 +85,430 @@ Structure the report with these sections:
 
 Check that the associated JIRA ticket is consistent with your findings.
 """
+
+
+def _fetch_job_metadata(job_id: str) -> dict | None:
+    """Fetch job metadata (tags, components, pipeline, status_reason).
+
+    Uses the DCI ES search API to retrieve a single job by ID with only
+    the fields needed for dynamic prompt generation.
+
+    Returns:
+        A dict with keys: tags, components, pipeline_name, status_reason,
+        status, topic_name.  Returns None on any failure.
+    """
+    try:
+        service = DCIJobService()
+        result = service.search_jobs(
+            query=f"(id='{job_id}')",
+            limit=1,
+            includes="id,tags,components.name,components.type,components.version,"
+            "pipeline.name,status_reason,status,topic.name",
+        )
+        hits = result.get("hits", {}).get("hits", [])
+        if not hits:
+            return None
+        src = hits[0].get("_source", hits[0])
+        return {
+            "tags": src.get("tags", []),
+            "components": src.get("components", []),
+            "pipeline_name": (src.get("pipeline") or {}).get("name", ""),
+            "status_reason": src.get("status_reason", ""),
+            "status": src.get("status", ""),
+            "topic_name": (src.get("topic") or {}).get("name", ""),
+        }
+    except Exception:
+        logger.debug("Failed to fetch metadata for job %s", job_id, exc_info=True)
+        return None
+
+
+def _fetch_job_files(job_id: str) -> list[dict] | None:
+    """Fetch the list of files attached to a job.
+
+    Calls the DCI API directly rather than through
+    ``DCIJobService.list_job_files()``, which swallows exceptions and
+    returns ``[]`` — making it impossible to distinguish *no files* from
+    *API failure*.
+
+    Returns:
+        A list of dicts with keys id, name, size.  Returns None on failure.
+    """
+    try:
+        from dciclient.v1.api import job as job_api
+
+        service = DCIJobService()
+        context = service._get_dci_context()
+        response = job_api.list_files(context, job_id)
+        data = response.json()
+        files_list = data.get("files", []) if isinstance(data, dict) else []
+        return [
+            {"id": f.get("id", ""), "name": f.get("name", ""), "size": f.get("size", 0)}
+            for f in files_list
+        ]
+    except Exception:
+        logger.debug("Failed to fetch files for job %s", job_id, exc_info=True)
+        return None
+
+
+def _classify_job_type(tags: list[str]) -> str:
+    """Classify the job type based on its tags.
+
+    Returns one of: "acm", "ztp", "upgrade", "day2", "sno", "standard".
+    The first matching rule wins (most-specific first).
+    """
+    tag_set = {t.lower() for t in tags}
+
+    if "install_type:acm" in tag_set:
+        return "acm"
+    if any("ztp" in t for t in tag_set):
+        return "ztp"
+    if any("upgrade" in t for t in tag_set):
+        return "upgrade"
+    if "agent:openshift-app" in tag_set or any("day2" in t for t in tag_set):
+        return "day2"
+    if any("sno" in t for t in tag_set) or "spoke" in tag_set:
+        return "sno"
+    return "standard"
+
+
+def _prioritize_files(
+    files: list[dict],
+) -> dict[str, list[dict]]:
+    """Categorize files into priority buckets for the RCA prompt.
+
+    Priority buckets (P1 = most important):
+      P1 – ansible.log
+      P2 – logjuicer*.txt  (excluding logjuicer_omg*)
+      P3 – logjuicer_omg*.txt
+      P4 – *junit*
+      P5 – *must_gather*.tar.gz
+      P6 – *events.txt
+      P7 – other *.log files
+      P8 – supporting (everything else)
+
+    Files matching skip patterns (failed_task.txt, play_recap, DCI task
+    files) are excluded entirely.
+    """
+    skip_patterns = ["failed_task.txt", "play_recap", "task_*"]
+    buckets: dict[str, list[dict]] = {
+        "P1": [],
+        "P2": [],
+        "P3": [],
+        "P4": [],
+        "P5": [],
+        "P6": [],
+        "P7": [],
+        "P8": [],
+    }
+
+    for f in files:
+        name = f.get("name", "")
+        if any(fnmatch.fnmatch(name, pat) for pat in skip_patterns):
+            continue
+
+        if name == "ansible.log":
+            buckets["P1"].append(f)
+        elif fnmatch.fnmatch(name, "logjuicer_omg*"):
+            buckets["P3"].append(f)
+        elif fnmatch.fnmatch(name, "logjuicer*"):
+            buckets["P2"].append(f)
+        elif fnmatch.fnmatch(name, "*junit*"):
+            buckets["P4"].append(f)
+        elif fnmatch.fnmatch(name, "*must_gather*"):
+            buckets["P5"].append(f)
+        elif fnmatch.fnmatch(name, "*events.txt"):
+            buckets["P6"].append(f)
+        elif fnmatch.fnmatch(name, "*.log"):
+            buckets["P7"].append(f)
+        else:
+            buckets["P8"].append(f)
+
+    return buckets
+
+
+def _build_job_type_guidance(job_type: str, components: list[dict]) -> str:
+    """Return job-type-specific RCA guidance text.
+
+    Args:
+        job_type: one of the values returned by _classify_job_type().
+        components: list of component dicts (name, type, version).
+
+    Returns:
+        A markdown section string, or empty string for 'standard' jobs.
+    """
+    if job_type == "acm":
+        return """
+## Job-Type Guidance: ACM (Advanced Cluster Management)
+
+This is an ACM-managed deployment with a **hub/spoke architecture**.
+- The **hub cluster** runs ACM and orchestrates spoke cluster provisioning.
+- **Spoke clusters** are the managed clusters deployed by ACM.
+
+Key ACM resources to check with `omc` or in must_gather:
+- **ManagedCluster** – registration and availability status of spoke clusters
+- **ClusterDeployment** – Hive cluster provisioning status
+- **AgentClusterInstall** – agent-based installation progress and conditions
+- **BareMetalHost** – hardware provisioning status (power, inspection, provisioning)
+- **InfraEnv** – discovery ISO and agent registration
+- Check ACM logs: `open-cluster-management-agent`, `assisted-service`, `infrastructure-operator`
+"""
+
+    if job_type == "ztp":
+        return """
+## Job-Type Guidance: ZTP (Zero Touch Provisioning)
+
+Key ZTP resources to check:
+- **SiteConfig / ClusterInstance** – declarative site definition and rendering status
+- **TALM (Topology Aware Lifecycle Manager)** – `ClusterGroupUpgrade` (CGU) status and conditions
+- **ArgoCD** – Application sync status, sync errors, out-of-sync resources
+- **PolicyGenTemplate / PolicyGenerator** – policy rendering and compliance status
+- Check that the Git repository content matches what ArgoCD applied.
+"""
+
+    if job_type == "upgrade":
+        # Extract version info from components if available
+        ocp_versions = [
+            c.get("version", c.get("name", ""))
+            for c in components
+            if c.get("type", "") == "ocp"
+        ]
+        version_note = ""
+        if ocp_versions:
+            version_note = (
+                f"\n- OCP component versions in this job: {', '.join(ocp_versions)}"
+            )
+        return f"""
+## Job-Type Guidance: Upgrade Pipeline
+
+This job is an **upgrade pipeline** — focus on the version transition.
+- Compare **before and after OCP versions** to identify known upgrade issues.{version_note}
+- Check **ClusterVersion** history: `oc get clusterversion version -o yaml`
+- Look for **degraded ClusterOperators** after the upgrade.
+- Check **MachineConfigPool** status — nodes may be stuck updating.
+- Review **etcd** health and leader election during the upgrade window.
+"""
+
+    if job_type == "day2":
+        return """
+## Job-Type Guidance: Day-2 Operation
+
+This job performs a **day-2 operation** (post-install workload or configuration).
+- Focus on the **specific operation being performed** (operator install, workload deploy, config change).
+- Check if the cluster was healthy *before* the day-2 operation started.
+- Look for resource conflicts, quota limits, or scheduling issues.
+- Review operator subscription and CSV (ClusterServiceVersion) status if an operator install is involved.
+"""
+
+    if job_type == "sno":
+        return """
+## Job-Type Guidance: SNO (Single Node OpenShift)
+
+This is a **Single Node OpenShift** deployment.
+- All control-plane and worker workloads run on one node — resource exhaustion is common.
+- Check node resource usage: CPU, memory, disk pressure conditions.
+- SNO has no failover — any node issue means total cluster unavailability.
+- Check if the node was rebooted unexpectedly during the job.
+"""
+
+    return ""
+
+
+def _build_file_section(buckets: dict[str, list[dict]]) -> str:
+    """Build the file inventory section of the RCA prompt.
+
+    Lists files grouped by priority with download instructions referencing
+    actual file IDs.
+    """
+    lines = ["## Available Files\n"]
+    lines.append(
+        "Below are the files attached to this job, organized by investigation "
+        "priority. Use the **file ID** to download each file.\n"
+    )
+
+    def _fmt(f: dict) -> str:
+        size_kb = f.get("size", 0) / 1024
+        if size_kb > 1024:
+            size_str = f"{size_kb / 1024:.1f} MB"
+        else:
+            size_str = f"{size_kb:.0f} KB"
+        return f"  - `{f['name']}` (id: `{f['id']}`, {size_str})"
+
+    bucket_labels = {
+        "P1": (
+            "### P1 — Entry Point: ansible.log",
+            "Start here. Use `status_reason` (shown above) to jump to the "
+            "failure point in the Ansible run.",
+        ),
+        "P2": (
+            "### P2 — Logjuicer diffs (Ansible logs)",
+            "Diffs comparing this job's Ansible logs against the last successful "
+            "run. Identify what changed.",
+        ),
+        "P3": (
+            "### P3 — Logjuicer diffs (must_gather)",
+            "Diffs comparing must_gather output against the last successful run. "
+            "Each file corresponds to a different must_gather archive.",
+        ),
+        "P4": (
+            "### P4 — Test results (JUnit)",
+            "Test result summaries. Check which tests failed and their error messages.",
+        ),
+        "P5": (
+            "### P5 — must_gather archives",
+            "Cluster state snapshots. Extract with `tar -xf <file>` and inspect "
+            "with `omc use <extracted_dir>`.",
+        ),
+        "P6": (
+            "### P6 — Event logs",
+            "Kubernetes events timeline. Use to verify causal ordering.",
+        ),
+        "P7": (
+            "### P7 — Other log files",
+            "Additional log files that may contain relevant clues.",
+        ),
+        "P8": (
+            "### P8 — Supporting files",
+            "Other files attached to the job. Download if needed for deeper "
+            "investigation.",
+        ),
+    }
+
+    any_files = False
+    for bucket_key in ("P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"):
+        bucket_files = buckets.get(bucket_key, [])
+        if not bucket_files:
+            continue
+        any_files = True
+        title, description = bucket_labels[bucket_key]
+        lines.append(f"\n{title}\n")
+        lines.append(f"{description}\n")
+        for f in bucket_files:
+            lines.append(_fmt(f))
+
+    if not any_files:
+        lines.append("\n_No files found on this job._\n")
+
+    return "\n".join(lines)
+
+
+def _static_rca_prompt(dci_job_id: str) -> str:
+    """Return the static fallback RCA prompt when pre-fetching fails."""
+    return f"""Conduct a root cause analysis (RCA) on the following DCI job: {dci_job_id}. Store all the downloaded files at /tmp/dci/{dci_job_id}/, so as not to download them twice. Create a report with your findings at /tmp/dci/rca-{dci_job_id}.md. Be sure to include details about the timeline of events and the DCI job information in the report, such as the components, the topic, and the pipeline name. If there is a CILAB-<num> comment, replace it with https://redhat.atlassian.net/browse/CILAB-<num>. Include a hyperlink in the form https://distributed-ci.io/jobs/<job id> each time you refer to the DCI job ID.
+
+## Step 1: Evidence Gathering
+
+First step is to review ansible.log (overview of the CI job execution). Then the logjuicer.txt (for regular files) and logjuicer_omg.txt (for must_gather) files that compare the logs from a previous successful run. For each difference flagged by logjuicer, determine whether it is a cause, a consequence, or unrelated to the failure.
+
+Later always download events.txt if it is available to understand the timeline.
+
+And lately, always validate your findings using the must_gather file and the omc utility if the must_gather file is available. Extract the must_gather file using the command: `tar -xf <must_gather_file>`. You can then use the omc utility to analyze the must_gather data using `omc use <extracted_must_gather_directory>`.
+
+Avoid looking at the DCI task files or failed_task.txt or play_recap, as they contain the same information as ansible.log.
+
+Do not hesitate to download any extra files that you think are relevant to the RCA.
+
+{_RCA_METHODOLOGY}"""
+
+
+def register_prompts(mcp):
+    """Register prompts with the MCP server."""
+
+    @mcp.prompt()
+    async def rca(
+        dci_job_id: Annotated[
+            str, "The DCI job ID for which to perform root cause analysis (RCA)."
+        ],
+    ) -> str:
+        """
+        Prompt for instructions on how to do a Root Cause Analysis (RCA) of a failing DCI job. Always use this prompt when analysing a failing DCI job.
+
+        Returns:
+            A prompt message with instructions on how to perform RCA of a failing DCI job.
+        """
+        # -- Pre-fetch job metadata and files ----------------------------------
+        metadata = _fetch_job_metadata(dci_job_id)
+        files = _fetch_job_files(dci_job_id)
+
+        # If both fetches fail, fall back to the static prompt so the agent
+        # can still do its job (just without the dynamic file list).
+        if metadata is None and files is None:
+            return _static_rca_prompt(dci_job_id)
+
+        # -- Build dynamic prompt sections -------------------------------------
+        tags = (metadata or {}).get("tags", [])
+        components = (metadata or {}).get("components", [])
+        pipeline_name = (metadata or {}).get("pipeline_name", "unknown")
+        status_reason = (metadata or {}).get("status_reason", "")
+        status = (metadata or {}).get("status", "unknown")
+        topic_name = (metadata or {}).get("topic_name", "unknown")
+
+        job_type = _classify_job_type(tags)
+
+        # -- Job context header ------------------------------------------------
+        comp_summary = ", ".join(
+            f"{c.get('type', '?')}:{c.get('name', c.get('version', '?'))}"
+            for c in components
+        )
+
+        job_context = f"""## Job Context
+
+| Field | Value |
+|-------|-------|
+| **Job ID** | [{dci_job_id}](https://distributed-ci.io/jobs/{dci_job_id}) |
+| **Status** | {status} |
+| **Pipeline** | {pipeline_name} |
+| **Topic** | {topic_name} |
+| **Job type** | {job_type} |
+| **Tags** | {", ".join(tags) if tags else "none"} |
+| **Components** | {comp_summary or "none"} |
+"""
+        if status_reason:
+            job_context += f"""
+**Status reason** (use this to locate the failure point in ansible.log):
+```
+{status_reason}
+```
+"""
+
+        # -- File inventory section --------------------------------------------
+        if files is not None:
+            buckets = _prioritize_files(files)
+            file_section = _build_file_section(buckets)
+        else:
+            file_section = (
+                "## Available Files\n\n"
+                "_File list could not be pre-fetched. "
+                "Use the `search_dci_jobs` or file listing tools to discover "
+                "available files for this job._\n"
+            )
+
+        # -- Job-type guidance -------------------------------------------------
+        type_guidance = _build_job_type_guidance(job_type, components)
+
+        # -- Assemble full prompt ----------------------------------------------
+        return f"""Conduct a root cause analysis (RCA) on DCI job [{dci_job_id}](https://distributed-ci.io/jobs/{dci_job_id}).
+
+Store all downloaded files at `/tmp/dci/{dci_job_id}/` to avoid re-downloading.
+Create a report at `/tmp/dci/rca-{dci_job_id}.md`.
+If there is a CILAB-<num> comment, replace it with `https://redhat.atlassian.net/browse/CILAB-<num>`.
+
+{job_context}
+{file_section}
+{type_guidance}
+## Step 1: Evidence Gathering
+
+Follow the prioritized file list above. For each file:
+1. Download it using its **file ID** (provided above).
+2. Analyze it according to its role described in the file list.
+3. For each difference flagged by logjuicer files, determine whether it is a **cause**, a **consequence**, or **unrelated** to the failure.
+
+If must_gather files are available, extract them with `tar -xf <file>` and use `omc use <extracted_dir>` to inspect cluster state.
+
+**Avoid** looking at DCI task files, `failed_task.txt`, or `play_recap` — they duplicate ansible.log content.
+
+Do not hesitate to download any extra files from the "Other files" or "Supporting files" sections that may be relevant.
+
+{_RCA_METHODOLOGY}"""
 
     @mcp.prompt()
     async def weekly(
