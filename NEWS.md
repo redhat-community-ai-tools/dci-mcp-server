@@ -1,5 +1,13 @@
 # DCI MCP Server - Change Log
 
+## [2026-06-07]
+
+### New Features
+
+- Add prompt rendering CLI (`python -m mcp_server.prompts` / `dci-render-prompt`) for debugging and inspecting MCP prompts outside the server
+- Add `render_prompt()` and `list_prompts()` library functions in `mcp_server/prompts/render.py`
+- Add integration tests for RCA prompt dynamic section selection using real DCI job IDs, verifying correct job-type guidance (ACM, ZTP, upgrade, day2, SNO, standard)
+
 ## [2026-05-06]
 
 ### New Features

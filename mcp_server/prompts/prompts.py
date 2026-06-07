@@ -82,8 +82,6 @@ Structure the report with these sections:
 5. **Contributing Factors**: conditions that enabled or worsened the failure
 6. **Confidence Level**: high, medium, or low — based on the strength of available evidence
 7. **Recommendations**: what should be done to prevent recurrence
-
-Check that the associated JIRA ticket is consistent with your findings.
 """
 
 
@@ -103,7 +101,7 @@ def _fetch_job_metadata(job_id: str) -> dict | None:
             query=f"(id='{job_id}')",
             limit=1,
             includes="id,tags,components.name,components.type,components.version,"
-            "pipeline.name,status_reason,status,topic.name",
+            "pipeline.name,status_reason,status,topic.name,comment",
         )
         hits = result.get("hits", {}).get("hits", [])
         if not hits:
@@ -116,6 +114,7 @@ def _fetch_job_metadata(job_id: str) -> dict | None:
             "status_reason": src.get("status_reason", ""),
             "status": src.get("status", ""),
             "topic_name": (src.get("topic") or {}).get("name", ""),
+            "comment": src.get("comment", ""),
         }
     except Exception:
         logger.debug("Failed to fetch metadata for job %s", job_id, exc_info=True)
@@ -130,6 +129,9 @@ def _fetch_job_files(job_id: str) -> list[dict] | None:
     returns ``[]`` — making it impossible to distinguish *no files* from
     *API failure*.
 
+    Paginates through the API (default page size is 20) to retrieve all
+    files.
+
     Returns:
         A list of dicts with keys id, name, size.  Returns None on failure.
     """
@@ -138,12 +140,23 @@ def _fetch_job_files(job_id: str) -> list[dict] | None:
 
         service = DCIJobService()
         context = service._get_dci_context()
-        response = job_api.list_files(context, job_id)
-        data = response.json()
-        files_list = data.get("files", []) if isinstance(data, dict) else []
+
+        all_files: list[dict] = []
+        limit = 200
+        offset = 0
+
+        while True:
+            response = job_api.list_files(context, job_id, limit=limit, offset=offset)
+            data = response.json()
+            files_page = data.get("files", []) if isinstance(data, dict) else []
+            all_files.extend(files_page)
+            if len(files_page) < limit:
+                break
+            offset += limit
+
         return [
             {"id": f.get("id", ""), "name": f.get("name", ""), "size": f.get("size", 0)}
-            for f in files_list
+            for f in all_files
         ]
     except Exception:
         logger.debug("Failed to fetch files for job %s", job_id, exc_info=True)
@@ -189,7 +202,23 @@ def _prioritize_files(
     Files matching skip patterns (failed_task.txt, play_recap, DCI task
     files) are excluded entirely.
     """
-    skip_patterns = ["failed_task.txt", "play_recap", "task_*"]
+    skip_patterns = [
+        "failed_task.txt",
+        "play_recap",
+        "task_*",
+        "TASK *",
+        "TASK [*",
+        "*/TASK *",
+        "*/TASK [*",
+        "*/PLAY RECAP",
+        "PLAY *",
+        "PLAYBOOK*",
+        "failed/*",
+        "skipped/*",
+        "dci-openshift-*-agent",
+        "hardware.*",
+        "kernel.*",
+    ]
     buckets: dict[str, list[dict]] = {
         "P1": [],
         "P2": [],
@@ -203,6 +232,8 @@ def _prioritize_files(
 
     for f in files:
         name = f.get("name", "")
+        if f.get("size", 0) == 0:
+            continue
         if any(fnmatch.fnmatch(name, pat) for pat in skip_patterns):
             continue
 
@@ -313,11 +344,17 @@ This is a **Single Node OpenShift** deployment.
     return ""
 
 
-def _build_file_section(buckets: dict[str, list[dict]]) -> str:
+def _build_file_section(
+    buckets: dict[str, list[dict]],
+    *,
+    status_reason: str = "",
+    job_type: str = "standard",
+) -> str:
     """Build the file inventory section of the RCA prompt.
 
     Lists files grouped by priority with download instructions referencing
-    actual file IDs.
+    actual file IDs.  Buckets are numbered sequentially (1, 2, 3, …) in
+    the output — only non-empty buckets appear.
     """
     lines = ["## Available Files\n"]
     lines.append(
@@ -325,67 +362,133 @@ def _build_file_section(buckets: dict[str, list[dict]]) -> str:
         "priority. Use the **file ID** to download each file.\n"
     )
 
-    def _fmt(f: dict) -> str:
+    # Descriptions for common supporting files to help the agent decide
+    # which ones are worth downloading.
+    _file_descriptions: dict[str, str] = {
+        "clusteroperator.txt": "ClusterOperator status — check for degraded operators",
+        "clusterversion.txt": "ClusterVersion — installed and target OCP version",
+        "nodes.txt": "node status summary (Ready/NotReady)",
+        "all-nodes.yaml": "full node objects with conditions and resources",
+        "pods.txt": "pod status across namespaces",
+        "operators.json": "installed OLM operators and subscriptions",
+        "clusternetwork.yaml": "cluster network configuration",
+        "machine-configs.txt": "MachineConfig and MachineConfigPool status",
+        "csr.txt": "pending certificate signing requests",
+        "pvc.txt": "PersistentVolumeClaim status",
+        "version.txt": "OCP version string",
+        "virtual-machines.txt": "KubeVirt VM status",
+        "image-sources.yaml": "image content source policies (mirrors)",
+        "install-config.yaml": "cluster install configuration",
+        "agent-config.yaml": "agent-based installer configuration",
+        "openshift_install.log": "openshift-install command output",
+        "claim.json": "certsuite test claim report",
+    }
+
+    def _describe(f: dict) -> str:
+        """Return a short description for a known file, or empty string."""
+        name = f.get("name", "")
+        # Strip spoke prefixes to match base name
+        for prefix in spoke_prefixes:
+            if name.startswith(prefix):
+                name = name[len(prefix) :]
+                break
+        return _file_descriptions.get(name, "")
+
+    def _fmt(f: dict, annotation: str = "") -> str:
         size_kb = f.get("size", 0) / 1024
         if size_kb > 1024:
             size_str = f"{size_kb / 1024:.1f} MB"
         else:
             size_str = f"{size_kb:.0f} KB"
-        return f"  - `{f['name']}` (id: `{f['id']}`, {size_str})"
+        parts = [p for p in (annotation, _describe(f)) if p]
+        suffix = f" — {'; '.join(parts)}" if parts else ""
+        return f"  - `{f['name']}` (id: `{f['id']}`, {size_str}){suffix}"
+
+    p1_description = (
+        "Start here. Use `status_reason` (shown above) to jump to the "
+        "failure point in the Ansible run."
+        if status_reason
+        else "Start here. Read through the Ansible run to find the failure point."
+    )
 
     bucket_labels = {
         "P1": (
-            "### P1 — Entry Point: ansible.log",
-            "Start here. Use `status_reason` (shown above) to jump to the "
-            "failure point in the Ansible run.",
+            "Entry Point: ansible.log",
+            p1_description,
         ),
         "P2": (
-            "### P2 — Logjuicer diffs (Ansible logs)",
+            "Logjuicer diffs (Ansible logs)",
             "Diffs comparing this job's Ansible logs against the last successful "
             "run. Identify what changed.",
         ),
         "P3": (
-            "### P3 — Logjuicer diffs (must_gather)",
+            "Logjuicer diffs (must_gather)",
             "Diffs comparing must_gather output against the last successful run. "
             "Each file corresponds to a different must_gather archive.",
         ),
         "P4": (
-            "### P4 — Test results (JUnit)",
+            "Test results (JUnit)",
             "Test result summaries. Check which tests failed and their error messages.",
         ),
         "P5": (
-            "### P5 — must_gather archives",
+            "must_gather archives",
             "Cluster state snapshots. Extract with `tar -xf <file>` and inspect "
             "with `omc use <extracted_dir>`.",
         ),
         "P6": (
-            "### P6 — Event logs",
+            "Event logs",
             "Kubernetes events timeline. Use to verify causal ordering.",
         ),
         "P7": (
-            "### P7 — Other log files",
+            "Other log files",
             "Additional log files that may contain relevant clues.",
         ),
         "P8": (
-            "### P8 — Supporting files",
+            "Supporting files",
             "Other files attached to the job. Download if needed for deeper "
             "investigation.",
         ),
     }
 
-    any_files = False
+    # Detect spoke prefixes from must_gather filenames in ACM jobs.
+    # e.g. "HighAvailable_must_gather.tar.gz" → prefix "HighAvailable_"
+    spoke_prefixes: list[str] = []
+    if job_type == "acm" and len(buckets.get("P5", [])) >= 2:
+        for f in buckets["P5"]:
+            name = f.get("name", "")
+            if name != "must_gather.tar.gz" and name.endswith("_must_gather.tar.gz"):
+                spoke_prefixes.append(name.removesuffix("must_gather.tar.gz"))
+
+    def _acm_annotation(f: dict, bucket_key: str) -> str:
+        if not spoke_prefixes or bucket_key == "P1":
+            return ""
+        name = f.get("name", "")
+        for prefix in spoke_prefixes:
+            if name.startswith(prefix):
+                return f"**spoke** cluster ({prefix.rstrip('_')})"
+        return "**hub** cluster"
+
+    seq = 0
     for bucket_key in ("P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"):
         bucket_files = buckets.get(bucket_key, [])
         if not bucket_files:
             continue
-        any_files = True
-        title, description = bucket_labels[bucket_key]
-        lines.append(f"\n{title}\n")
+        seq += 1
+        label, description = bucket_labels[bucket_key]
+        lines.append(f"\n### {seq}. {label}\n")
         lines.append(f"{description}\n")
         for f in bucket_files:
-            lines.append(_fmt(f))
+            lines.append(_fmt(f, _acm_annotation(f, bucket_key)))
 
-    if not any_files:
+    if spoke_prefixes:
+        lines.append(
+            "\n> **Note:** Files prefixed with "
+            + " or ".join(f"`{p}`" for p in spoke_prefixes)
+            + " belong to the **spoke** cluster. "
+            "Unprefixed files belong to the **hub** cluster.\n"
+        )
+
+    if seq == 0:
         lines.append("\n_No files found on this job._\n")
 
     return "\n".join(lines)
@@ -441,6 +544,7 @@ def register_prompts(mcp):
         status_reason = (metadata or {}).get("status_reason", "")
         status = (metadata or {}).get("status", "unknown")
         topic_name = (metadata or {}).get("topic_name", "unknown")
+        comment = (metadata or {}).get("comment", "")
 
         job_type = _classify_job_type(tags)
 
@@ -471,9 +575,13 @@ def register_prompts(mcp):
 """
 
         # -- File inventory section --------------------------------------------
+        has_must_gather = False
         if files is not None:
             buckets = _prioritize_files(files)
-            file_section = _build_file_section(buckets)
+            has_must_gather = bool(buckets.get("P5"))
+            file_section = _build_file_section(
+                buckets, status_reason=status_reason, job_type=job_type
+            )
         else:
             file_section = (
                 "## Available Files\n\n"
@@ -485,12 +593,36 @@ def register_prompts(mcp):
         # -- Job-type guidance -------------------------------------------------
         type_guidance = _build_job_type_guidance(job_type, components)
 
+        # -- must_gather instructions -------------------------------------------
+        if has_must_gather:
+            must_gather_instructions = """
+**MANDATORY — must_gather inspection:**
+You MUST download and inspect ALL must_gather archives listed above. Do NOT skip this step.
+1. Download each must_gather archive using its file ID.
+2. Extract it: `tar -xf <file>`
+3. Inspect with: `omc use <extracted_dir>`
+4. Use `omc` to check cluster state: nodes, pods, operators, events, and any resources relevant to the failure.
+
+Your root cause analysis is incomplete without must_gather validation. If your findings from ansible.log and logjuicer are not confirmed by must_gather data, state that explicitly.
+"""
+        else:
+            must_gather_instructions = ""
+
+        # -- Jira ticket instruction -------------------------------------------
+        if comment:
+            jira_instruction = (
+                f"\nCheck that the associated Jira ticket "
+                f"[{comment}](https://redhat.atlassian.net/browse/{comment}) "
+                f"is consistent with your findings.\n"
+            )
+        else:
+            jira_instruction = ""
+
         # -- Assemble full prompt ----------------------------------------------
         return f"""Conduct a root cause analysis (RCA) on DCI job [{dci_job_id}](https://distributed-ci.io/jobs/{dci_job_id}).
 
 Store all downloaded files at `/tmp/dci/{dci_job_id}/` to avoid re-downloading.
 Create a report at `/tmp/dci/rca-{dci_job_id}.md`.
-If there is a CILAB-<num> comment, replace it with `https://redhat.atlassian.net/browse/CILAB-<num>`.
 
 {job_context}
 {file_section}
@@ -501,14 +633,12 @@ Follow the prioritized file list above. For each file:
 1. Download it using its **file ID** (provided above).
 2. Analyze it according to its role described in the file list.
 3. For each difference flagged by logjuicer files, determine whether it is a **cause**, a **consequence**, or **unrelated** to the failure.
-
-If must_gather files are available, extract them with `tar -xf <file>` and use `omc use <extracted_dir>` to inspect cluster state.
-
+{must_gather_instructions}
 **Avoid** looking at DCI task files, `failed_task.txt`, or `play_recap` — they duplicate ansible.log content.
 
 Do not hesitate to download any extra files from the "Other files" or "Supporting files" sections that may be relevant.
 
-{_RCA_METHODOLOGY}"""
+{_RCA_METHODOLOGY}{jira_instruction}"""
 
     @mcp.prompt()
     async def weekly(

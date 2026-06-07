@@ -155,6 +155,36 @@ class TestPrioritizeFiles:
         total = sum(len(v) for v in result.values())
         assert total == 0
 
+    def test_uppercase_task_files_are_skipped(self):
+        for name in [
+            "TASK [Remove logs directory]",
+            "TASK [Failure]",
+            "failed/TASK [Fail properly]",
+            "skipped/TASK [Run agent cleanup]",
+            "failed/PLAY RECAP",
+            "skipped/TASK [Execute the failure process]",
+        ]:
+            result = _prioritize_files([self._f(name)])
+            total = sum(len(v) for v in result.values())
+            assert total == 0, f"{name!r} should be skipped"
+
+    def test_dci_agent_files_are_skipped(self):
+        result = _prioritize_files([self._f("dci-openshift-app-agent")])
+        total = sum(len(v) for v in result.values())
+        assert total == 0
+
+    def test_play_and_playbook_files_are_skipped(self):
+        for name in ["PLAY [all]", "PLAY [Deploy cluster]", "PLAYBOOK: site.yml"]:
+            result = _prioritize_files([self._f(name)])
+            total = sum(len(v) for v in result.values())
+            assert total == 0, f"{name!r} should be skipped"
+
+    def test_hardware_and_kernel_files_are_skipped(self):
+        for name in ["hardware.json", "hardware.txt", "kernel.log", "kernel.config"]:
+            result = _prioritize_files([self._f(name)])
+            total = sum(len(v) for v in result.values())
+            assert total == 0, f"{name!r} should be skipped"
+
     def test_mixed_file_list(self):
         """Full scenario with various file types."""
         files = [
@@ -170,6 +200,10 @@ class TestPrioritizeFiles:
             self._f("config.yaml"),
             self._f("failed_task.txt"),
             self._f("play_recap"),
+            self._f("TASK [Remove logs directory]"),
+            self._f("failed/TASK [Fail properly]"),
+            self._f("skipped/TASK [Run agent cleanup]"),
+            self._f("dci-openshift-app-agent"),
         ]
         result = _prioritize_files(files)
         assert len(result["P1"]) == 1  # ansible.log
@@ -247,15 +281,22 @@ class TestBuildFileSection:
         assert "file-abc" in section
         assert "ansible.log" in section
 
-    def test_all_priority_labels_present(self):
-        """Each non-empty bucket should have its header."""
+    def test_sequential_numbering(self):
+        """Non-empty buckets should be numbered sequentially."""
         buckets = {f"P{i}": [] for i in range(1, 9)}
         buckets["P1"] = [{"name": "ansible.log", "id": "a", "size": 1024}]
         buckets["P4"] = [{"name": "junit.xml", "id": "b", "size": 512}]
         section = _build_file_section(buckets)
-        assert "P1" in section
-        assert "P4" in section
-        assert "P2" not in section or "P2 —" not in section
+        assert "### 1. Entry Point: ansible.log" in section
+        assert "### 2. Test results (JUnit)" in section
+
+    def test_omg_without_must_gather_has_no_implied_note(self):
+        """No implied note — it would trigger wasteful tool calls."""
+        buckets = {f"P{i}": [] for i in range(1, 9)}
+        buckets["P1"] = [{"name": "ansible.log", "id": "a", "size": 1024}]
+        buckets["P3"] = [{"name": "logjuicer_omg.txt", "id": "b", "size": 512}]
+        section = _build_file_section(buckets)
+        assert "implied" not in section.lower()
 
 
 # ---------------------------------------------------------------------------
