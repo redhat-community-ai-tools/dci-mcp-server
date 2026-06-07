@@ -132,6 +132,10 @@ class TestPrioritizeFiles:
         result = _prioritize_files([self._f("events.txt")])
         assert len(result["P6"]) == 1
 
+    def test_console_log_is_p6b(self):
+        result = _prioritize_files([self._f("cluster4-master-0-console.log")])
+        assert len(result["P6b"]) == 1
+
     def test_other_log_is_p7(self):
         result = _prioritize_files([self._f("custom_output.log")])
         assert len(result["P7"]) == 1
@@ -270,12 +274,16 @@ class TestBuildFileSection:
     """Tests for _build_file_section()."""
 
     def test_empty_buckets(self):
-        buckets = {f"P{i}": [] for i in range(1, 9)}
+        buckets = {
+            k: [] for k in ("P1", "P2", "P3", "P4", "P5", "P6", "P6b", "P7", "P8")
+        }
         section = _build_file_section(buckets)
         assert "No files found" in section
 
     def test_file_ids_appear_in_output(self):
-        buckets = {f"P{i}": [] for i in range(1, 9)}
+        buckets = {
+            k: [] for k in ("P1", "P2", "P3", "P4", "P5", "P6", "P6b", "P7", "P8")
+        }
         buckets["P1"] = [{"name": "ansible.log", "id": "file-abc", "size": 2048}]
         section = _build_file_section(buckets)
         assert "file-abc" in section
@@ -283,7 +291,9 @@ class TestBuildFileSection:
 
     def test_sequential_numbering(self):
         """Non-empty buckets should be numbered sequentially."""
-        buckets = {f"P{i}": [] for i in range(1, 9)}
+        buckets = {
+            k: [] for k in ("P1", "P2", "P3", "P4", "P5", "P6", "P6b", "P7", "P8")
+        }
         buckets["P1"] = [{"name": "ansible.log", "id": "a", "size": 1024}]
         buckets["P4"] = [{"name": "junit.xml", "id": "b", "size": 512}]
         section = _build_file_section(buckets)
@@ -292,7 +302,9 @@ class TestBuildFileSection:
 
     def test_omg_without_must_gather_has_no_implied_note(self):
         """No implied note — it would trigger wasteful tool calls."""
-        buckets = {f"P{i}": [] for i in range(1, 9)}
+        buckets = {
+            k: [] for k in ("P1", "P2", "P3", "P4", "P5", "P6", "P6b", "P7", "P8")
+        }
         buckets["P1"] = [{"name": "ansible.log", "id": "a", "size": 1024}]
         buckets["P3"] = [{"name": "logjuicer_omg.txt", "id": "b", "size": 512}]
         section = _build_file_section(buckets)

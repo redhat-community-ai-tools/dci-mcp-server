@@ -210,6 +210,7 @@ def _prioritize_files(
       P4 – *junit*
       P5 – *must_gather*.tar.gz
       P6 – *events.txt
+      P6b – *-console.log (bare-metal node console output)
       P7 – other *.log files
       P8 – supporting (everything else)
 
@@ -240,6 +241,7 @@ def _prioritize_files(
         "P4": [],
         "P5": [],
         "P6": [],
+        "P6b": [],
         "P7": [],
         "P8": [],
     }
@@ -263,6 +265,8 @@ def _prioritize_files(
             buckets["P5"].append(f)
         elif fnmatch.fnmatch(name, "*events.txt"):
             buckets["P6"].append(f)
+        elif fnmatch.fnmatch(name, "*-console.log"):
+            buckets["P6b"].append(f)
         elif fnmatch.fnmatch(name, "*.log"):
             buckets["P7"].append(f)
         else:
@@ -395,6 +399,11 @@ def _build_file_section(
         "install-config.yaml": "cluster install configuration",
         "agent-config.yaml": "agent-based installer configuration",
         "openshift_install.log": "openshift-install command output",
+        "bootkube.log": "control-plane bootstrap logs",
+        "ironic.log": "bare-metal provisioning (Ironic) logs",
+        "ironic-inspector.log": "bare-metal hardware inspection logs",
+        "ironic-ramdisk-logs.log": "bare-metal ramdisk (IPA) logs",
+        "cluster-bootstrap.log": "cluster bootstrap progress logs",
         "claim.json": "certsuite test claim report",
     }
 
@@ -453,6 +462,11 @@ def _build_file_section(
             "Event logs",
             "Kubernetes events timeline. Use to verify causal ordering.",
         ),
+        "P6b": (
+            "Console logs",
+            "Bare-metal node serial console output (BIOS, bootloader, kernel). "
+            "Check for hardware errors, boot failures, kernel panics, or storage issues.",
+        ),
         "P7": (
             "Other log files",
             "Additional log files that may contain relevant clues.",
@@ -483,7 +497,7 @@ def _build_file_section(
         return "**hub** cluster"
 
     seq = 0
-    for bucket_key in ("P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"):
+    for bucket_key in ("P1", "P2", "P3", "P4", "P5", "P6", "P6b", "P7", "P8"):
         bucket_files = buckets.get(bucket_key, [])
         if not bucket_files:
             continue
