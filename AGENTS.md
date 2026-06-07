@@ -201,6 +201,7 @@ bash scripts/run-checks.sh
 - Tool files: `mcp_server/tools/<domain>_tools.py` with `register_<domain>_tools(mcp)` function.
 - DCI services: `mcp_server/services/dci_<domain>_service.py` inheriting from `DCIBaseService`.
 - External services: `mcp_server/services/<service>_service.py` (e.g., `github_service.py`, `jira_service.py`).
+- New files must include the Apache 2.0 license header with `Copyright (C) <current-year> Red Hat, Inc.` (e.g., `Copyright (C) 2026 Red Hat, Inc.`). Do not use year ranges for new files.
 
 ## Prompts System
 

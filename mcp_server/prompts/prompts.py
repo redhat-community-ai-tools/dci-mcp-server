@@ -399,11 +399,18 @@ def _build_file_section(
         "install-config.yaml": "cluster install configuration",
         "agent-config.yaml": "agent-based installer configuration",
         "openshift_install.log": "openshift-install command output",
+        "openshift_install_state.json": "openshift-install internal state (terraform, cluster metadata)",
         "bootkube.log": "control-plane bootstrap logs",
         "ironic.log": "bare-metal provisioning (Ironic) logs",
         "ironic-inspector.log": "bare-metal hardware inspection logs",
         "ironic-ramdisk-logs.log": "bare-metal ramdisk (IPA) logs",
+        "image-customization.log": "RHCOS image customization logs",
+        "httpd.log": "bootstrap HTTP server logs (image serving)",
+        "coreos-downloader.log": "RHCOS image download logs",
+        "release-image.log": "OCP release image pull logs",
         "cluster-bootstrap.log": "cluster bootstrap progress logs",
+        "certsuite.log": "certsuite execution logs",
+        "certsuite-stdout.log": "certsuite stdout (version, test summary)",
         "claim.json": "certsuite test claim report",
     }
 
@@ -415,7 +422,12 @@ def _build_file_section(
             if name.startswith(prefix):
                 name = name[len(prefix) :]
                 break
-        return _file_descriptions.get(name, "")
+        desc = _file_descriptions.get(name, "")
+        if not desc and name.startswith("journal-") and name.endswith(".log"):
+            desc = (
+                "systemd journal for node — check for kernel, kubelet, or CRI-O errors"
+            )
+        return desc
 
     def _fmt(f: dict, annotation: str = "") -> str:
         size_kb = f.get("size", 0) / 1024
