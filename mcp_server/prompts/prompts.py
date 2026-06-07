@@ -40,6 +40,16 @@ After gathering evidence, apply the "5 Whys" technique to drill down to the true
 
 At each level, cite the specific log file and relevant log lines as evidence.
 
+**Self-check**: After writing the causal chain, fill in this table in your report:
+
+| Level | Claim | Evidence (file + line/content) | Type |
+|-------|-------|-------------------------------|------|
+| Why 1 | ... | `ansible.log` line 1234: "error msg" | Direct |
+| Why 2 | ... | `events.txt`: Pod evicted at 10:23 | Direct |
+| ... | ... | ... | Direct or Inferred |
+
+If any level is "Inferred" (no direct log evidence), explicitly state what evidence is missing and what you searched for.
+
 ### Categorize potential causes
 
 Before narrowing down, consider causes across these categories to avoid tunnel vision:
@@ -55,7 +65,11 @@ Before finalizing your root cause, actively try to DISPROVE it:
 
 1. **Generate an alternative hypothesis** from a DIFFERENT category than your root cause. If your root cause is "Software Bug," propose an Infrastructure or Timing explanation that fits the same evidence. If it's "Infrastructure," propose a Configuration explanation.
 
-2. **Find evidence that supports the alternative** — look in the logs for anything consistent with the alternative and inconsistent with your primary hypothesis.
+2. **Actively search for evidence** — do NOT just reason about the alternative. For each alternative hypothesis, you MUST:
+   - Identify what evidence would support it (e.g., "if it were a network issue, I'd expect to see connection timeouts in events.txt")
+   - Actually search for that evidence in the downloaded files
+   - Report what you found or didn't find, with specific file references
+   - Only then conclude whether the alternative is supported or refuted
 
 3. **Apply the counterfactual test to BOTH hypotheses**:
    - If root cause A had been absent, would the job have succeeded?
@@ -601,9 +615,14 @@ You MUST download and inspect ALL must_gather archives listed above. Do NOT skip
 1. Download each must_gather archive using its file ID.
 2. Extract it: `tar -xf <file>`
 3. Inspect with: `omc use <extracted_dir>`
-4. Use `omc` to check cluster state: nodes, pods, operators, events, and any resources relevant to the failure.
+4. Use `omc` to investigate cluster state as **primary evidence** in your causal chain, not just for verification. Check:
+   - Node conditions and resource usage (`omc get nodes -o wide`, `omc describe node`)
+   - Pod status across namespaces (`omc get pods -A`, focus on failing/pending/evicted pods)
+   - ClusterOperator health (`omc get co`)
+   - Any resources specific to the failure mode (see job-type guidance above)
+5. Integrate must_gather findings directly into your 5 Whys causal chain — cite `omc` output as evidence alongside log files.
 
-Your root cause analysis is incomplete without must_gather validation. If your findings from ansible.log and logjuicer are not confirmed by must_gather data, state that explicitly.
+must_gather captures cluster state at a point in time. Use it to find evidence that **supports or refutes** your hypotheses, not just to confirm what the logs already told you.
 """
         else:
             must_gather_instructions = ""
