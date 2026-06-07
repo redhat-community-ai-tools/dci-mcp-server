@@ -264,6 +264,15 @@ Integration tests in `tests/test_rca_prompt_integration.py` verify the RCA promp
 - Each job type (ACM, ZTP, upgrade, day2, SNO, standard) has a dedicated test with a pinned job ID.
 - Use `uv run python -m mcp_server.prompts rca dci_job_id=<id>` to debug prompt output for a specific job.
 
+### RCA End-to-End Eval
+
+A full RCA evaluation runs Claude on a real DCI job, letting it download files, analyze logs, and produce a report. The test then validates the report contains expected sections and content.
+
+- Run: `uv run pytest -m rca_eval -v` or `bash scripts/run-checks.sh --rca-eval`
+- Expensive (~$1-2 per run, several minutes). Not included in the default `--test` target.
+- Requires DCI credentials and `claude` CLI.
+- Validates: report existence, expected sections (Root Cause, Recommendations), job links, must_gather usage, failure symptom.
+
 ## Commit & Pull Request Guidelines
 
 - Commit style observed: short, imperative, lowercase summaries (e.g., "fix authentication", "add /dci/rca prompt"). Keep scope clear and focused.
