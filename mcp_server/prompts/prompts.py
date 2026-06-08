@@ -169,7 +169,12 @@ def _fetch_job_files(job_id: str) -> list[dict] | None:
             offset += limit
 
         return [
-            {"id": f.get("id", ""), "name": f.get("name", ""), "size": f.get("size", 0)}
+            {
+                "id": f.get("id", ""),
+                "name": f.get("name", ""),
+                "size": f.get("size", 0),
+                "mime": f.get("mime", ""),
+            }
             for f in all_files
         ]
     except Exception:
@@ -203,34 +208,29 @@ def _prioritize_files(
 ) -> dict[str, list[dict]]:
     """Categorize files into priority buckets for the RCA prompt.
 
+    Classification uses MIME types first, then falls back to name patterns:
+      - ``application/x-ansible-output`` → skipped (duplicates ansible.log)
+      - ``application/junit`` → P4 (test results)
+      - ``application/x-gzip`` with ``*must_gather*`` → P5
+
     Priority buckets (P1 = most important):
       P1 – ansible.log
       P2 – logjuicer*.txt  (excluding logjuicer_omg*)
       P3 – logjuicer_omg*.txt
-      P4 – *junit*
+      P4 – application/junit files
       P5 – *must_gather*.tar.gz
       P6 – *events.txt
       P6b – *-console.log (bare-metal node console output)
       P7 – other *.log files
       P8 – supporting (everything else)
 
-    Files matching skip patterns (failed_task.txt, play_recap, DCI task
-    files) are excluded entirely.
+    Files matching skip patterns or MIME-based skips are excluded entirely.
     """
+    skip_mime_types = {"application/x-ansible-output"}
     skip_patterns = [
         "failed_task.txt",
         "play_recap",
         "task_*",
-        "TASK *",
-        "TASK [*",
-        "*/TASK *",
-        "*/TASK [*",
-        "*/PLAY RECAP",
-        "PLAY *",
-        "PLAYBOOK*",
-        "failed/*",
-        "skipped/*",
-        "dci-openshift-*-agent",
         "hardware.*",
         "kernel.*",
     ]
@@ -248,7 +248,10 @@ def _prioritize_files(
 
     for f in files:
         name = f.get("name", "")
+        mime = f.get("mime", "")
         if f.get("size", 0) == 0:
+            continue
+        if mime in skip_mime_types:
             continue
         if any(fnmatch.fnmatch(name, pat) for pat in skip_patterns):
             continue
@@ -259,7 +262,7 @@ def _prioritize_files(
             buckets["P3"].append(f)
         elif fnmatch.fnmatch(name, "logjuicer*"):
             buckets["P2"].append(f)
-        elif fnmatch.fnmatch(name, "*junit*"):
+        elif mime == "application/junit":
             buckets["P4"].append(f)
         elif fnmatch.fnmatch(name, "*must_gather*"):
             buckets["P5"].append(f)
@@ -435,9 +438,11 @@ def _build_file_section(
             size_str = f"{size_kb / 1024:.1f} MB"
         else:
             size_str = f"{size_kb:.0f} KB"
+        mime = f.get("mime", "")
+        mime_str = f", {mime}" if mime else ""
         parts = [p for p in (annotation, _describe(f)) if p]
         suffix = f" — {'; '.join(parts)}" if parts else ""
-        return f"  - `{f['name']}` (id: `{f['id']}`, {size_str}){suffix}"
+        return f"  - `{f['name']}` (id: `{f['id']}`, {size_str}{mime_str}){suffix}"
 
     p1_description = (
         "Start here. Use `status_reason` (shown above) to jump to the "
@@ -452,8 +457,8 @@ def _build_file_section(
             p1_description,
         ),
         "P2": (
-            "Logjuicer diffs (Ansible logs)",
-            "Diffs comparing this job's Ansible logs against the last successful "
+            "Logjuicer diffs (non must_gather files)",
+            "Diffs comparing this job's files against the last successful "
             "run. Identify what changed.",
         ),
         "P3": (
@@ -462,8 +467,8 @@ def _build_file_section(
             "Each file corresponds to a different must_gather archive.",
         ),
         "P4": (
-            "Test results (JUnit)",
-            "Test result summaries. Check which tests failed and their error messages.",
+            "Test results (application/junit)",
+            "JUnit XML test results. Check which tests failed and their error messages.",
         ),
         "P5": (
             "must_gather archives",

@@ -96,8 +96,8 @@ class TestPrioritizeFiles:
     """Tests for _prioritize_files()."""
 
     @staticmethod
-    def _f(name, fid="id-1", size=1024):
-        return {"name": name, "id": fid, "size": size}
+    def _f(name, fid="id-1", size=1024, mime="text/plain"):
+        return {"name": name, "id": fid, "size": size, "mime": mime}
 
     def test_ansible_log_is_p1(self):
         result = _prioritize_files([self._f("ansible.log")])
@@ -116,8 +116,14 @@ class TestPrioritizeFiles:
         result = _prioritize_files([self._f("logjuicer_omg_SNO.txt")])
         assert len(result["P3"]) == 1
 
-    def test_junit_is_p4(self):
-        result = _prioritize_files([self._f("junit.xml")])
+    def test_junit_mime_is_p4(self):
+        result = _prioritize_files(
+            [self._f("dci-openshift-agent", mime="application/junit")]
+        )
+        assert len(result["P4"]) == 1
+
+    def test_junit_name_is_p4(self):
+        result = _prioritize_files([self._f("results.junit", mime="application/junit")])
         assert len(result["P4"]) == 1
 
     def test_must_gather_is_p5(self):
@@ -159,29 +165,29 @@ class TestPrioritizeFiles:
         total = sum(len(v) for v in result.values())
         assert total == 0
 
-    def test_uppercase_task_files_are_skipped(self):
+    def test_ansible_output_mime_is_skipped(self):
+        """Files with application/x-ansible-output MIME are skipped."""
         for name in [
             "TASK [Remove logs directory]",
             "TASK [Failure]",
             "failed/TASK [Fail properly]",
             "skipped/TASK [Run agent cleanup]",
             "failed/PLAY RECAP",
-            "skipped/TASK [Execute the failure process]",
+            "PLAY [all]",
+            "PLAYBOOK: site.yml",
         ]:
-            result = _prioritize_files([self._f(name)])
+            result = _prioritize_files(
+                [self._f(name, mime="application/x-ansible-output")]
+            )
             total = sum(len(v) for v in result.values())
-            assert total == 0, f"{name!r} should be skipped"
+            assert total == 0, f"{name!r} should be skipped via MIME type"
 
-    def test_dci_agent_files_are_skipped(self):
-        result = _prioritize_files([self._f("dci-openshift-app-agent")])
-        total = sum(len(v) for v in result.values())
-        assert total == 0
-
-    def test_play_and_playbook_files_are_skipped(self):
-        for name in ["PLAY [all]", "PLAY [Deploy cluster]", "PLAYBOOK: site.yml"]:
-            result = _prioritize_files([self._f(name)])
-            total = sum(len(v) for v in result.values())
-            assert total == 0, f"{name!r} should be skipped"
+    def test_dci_agent_junit_is_p4(self):
+        """DCI agent files with application/junit MIME go to P4."""
+        result = _prioritize_files(
+            [self._f("dci-openshift-app-agent", mime="application/junit")]
+        )
+        assert len(result["P4"]) == 1
 
     def test_hardware_and_kernel_files_are_skipped(self):
         for name in ["hardware.json", "hardware.txt", "kernel.log", "kernel.config"]:
@@ -190,32 +196,33 @@ class TestPrioritizeFiles:
             assert total == 0, f"{name!r} should be skipped"
 
     def test_mixed_file_list(self):
-        """Full scenario with various file types."""
+        """Full scenario with various file types and MIME types."""
         files = [
             self._f("ansible.log"),
             self._f("logjuicer.txt"),
             self._f("logjuicer_omg.txt"),
             self._f("logjuicer_omg_SNO.txt"),
-            self._f("junit.xml"),
-            self._f("must_gather.tar.gz"),
-            self._f("SNO_must_gather.tar.gz"),
+            self._f("dci-openshift-agent", mime="application/junit"),
+            self._f("must_gather.tar.gz", mime="application/x-gzip"),
+            self._f("SNO_must_gather.tar.gz", mime="application/x-gzip"),
             self._f("events.txt"),
+            self._f("cluster4-master-0-console.log"),
             self._f("custom.log"),
             self._f("config.yaml"),
             self._f("failed_task.txt"),
             self._f("play_recap"),
-            self._f("TASK [Remove logs directory]"),
-            self._f("failed/TASK [Fail properly]"),
-            self._f("skipped/TASK [Run agent cleanup]"),
-            self._f("dci-openshift-app-agent"),
+            self._f("TASK [Remove logs]", mime="application/x-ansible-output"),
+            self._f("failed/TASK [Fail]", mime="application/x-ansible-output"),
+            self._f("skipped/TASK [Run]", mime="application/x-ansible-output"),
         ]
         result = _prioritize_files(files)
         assert len(result["P1"]) == 1  # ansible.log
         assert len(result["P2"]) == 1  # logjuicer.txt
         assert len(result["P3"]) == 2  # logjuicer_omg*.txt
-        assert len(result["P4"]) == 1  # junit
+        assert len(result["P4"]) == 1  # dci-openshift-agent (junit)
         assert len(result["P5"]) == 2  # must_gather*
         assert len(result["P6"]) == 1  # events.txt
+        assert len(result["P6b"]) == 1  # console.log
         assert len(result["P7"]) == 1  # custom.log
         assert len(result["P8"]) == 1  # config.yaml
 
@@ -298,7 +305,7 @@ class TestBuildFileSection:
         buckets["P4"] = [{"name": "junit.xml", "id": "b", "size": 512}]
         section = _build_file_section(buckets)
         assert "### 1. Entry Point: ansible.log" in section
-        assert "### 2. Test results (JUnit)" in section
+        assert "### 2. Test results (application/junit)" in section
 
     def test_omg_without_must_gather_has_no_implied_note(self):
         """No implied note — it would trigger wasteful tool calls."""
