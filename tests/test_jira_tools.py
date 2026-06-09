@@ -134,8 +134,12 @@ def _make_jira_service():
 def test_get_field_map_caching():
     svc = _make_jira_service()
     svc.jira.fields.return_value = [
-        {"id": "customfield_10001", "name": "Sprint"},
-        {"id": "customfield_10002", "name": "Story Points"},
+        {"id": "customfield_10001", "name": "Sprint", "schema": {"type": "string"}},
+        {
+            "id": "customfield_10002",
+            "name": "Story Points",
+            "schema": {"type": "number"},
+        },
     ]
 
     result1 = svc._get_field_map()
@@ -1036,3 +1040,161 @@ def test_search_child_tickets_no_matching_stories():
     assert result["total_grandparents"] == 1
     assert result["total_intermediates"] == 1
     assert result["total_tickets"] == 0
+
+
+# -- user-type custom field resolution in update_issue --
+
+
+def test_get_field_map_detects_user_fields():
+    """_get_field_map populates _user_field_ids and _multi_user_field_ids."""
+    svc = _make_jira_service()
+    svc.jira.fields.return_value = [
+        {
+            "id": "customfield_10470",
+            "name": "QA Contact",
+            "schema": {
+                "type": "user",
+                "custom": "com.atlassian.jira.plugin.system.customfieldtypes:userpicker",
+            },
+        },
+        {
+            "id": "customfield_10466",
+            "name": "Contributors",
+            "schema": {
+                "type": "array",
+                "custom": "com.atlassian.jira.plugin.system.customfieldtypes:multiuserpicker",
+            },
+        },
+        {
+            "id": "customfield_10001",
+            "name": "Sprint",
+            "schema": {"type": "string"},
+        },
+    ]
+
+    svc._get_field_map()
+
+    assert "customfield_10470" in svc._user_field_ids
+    assert "customfield_10466" in svc._multi_user_field_ids
+    assert "customfield_10001" not in svc._user_field_ids
+    assert "customfield_10001" not in svc._multi_user_field_ids
+
+
+def test_update_issue_resolves_user_picker_field():
+    """User picker custom fields are resolved to {"accountId": ...}."""
+    svc = _make_jira_service()
+    svc._is_cloud = True
+    mock_issue = MagicMock()
+    svc.jira.issue.return_value = mock_issue
+    svc.jira.fields.return_value = [
+        {
+            "id": "customfield_10470",
+            "name": "QA Contact",
+            "schema": {
+                "type": "user",
+                "custom": "com.atlassian.jira.plugin.system.customfieldtypes:userpicker",
+            },
+        },
+    ]
+
+    put_resp = MagicMock()
+    put_resp.status_code = 204
+    get_resp = MagicMock()
+    get_resp.json.return_value = [{"accountId": "abc123"}]
+    rendered_resp = MagicMock()
+    rendered_resp.json.return_value = {"renderedFields": {}}
+
+    def route_get(url, **kwargs):
+        if "user/search" in url:
+            return get_resp
+        return rendered_resp
+
+    svc.jira._session.put.return_value = put_resp
+    svc.jira._session.get.side_effect = route_get
+
+    result = svc.update_issue(
+        "TEST-123",
+        custom_fields={"QA Contact": "Jane Doe"},
+    )
+
+    call_json = svc.jira._session.put.call_args[1]["json"]
+    assert call_json["fields"]["customfield_10470"] == {"accountId": "abc123"}
+    assert result["status"] == "updated"
+
+
+def test_update_issue_resolves_multi_user_picker_field():
+    """Multi-user picker custom fields are resolved to a list."""
+    svc = _make_jira_service()
+    svc._is_cloud = True
+    mock_issue = MagicMock()
+    svc.jira.issue.return_value = mock_issue
+    svc.jira.fields.return_value = [
+        {
+            "id": "customfield_10466",
+            "name": "Contributors",
+            "schema": {
+                "type": "array",
+                "custom": "com.atlassian.jira.plugin.system.customfieldtypes:multiuserpicker",
+            },
+        },
+    ]
+
+    put_resp = MagicMock()
+    put_resp.status_code = 204
+    rendered_resp = MagicMock()
+    rendered_resp.json.return_value = {"renderedFields": {}}
+
+    call_count = 0
+
+    def route_get(url, **kwargs):
+        nonlocal call_count
+        if "user/search" in url:
+            call_count += 1
+            resp = MagicMock()
+            resp.json.return_value = [{"accountId": f"user{call_count}"}]
+            return resp
+        return rendered_resp
+
+    svc.jira._session.put.return_value = put_resp
+    svc.jira._session.get.side_effect = route_get
+
+    svc.update_issue(
+        "TEST-123",
+        custom_fields={"Contributors": "Alice, Bob"},
+    )
+
+    call_json = svc.jira._session.put.call_args[1]["json"]
+    assert call_json["fields"]["customfield_10466"] == [
+        {"accountId": "user1"},
+        {"accountId": "user2"},
+    ]
+
+
+def test_update_issue_skips_resolution_for_non_user_fields():
+    """Non-user custom fields are passed through unchanged."""
+    svc = _make_jira_service()
+    svc._is_cloud = True
+    mock_issue = MagicMock()
+    svc.jira.issue.return_value = mock_issue
+    svc.jira.fields.return_value = [
+        {
+            "id": "customfield_10983",
+            "name": "Escape Reason",
+            "schema": {"type": "string"},
+        },
+    ]
+
+    put_resp = MagicMock()
+    put_resp.status_code = 204
+    rendered_resp = MagicMock()
+    rendered_resp.json.return_value = {"renderedFields": {}}
+    svc.jira._session.put.return_value = put_resp
+    svc.jira._session.get.return_value = rendered_resp
+
+    svc.update_issue(
+        "TEST-123",
+        custom_fields={"Escape Reason": "Test doesn't exist"},
+    )
+
+    call_json = svc.jira._session.put.call_args[1]["json"]
+    assert call_json["fields"]["customfield_10983"] == "Test doesn't exist"

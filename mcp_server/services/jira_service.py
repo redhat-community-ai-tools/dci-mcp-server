@@ -53,6 +53,8 @@ class JiraService:
         else:
             self.jira = JIRA(server=self.jira_url, token_auth=self.jira_token)
         self._field_map: dict[str, str] | None = None
+        self._user_field_ids: set[str] | None = None
+        self._multi_user_field_ids: set[str] | None = None
         self._status_name_map: dict[str, str] | None = None
         self._is_cloud = "atlassian.net" in self.jira_url
 
@@ -176,13 +178,31 @@ class JiraService:
             return None
 
     def _get_field_map(self) -> dict[str, str]:
-        """Get field ID to name mapping, cached per instance."""
+        """Get field ID to name mapping, cached per instance.
+
+        Also populates ``_user_field_ids`` and ``_multi_user_field_ids``
+        so that ``update_issue`` can resolve user-type custom fields.
+        """
         if self._field_map is None:
             try:
                 fields = self.jira.fields()
-                self._field_map = {f["id"]: f["name"] for f in fields}
+                self._field_map = {}
+                user_ids: set[str] = set()
+                multi_user_ids: set[str] = set()
+                for f in fields:
+                    self._field_map[f["id"]] = f["name"]
+                    schema = f.get("schema", {})
+                    custom = schema.get("custom", "")
+                    if schema.get("type") == "user" or custom.endswith(":userpicker"):
+                        user_ids.add(f["id"])
+                    elif custom.endswith(":multiuserpicker"):
+                        multi_user_ids.add(f["id"])
+                self._user_field_ids = user_ids
+                self._multi_user_field_ids = multi_user_ids
             except Exception:
                 self._field_map = {}
+                self._user_field_ids = set()
+                self._multi_user_field_ids = set()
         return self._field_map
 
     def get_ticket_data(
@@ -578,8 +598,19 @@ class JiraService:
             if custom_fields:
                 field_map = self._get_field_map()
                 name_to_id = {v: k for k, v in field_map.items()}
+                user_ids = self._user_field_ids or set()
+                multi_user_ids = self._multi_user_field_ids or set()
                 for key, value in custom_fields.items():
                     field_id = name_to_id.get(key, key)
+                    if field_id in user_ids and isinstance(value, str):
+                        value = self._resolve_assignee(value)
+                    elif field_id in multi_user_ids and isinstance(value, str):
+                        names = [n.strip() for n in value.split(",") if n.strip()]
+                        value = [
+                            resolved
+                            for n in names
+                            if (resolved := self._resolve_assignee(n)) is not None
+                        ]
                     fields[field_id] = value
 
             if fields:

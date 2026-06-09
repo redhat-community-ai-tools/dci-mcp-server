@@ -142,8 +142,11 @@ def register_jira_write_tools(mcp: FastMCP) -> None:
                     "Dictionary of custom field IDs (customfield_NNNNN) or "
                     "human-readable field names to values. Supports Forge/Connect "
                     "app fields (e.g. encrypted select fields). "
+                    "User picker fields (e.g. QA Contact) are auto-resolved "
+                    "from display names or emails. "
+                    "For multi-user fields, pass comma-separated names. "
                     "Use list_jira_custom_field_options to discover valid values. "
-                    'Example: {"customfield_12345": "some value"}'
+                    'Example: {"QA Contact": "Jane Doe"}'
                 )
             ),
         ] = None,
