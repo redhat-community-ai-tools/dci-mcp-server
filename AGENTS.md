@@ -201,16 +201,20 @@ bash scripts/run-checks.sh
 - Tool files: `mcp_server/tools/<domain>_tools.py` with `register_<domain>_tools(mcp)` function.
 - DCI services: `mcp_server/services/dci_<domain>_service.py` inheriting from `DCIBaseService`.
 - External services: `mcp_server/services/<service>_service.py` (e.g., `github_service.py`, `jira_service.py`).
+- New files must include the Apache 2.0 license header with `Copyright (C) <current-year> Red Hat, Inc.` (e.g., `Copyright (C) 2026 Red Hat, Inc.`). Do not use year ranges for new files.
 
 ## Prompts System
 
 The server provides parameterized prompts for common DCI workflows:
 
 - **`/dci/rca <job_id>`**: Root Cause Analysis workflow
-  - Downloads and analyzes job files (ansible.log, logjuicer.txt, events.txt, must_gather)
-  - Stores files in `/tmp/dci/<job_id>/`
-  - Generates report at `/tmp/dci/rca-<job_id>.md`
-  - Includes timeline, components, topic, pipeline info, and Jira ticket validation
+  - **Dynamic prompt**: pre-fetches job metadata and file list from the DCI API to build a tailored prompt
+  - Classifies the job type from tags (acm > ztp > upgrade > day2 > sno > standard) and includes type-specific guidance
+  - Lists files grouped by investigation priority (ansible.log → logjuicer diffs → junit → must_gather → events → other logs → supporting)
+  - Filters out redundant files: TASK/PLAY/PLAYBOOK outputs (already in ansible.log), hardware/kernel data (in ES), DCI agent files, failed/skipped task files
+  - Paginates through the file API (jobs can have hundreds of files)
+  - Falls back to a static prompt if both metadata and file fetches fail
+  - Stores files in `/tmp/dci/<job_id>/`, generates report at `/tmp/dci/rca-<job_id>.md`
 
 - **`/dci/weekly <subject>`**: 7-day analysis for a team or remoteci
   - Generates report stored at `/tmp/dci/`
@@ -224,6 +228,16 @@ The server provides parameterized prompts for common DCI workflows:
   - Report stored at `/tmp/dci/<remoteci>/quarterly/<date-range>/report.md`
 
 Prompts are defined in `mcp_server/prompts/prompts.py` and registered via `register_prompts(mcp)`.
+
+### Prompt Rendering CLI
+
+Prompts can be rendered outside the MCP server for debugging and testing:
+
+- **List prompts**: `uv run python -m mcp_server.prompts --list`
+- **Render a prompt**: `uv run python -m mcp_server.prompts rca dci_job_id=<job-id>`
+- **Also available as**: `uv run dci-render-prompt rca dci_job_id=<job-id>`
+
+The library functions `render_prompt(name, **kwargs)` and `list_prompts()` in `mcp_server/prompts/render.py` are used by both the CLI and integration tests.
 
 ## Testing Guidelines
 
@@ -241,6 +255,24 @@ Eval tests (`tests/test_evals.py`) verify that Claude correctly selects and uses
 - Each eval case declares a `requires` field (`date`, `dci`, `jira`, `github`, `gitlab`, `support_case`). Cases are auto-skipped when credentials are missing from `.env`.
 - To add a new eval case, append to the `EVAL_CASES` list in `tests/test_evals.py` with: `id`, `prompt`, `requires`, `allowed_tools`, `expected_tools`, and optionally `expected_params` and `answer_contains`.
 - **When an eval fails with "Too many turns"**: This means the LLM retried because its first query failed — the tool description or examples are misleading. **Never** bump `max_turns` to work around the failure. Instead, reproduce the failure, capture the wrong query the LLM tried first, and fix the tool description (docstring, field description, or inline examples) so the LLM constructs the correct query on the first attempt.
+
+### Prompt Integration Tests
+
+Integration tests in `tests/test_rca_prompt_integration.py` verify the RCA prompt's dynamic section selection using **real DCI job IDs**. They call `render_prompt("rca", dci_job_id=<id>)` against the live DCI API and assert the correct job-type guidance appears.
+
+- Run: `uv run pytest tests/test_rca_prompt_integration.py -v`
+- Requires DCI credentials; auto-skipped when `DCI_CLIENT_ID`/`DCI_API_SECRET` are missing.
+- Each job type (ACM, ZTP, upgrade, day2, SNO, standard) has a dedicated test with a pinned job ID.
+- Use `uv run python -m mcp_server.prompts rca dci_job_id=<id>` to debug prompt output for a specific job.
+
+### RCA End-to-End Eval
+
+A full RCA evaluation runs Claude on a real DCI job, letting it download files, analyze logs, and produce a report. The test then validates the report contains expected sections and content.
+
+- Run: `uv run pytest -m rca_eval -v` or `bash scripts/run-checks.sh --rca-eval`
+- Expensive (~$1-2 per run, several minutes). Not included in the default `--test` target.
+- Requires DCI credentials and `claude` CLI.
+- Validates: report existence, expected sections (Root Cause, Recommendations), job links, must_gather usage, failure symptom.
 
 ## Commit & Pull Request Guidelines
 

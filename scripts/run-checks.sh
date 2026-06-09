@@ -27,6 +27,7 @@ RUN_FORMAT=false
 RUN_LINT=false
 RUN_TEST=false
 RUN_CONTAINER=false
+RUN_RCA_EVAL=false
 
 if [ $# -eq 0 ]; then
     # No arguments: run all checks
@@ -48,9 +49,12 @@ else
             --container)
                 RUN_CONTAINER=true
                 ;;
+            --rca-eval)
+                RUN_RCA_EVAL=true
+                ;;
             *)
                 echo "❌ Unknown argument: $arg"
-                echo "Usage: $0 [--format] [--lint] [--test] [--container]"
+                echo "Usage: $0 [--format] [--lint] [--test] [--container] [--rca-eval]"
                 exit 1
                 ;;
         esac
@@ -103,7 +107,7 @@ if [ "$RUN_TEST" = true ]; then
         exit 1
     }
     echo "🧪 Running tests..."
-    $PYTHON_CMD -m pytest tests/ -v -m "not eval" || {
+    $PYTHON_CMD -m pytest tests/ -v -m "not eval and not rca_eval" || {
         echo "❌ Tests failed"
         exit 1
     }
@@ -146,6 +150,15 @@ if [ "$RUN_CONTAINER" = true ]; then
 
     echo "🧹 Cleaning up test images..."
     $CONTAINER_CMD rmi dci-mcp-server-test dci-mcp-server-sse-test 2>/dev/null || true
+fi
+
+# Run RCA end-to-end eval
+if [ "$RUN_RCA_EVAL" = true ]; then
+    echo "🔬 Running RCA end-to-end eval (this may take several minutes)..."
+    $PYTHON_CMD -m pytest tests/test_rca_eval.py -v -m "rca_eval" || {
+        echo "❌ RCA eval failed"
+        exit 1
+    }
 fi
 
 echo "🎉 All checks passed! ✨"

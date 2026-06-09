@@ -28,6 +28,7 @@ dependencies = [
 
 [project.scripts]
 dci-mcp-server = "mcp_server.main:main"
+dci-render-prompt = "mcp_server.prompts.__main__:main"
 
 [project.optional-dependencies]
 dev = [

@@ -130,10 +130,26 @@ You can then use [prompts](PROMPTS.md) to explore the DCI data.
 
 There are also parameterized prompts defined in the MCP server:
 
-- `/dci/rca <job id>` conducts a Root Cause Analysis of the problem in the job. Storing the downloaded files under `/tmp/dci/<job id>` and generating a report at `/tmp/dci/rca-<job id>.md`.
+- `/dci/rca <job id>` conducts a Root Cause Analysis of a failing DCI job. The prompt is **dynamic**: it pre-fetches job metadata and files, classifies the job type (ACM, ZTP, upgrade, day2, SNO, or standard), and tailors the guidance and file priority list accordingly. Downloads files to `/tmp/dci/<job id>/` and generates a report at `/tmp/dci/rca-<job id>.md`.
 - `/dci/weekly <team name/id or remoteci name/id>` conducts a report for the last 7 days stored at `/tmp/dci`.
 - `/dci/biweekly <team name/id or remoteci name/id>` conducts a report for the last 14 days stored at `/tmp/dci`.
 - `/dci/quarterly <remoteci name/id>` conducts a comprehensive quarterly analysis (last 3 months) with statistics about pipelines, topics, failure rates, trends, and component usage. Uses pagination and caching to handle large datasets. Report stored at `/tmp/dci/<remoteci>/quarterly/<date-range>/report.md`.
+
+### Debugging Prompts
+
+You can render any prompt outside the MCP server for debugging:
+
+```bash
+# List available prompts
+uv run python -m mcp_server.prompts --list
+
+# Render a prompt with its parameters
+uv run python -m mcp_server.prompts rca dci_job_id=<job-id>
+uv run python -m mcp_server.prompts weekly subject=<team-name>
+
+# Also available as a standalone command
+uv run dci-render-prompt rca dci_job_id=<job-id>
+```
 
 ## Google Drive Integration
 
@@ -383,8 +399,10 @@ mcp_server/
 │   ├── jira_service.py
 │   ├── github_service.py
 │   └── support_case_service.py
-├── promps/               # Templatized prompts
-│   └── prompts.py
+├── prompts/              # Templatized prompts
+│   ├── prompts.py        # Prompt definitions and registration
+│   ├── render.py         # Render prompts outside MCP (library)
+│   └── __main__.py       # CLI: python -m mcp_server.prompts
 ├── tools/                # MCP tools
 │   ├── component_tools.py
 │   ├── date_tools.py
