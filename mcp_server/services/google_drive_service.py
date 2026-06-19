@@ -278,12 +278,30 @@ class GoogleDriveService:
             HttpError: If there's an error with the Google Drive API
             ValueError: If both folder_id and folder_name are provided, or if folder_name is not found
         """
-        file_path_obj = Path(file_path)
+        # SECURITY: file_path is LLM-controlled. Confine to the DCI download
+        # sandbox so this tool cannot exfiltrate arbitrary local files.
+        root = Path(os.environ.get("DCI_DOWNLOAD_DIR", "/tmp/dci")).resolve()  # nosec B108
+        p = Path(file_path)
+        if p.is_absolute():
+            try:
+                relative = p.relative_to(root)
+            except ValueError:
+                raise ValueError(
+                    f"file_path must be a relative path or under {root}. "
+                    f"Got absolute path outside download root: {file_path!r}"
+                ) from None
+        else:
+            relative = p
+        file_path_obj = (root / relative).resolve()
+        if root not in file_path_obj.parents:
+            raise ValueError(
+                f"file_path escapes download root {root} via traversal: {file_path!r}"
+            )
         if not file_path_obj.exists():
             raise FileNotFoundError(f"Markdown file not found: {file_path}")
 
         # Read the markdown content
-        with open(file_path, encoding="utf-8") as f:
+        with open(file_path_obj, encoding="utf-8") as f:
             markdown_content = f.read()
 
         # Use filename as title if not provided

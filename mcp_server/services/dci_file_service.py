@@ -16,6 +16,7 @@
 """DCI file service for managing files."""
 
 import os
+from pathlib import Path
 from typing import Any
 
 from dciclient.v1.api import file as dci_file
@@ -134,7 +135,9 @@ class DCIFileService(DCIBaseService):
             print(f"Error listing files: {e}")
             return []
 
-    def download_file(self, job_id: str, file_id: str, output_path: str) -> bool:
+    DOWNLOAD_ROOT = Path(os.environ.get("DCI_DOWNLOAD_DIR", "/tmp/dci")).resolve()  # nosec B108
+
+    def download_file(self, job_id: str, file_id: str, output_path: str) -> str:
         """
         Download a file to a local path.
 
@@ -144,17 +147,32 @@ class DCIFileService(DCIBaseService):
             output_path: Local path where to save the file
 
         Returns:
-            True if download successful, False otherwise
+            The resolved path where the file was saved.
+
+        Raises:
+            ValueError: If output_path escapes the download root.
         """
-        try:
-            context = self._get_dci_context()
+        # SECURITY: output_path is LLM-controlled. Confine to DOWNLOAD_ROOT.
+        root = self.DOWNLOAD_ROOT
+        root.mkdir(parents=True, exist_ok=True)
+        p = Path(output_path)
+        if p.is_absolute():
+            try:
+                relative = p.relative_to(root)
+            except ValueError:
+                raise ValueError(
+                    f"output_path must be a relative path or under {root}. "
+                    f"Got absolute path outside download root: {output_path!r}"
+                ) from None
+        else:
+            relative = p
+        candidate = (root / relative).resolve()
+        if root not in candidate.parents and candidate != root:
+            raise ValueError(
+                f"output_path escapes download root {root} via traversal: {output_path!r}"
+            )
+        candidate.parent.mkdir(parents=True, exist_ok=True)
 
-            # Ensure output directory exists
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
-
-            # Download the file
-            dci_file.download(context, job_id, file_id, output_path)
-            return True
-        except Exception as e:
-            print(f"Error downloading file {file_id} to {output_path}: {e}")
-            return False
+        context = self._get_dci_context()
+        dci_file.download(context, job_id, file_id, str(candidate))
+        return str(candidate)

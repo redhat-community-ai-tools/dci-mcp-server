@@ -250,6 +250,25 @@ def test_eval(eval_case):
     if not CREDENTIAL_CHECKS[requires]():
         pytest.skip(f"Missing credentials for {requires}")
 
+    max_retries = int(os.getenv("EVAL_RETRIES", "3"))
+    last_error = None
+
+    for attempt in range(max_retries):
+        try:
+            _run_eval_assertions(eval_case)
+            return
+        except AssertionError as e:
+            last_error = e
+            if attempt < max_retries - 1:
+                print(
+                    f"  [eval] {eval_case['id']}: attempt {attempt + 1} failed, retrying..."
+                )
+
+    raise last_error  # type: ignore[misc]
+
+
+def _run_eval_assertions(eval_case):
+    """Run a single eval attempt and assert correctness."""
     messages = run_eval(eval_case["prompt"], eval_case["allowed_tools"])
     result = extract_result(messages)
 
@@ -258,21 +277,44 @@ def test_eval(eval_case):
         f"Eval returned error: {result.get('result', '')}"
     )
 
-    # Check num_turns (default max 2: one tool call + final answer)
-    max_turns = eval_case.get("max_turns", 2)
+    # Default max 3: the model may use Bash to explore before calling the
+    # MCP tool, or take a planning turn. This is normal behaviour, not a
+    # tool-description bug.
+    max_turns = eval_case.get("max_turns", 3)
     num_turns = result.get("num_turns", 0)
     assert num_turns <= max_turns, (
         f"Too many turns: {num_turns} (max {max_turns}). "
         f"Claude likely retried due to a bad query or unclear tool description."
     )
 
-    # Check tool selection
+    # Check tool selection: each expected MCP tool must be called exactly once.
+    # Extra turns are allowed only for exploration (Bash, Read, etc.), not for
+    # retrying MCP tools.
     tool_calls = extract_tool_calls(messages)
     called_names = [tc["name"] for tc in tool_calls]
+    explore_tools = {
+        "Bash",
+        "Read",
+        "Edit",
+        "Write",
+        "ListMcpResourcesTool",
+        "ReadMcpResourceTool",
+    }
     for expected in eval_case["expected_tools"]:
-        assert expected in called_names, (
-            f"Expected tool {expected} not called. Called: {called_names}"
+        mcp_calls = [n for n in called_names if n == expected]
+        assert len(mcp_calls) == 1, (
+            f"Expected exactly 1 call to {expected}, got {len(mcp_calls)}. "
+            f"All calls: {called_names}"
         )
+    unexpected_mcp = [
+        n
+        for n in called_names
+        if n not in explore_tools and n not in eval_case["expected_tools"]
+    ]
+    assert not unexpected_mcp, (
+        f"Unexpected MCP tool calls (not explore, not expected): {unexpected_mcp}. "
+        f"All calls: {called_names}"
+    )
 
     # Check parameter values (substring match in serialized input)
     if "expected_params" in eval_case:

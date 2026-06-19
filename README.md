@@ -261,6 +261,30 @@ The server includes GitHub integration to search for issues and pull requests an
    GITHUB_TOKEN=your_github_token_here
    ```
 
+## GitLab Integration
+
+The server includes GitLab integration to search for issues, merge requests, and retrieve diffs and project information.
+
+### Setup
+
+**Quick Setup:**
+1. Create a personal access token in your GitLab instance (User Settings → Access Tokens) with `read_api` scope
+2. Set environment variables in your `.env` file:
+   ```bash
+   GITLAB_TOKEN=your_gitlab_token_here
+   GITLAB_URL=https://gitlab.cee.redhat.com
+   ```
+
+**SSL verification** — for internal GitLab instances with corporate CA certificates, point `GITLAB_SSL_VERIFY` to your CA bundle instead of disabling verification:
+   ```bash
+   GITLAB_SSL_VERIFY=/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+   ```
+
+**Host allowlist** — the `gitlab_url` tool parameter is LLM-controlled. To prevent your token from being sent to unauthorized hosts, only the host from `GITLAB_URL` is allowed by default. To allow additional hosts:
+   ```bash
+   GITLAB_ALLOWED_HOSTS=gitlab.com,gitlab.cee.redhat.com
+   ```
+
 ## Red Hat Support Case Integration
 
 The server includes Red Hat Support Case integration to retrieve case data from the Red Hat Customer Portal.

@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is an **MCP (Model Context Protocol) server** that provides AI assistants with tools to interact with:
 - **DCI (Distributed CI)**: Red Hat's distributed continuous integration system
 - **GitHub**: Issues, PRs, and repository information
+- **GitLab**: Issues, merge requests, diffs, and project information
 - **Jira**: Ticket data with comments and changelog
 - **Google Drive**: Document creation from DCI reports
 - **Red Hat Support Cases**: Case data from the Customer Portal
@@ -50,6 +51,7 @@ Tools are only registered when their required credentials are available:
 - Date tools: enabled by default; set `DATE_TOOLS_ENABLED=false` to disable
 - DCI tools: `DCI_CLIENT_ID` + `DCI_API_SECRET` (or `DCI_LOGIN` + `DCI_PASSWORD`)
 - GitHub tools: `GITHUB_TOKEN`
+- GitLab tools: `GITLAB_TOKEN` (+ optional `GITLAB_URL`, `GITLAB_SSL_VERIFY`, `GITLAB_ALLOWED_HOSTS`)
 - Jira tools: `JIRA_API_TOKEN` + `JIRA_EMAIL` + `JIRA_URL`
 - Google Drive tools: `GOOGLE_CREDENTIALS_PATH` + `GOOGLE_TOKEN_PATH`
 - Support Case tools: `OFFLINE_TOKEN`
@@ -283,6 +285,9 @@ A full RCA evaluation runs Claude on a real DCI job, letting it download files, 
 ## Security & Configuration
 
 - Store secrets in `.env`; never commit it. Use `env.example` as a template.
+- **GitLab host allowlist**: `GITLAB_TOKEN` is only sent to the host in `GITLAB_URL` (default `gitlab.com`) plus any hosts in `GITLAB_ALLOWED_HOSTS`. The `gitlab_url` tool parameter is LLM-controlled — never send tokens to arbitrary hosts.
+- **Download directory jail**: `download_dci_file` confines writes to `DCI_DOWNLOAD_DIR` (default `/tmp/dci`). Google Drive upload tools can only read files from this directory. Absolute paths outside the root are rejected.
+- **SSL verification**: `GITLAB_SSL_VERIFY=false` is not supported. Use a CA bundle path (e.g., `/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem`).
 - Security scanning: `uv run bandit -r mcp_server/ -c pyproject.toml` (runs in CI; config in `pyproject.toml` `[tool.bandit]`).
 - Secret detection: `uv run detect-secrets scan` (optional, run manually).
 - Container builds: see `Containerfile`/`Containerfile.sse` if packaging is needed.
