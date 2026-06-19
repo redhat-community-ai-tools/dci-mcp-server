@@ -71,7 +71,7 @@ def test_validate_project_path_invalid():
 
 def _make_gitlab_service():
     """Create a GitLabService with mocked GitLab client."""
-    with patch.dict("os.environ", {"GITLAB_TOKEN": "test-token"}):
+    with patch.dict("os.environ", {"GITLAB_TOKEN": "test-token"}, clear=True):
         with patch("mcp_server.services.gitlab_service.Gitlab"):
             svc = GitLabService()
     return svc
@@ -776,10 +776,14 @@ def test_missing_token_raises_value_error():
 
 @pytest.mark.unit
 def test_gitlab_url_override():
-    """Test that gitlab_url parameter overrides env var."""
+    """Test that gitlab_url parameter overrides env var when allowed."""
     with patch.dict(
         "os.environ",
-        {"GITLAB_TOKEN": "test-token", "GITLAB_URL": "https://default.com"},
+        {
+            "GITLAB_TOKEN": "test-token",
+            "GITLAB_URL": "https://default.com",
+            "GITLAB_ALLOWED_HOSTS": "custom.example.com",
+        },
         clear=True,
     ):
         with patch("mcp_server.services.gitlab_service.Gitlab") as mock_gitlab:
@@ -791,6 +795,19 @@ def test_gitlab_url_override():
         private_token="test-token",
         ssl_verify=True,
     )
+
+
+@pytest.mark.unit
+def test_gitlab_url_override_rejected_when_not_allowed():
+    """Test that gitlab_url is rejected when host is not in GITLAB_ALLOWED_HOSTS."""
+    with patch.dict(
+        "os.environ",
+        {"GITLAB_TOKEN": "test-token", "GITLAB_URL": "https://default.com"},
+        clear=True,
+    ):
+        with patch("mcp_server.services.gitlab_service.Gitlab"):
+            with pytest.raises(ValueError, match="not in GITLAB_ALLOWED_HOSTS"):
+                GitLabService(gitlab_url="https://evil.example.com")
 
 
 @pytest.mark.unit
@@ -828,22 +845,16 @@ def test_gitlab_url_defaults_to_gitlab_com():
 
 
 @pytest.mark.unit
-def test_ssl_verify_false_via_env():
-    """Test that GITLAB_SSL_VERIFY=false disables SSL verification."""
+def test_ssl_verify_false_via_env_rejected():
+    """Test that GITLAB_SSL_VERIFY=false is rejected (must use CA bundle path)."""
     with patch.dict(
         "os.environ",
         {"GITLAB_TOKEN": "test-token", "GITLAB_SSL_VERIFY": "false"},
         clear=True,
     ):
-        with patch("mcp_server.services.gitlab_service.Gitlab") as mock_gitlab:
-            svc = GitLabService()
-
-    assert svc.ssl_verify is False
-    mock_gitlab.assert_called_once_with(
-        "https://gitlab.com",
-        private_token="test-token",
-        ssl_verify=False,
-    )
+        with patch("mcp_server.services.gitlab_service.Gitlab"):
+            with pytest.raises(ValueError, match="not supported"):
+                GitLabService()
 
 
 @pytest.mark.unit

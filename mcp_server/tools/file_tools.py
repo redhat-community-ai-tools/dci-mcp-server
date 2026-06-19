@@ -36,7 +36,7 @@ def register_file_tools(mcp: FastMCP) -> None:
         output_path: Annotated[
             str,
             Field(
-                description="Local path where to save the file. If not instructed otherwise, always ask to download to /tmp/dci/<dci job id>/."
+                description="Relative path under the download directory (default /tmp/dci/), e.g. <job_id>/<filename>. Absolute paths are only accepted if they start with the download directory; other absolute paths are rejected."
             ),
         ],
     ) -> str:
@@ -48,26 +48,19 @@ def register_file_tools(mcp: FastMCP) -> None:
         """
         try:
             service = DCIFileService()
-            success = service.download_file(job_id, file_id, output_path)
+            resolved_path = service.download_file(job_id, file_id, output_path)
 
-            if success:
-                return json.dumps(
-                    {
-                        "success": True,
-                        "file_id": file_id,
-                        "output_path": output_path,
-                        "message": "File downloaded successfully",
-                    },
-                    indent=2,
-                )
-            else:
-                return json.dumps(
-                    {
-                        "success": False,
-                        "file_id": file_id,
-                        "error": "Failed to download file",
-                    },
-                    indent=2,
-                )
+            return json.dumps(
+                {
+                    "success": True,
+                    "file_id": file_id,
+                    "output_path": resolved_path,
+                    "message": f"File downloaded successfully to {resolved_path}",
+                },
+                indent=2,
+            )
         except Exception as e:
-            return json.dumps({"error": str(e)}, indent=2)
+            return json.dumps(
+                {"success": False, "file_id": file_id, "error": str(e)},
+                indent=2,
+            )

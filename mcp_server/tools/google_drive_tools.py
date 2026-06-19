@@ -62,7 +62,9 @@ def register_google_drive_tools(mcp: FastMCP) -> None:
     async def create_google_doc_from_file(
         file_path: Annotated[
             str,
-            Field(description="Path to the markdown file to convert"),
+            Field(
+                description="Relative path under the download directory (default /tmp/dci/) to the markdown file to convert, e.g. <job_id>/report.md. Absolute paths are only accepted if they start with the download directory; other absolute paths are rejected."
+            ),
         ],
         doc_title: Annotated[
             str | None,
@@ -139,7 +141,9 @@ def register_google_drive_tools(mcp: FastMCP) -> None:
     async def convert_dci_report_to_google_doc(
         report_path: Annotated[
             str,
-            Field(description="Path to the DCI report markdown file"),
+            Field(
+                description="Relative path under the download directory (default /tmp/dci/) to the DCI report markdown file, e.g. report.md. Absolute paths are only accepted if they start with the download directory; other absolute paths are rejected."
+            ),
         ],
         doc_title: Annotated[
             str | None,

@@ -2,6 +2,7 @@
 
 import os
 from typing import Any
+from urllib.parse import urlparse
 
 from gitlab import Gitlab
 from gitlab.exceptions import GitlabAuthenticationError, GitlabError
@@ -24,24 +25,38 @@ class GitLabService:
                         Overrides GITLAB_SSL_VERIFY env var. Defaults to True.
         """
         self.gitlab_token = os.environ.get("GITLAB_TOKEN")
-        self.gitlab_url = (
-            gitlab_url or os.environ.get("GITLAB_URL") or "https://gitlab.com"
-        )
+        env_url = os.environ.get("GITLAB_URL") or "https://gitlab.com"
+        requested = gitlab_url or env_url
+
+        # SECURITY: gitlab_url is LLM-controlled. Only send PRIVATE-TOKEN to
+        # operator-approved hosts.
+        allowed_env = os.environ.get("GITLAB_ALLOWED_HOSTS", "")
+        allowed_hosts = {h.strip().lower() for h in allowed_env.split(",") if h.strip()}
+        allowed_hosts.add(urlparse(env_url).hostname or "gitlab.com")
+
+        parsed = urlparse(requested)
+        if parsed.scheme != "https" or not parsed.hostname:
+            raise ValueError(f"gitlab_url must be https://<host>; got {requested!r}")
+        if parsed.hostname.lower() not in allowed_hosts:
+            raise ValueError(
+                f"gitlab_url host {parsed.hostname!r} is not in GITLAB_ALLOWED_HOSTS "
+                f"({sorted(allowed_hosts)}). Refusing to send GITLAB_TOKEN."
+            )
+        self.gitlab_url = f"https://{parsed.hostname}"
 
         self.ssl_verify: bool | str
         if ssl_verify is not None:
             self.ssl_verify = ssl_verify
         else:
             env_val = os.environ.get("GITLAB_SSL_VERIFY")
-            if env_val is not None:
-                if env_val.lower() in ("false", "0", "no"):
-                    self.ssl_verify = False
-                elif env_val.lower() in ("true", "1", "yes"):
-                    self.ssl_verify = True
-                else:
-                    self.ssl_verify = env_val
-            else:
+            if env_val is None or env_val.lower() in ("true", "1", "yes"):
                 self.ssl_verify = True
+            elif env_val.lower() in ("false", "0", "no"):
+                raise ValueError(
+                    "GITLAB_SSL_VERIFY=false is not supported; set it to a CA bundle path instead."
+                )
+            else:
+                self.ssl_verify = env_val
 
         if not self.gitlab_token:
             raise ValueError(
