@@ -702,6 +702,60 @@ class JiraService:
         except Exception as e:
             raise Exception(f"Error adding web link to {ticket_key}: {str(e)}") from e
 
+    def add_issue_link(
+        self, link_type: str, inward_issue: str, outward_issue: str
+    ) -> dict[str, Any]:
+        """Create an issue link between two Jira tickets.
+
+        Args:
+            link_type: Link type name (e.g., "Blocks"). Use
+                get_issue_link_types() to discover available types.
+            inward_issue: Inward issue key (e.g., "PROJ-123").
+            outward_issue: Outward issue key (e.g., "PROJ-456").
+
+        Returns:
+            Dictionary with the created link details.
+        """
+        try:
+            self.jira.create_issue_link(
+                type=link_type,
+                inwardIssue=inward_issue,
+                outwardIssue=outward_issue,
+            )
+            return {
+                "inward_issue": inward_issue,
+                "outward_issue": outward_issue,
+                "link_type": link_type,
+            }
+        except JIRAError as e:
+            raise Exception(f"Jira API error: {e.text}") from e
+        except Exception as e:
+            raise Exception(
+                f"Error creating issue link between "
+                f"{inward_issue} and {outward_issue}: {str(e)}"
+            ) from e
+
+    def get_issue_link_types(self) -> list[dict[str, str]]:
+        """Get available issue link types for this Jira instance.
+
+        Returns:
+            List of dicts with name, inward, and outward descriptions.
+        """
+        try:
+            link_types = self.jira.issue_link_types()
+            return [
+                {
+                    "name": lt.name,
+                    "inward": lt.inward,
+                    "outward": lt.outward,
+                }
+                for lt in link_types
+            ]
+        except JIRAError as e:
+            raise Exception(f"Jira API error: {e.text}") from e
+        except Exception as e:
+            raise Exception(f"Error fetching issue link types: {str(e)}") from e
+
     def get_transitions(self, ticket_key: str) -> list[dict[str, Any]]:
         """
         Get available workflow transitions for a Jira issue.

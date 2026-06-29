@@ -1,5 +1,12 @@
 # DCI MCP Server - Change Log
 
+## [2026-07-03]
+
+### New Features
+
+- Add `add_jira_issue_link` tool: create typed links between Jira tickets (e.g., "Blocks", "Clones", "Duplicates")
+- Add `list_jira_issue_link_types` tool: discover available link types for the Jira instance
+
 ## [2026-06-07]
 
 ### New Features
