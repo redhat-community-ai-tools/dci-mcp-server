@@ -16,6 +16,7 @@
 """DCI file service for managing files."""
 
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -44,7 +45,7 @@ class DCIFileService(DCIBaseService):
                 return result.json()
             return result
         except Exception as e:
-            print(f"Error getting file {file_id}: {e}")
+            print(f"Error getting file {file_id}: {e}", file=sys.stderr)
             return None
 
     def query_files(
@@ -132,7 +133,7 @@ class DCIFileService(DCIBaseService):
                 return data.get("files", []) if isinstance(data, dict) else []
             return result if isinstance(result, list) else []
         except Exception as e:
-            print(f"Error listing files: {e}")
+            print(f"Error listing files: {e}", file=sys.stderr)
             return []
 
     DOWNLOAD_ROOT = Path(os.environ.get("DCI_DOWNLOAD_DIR", "/tmp/dci")).resolve()  # nosec B108

@@ -28,7 +28,7 @@ class DCITeamService(DCIBaseService):
                 return result.json()
             return result
         except Exception as e:
-            print(f"Error getting team {team_id}: {e}")
+            print(f"Error getting team {team_id}: {e}", file=sys.stderr)
             return None
 
     def query_teams(
@@ -97,5 +97,5 @@ class DCITeamService(DCIBaseService):
                 return data.get("teams", []) if isinstance(data, dict) else []
             return result if isinstance(result, list) else []
         except Exception as e:
-            print(f"Error listing teams: {e}")
+            print(f"Error listing teams: {e}", file=sys.stderr)
             return []

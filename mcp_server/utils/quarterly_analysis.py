@@ -16,6 +16,7 @@
 """Utilities for quarterly DCI job analysis."""
 
 import json
+import sys
 from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -90,8 +91,8 @@ def load_and_filter_batches(
                                 debug_jobs.append(job)
                             else:
                                 regular_jobs.append(job)
-                    except Exception:
-                        # Skip jobs with invalid dates
+                    except Exception as e:
+                        print(f"Skipping job with invalid date: {e}", file=sys.stderr)
                         continue
 
     return regular_jobs, debug_jobs
@@ -236,8 +237,8 @@ def generate_statistics(
                 if topic_name and topic_name != "Unknown":
                     topic_weekly_counts[topic_name][week_key] += 1
                     topic_monthly_counts[topic_name][month_key] += 1
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"Error computing job statistics: {e}", file=sys.stderr)
 
     # Calculate totals
     total_jobs = len(jobs)

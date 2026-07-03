@@ -1,6 +1,7 @@
 """GitLab service for interacting with projects, issues, and merge requests."""
 
 import os
+import sys
 from typing import Any
 from urllib.parse import urlparse
 
@@ -466,8 +467,8 @@ class GitLabService:
 
         except GitlabAuthenticationError:
             raise
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Error fetching notes: {e}", file=sys.stderr)
 
         return notes
 

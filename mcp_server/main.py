@@ -16,6 +16,7 @@
 """Main entry point for the DCI MCP server."""
 
 import os
+import sys
 
 from fastmcp import FastMCP
 
@@ -120,18 +121,23 @@ def main() -> None:
         host = os.getenv("MCP_HOST", "127.0.0.1")
         port = int(os.getenv("MCP_PORT", "8000"))
         show_banner = os.getenv("MCP_SHOW_BANNER", "true").lower() == "true"
-        print(f"Starting {transport} server on {host}:{port}")
+        print(f"Starting {transport} server on {host}:{port}", file=sys.stderr)
         mcp.run(transport=transport, host=host, port=port, show_banner=show_banner)  # type: ignore[arg-type]
     elif transport == "tcp":
         host = os.getenv("MCP_HOST", "localhost")
         port = int(os.getenv("MCP_PORT", "8000"))
         # Note: TCP transport might not be supported in this version
-        print("TCP transport not supported. Use stdio or sse transport instead.")
-        print(f"Would connect to {host}:{port}")
+        print(
+            "TCP transport not supported. Use stdio or sse transport instead.",
+            file=sys.stderr,
+        )
+        print(f"Would connect to {host}:{port}", file=sys.stderr)
         exit(1)
     else:
-        print(f"Unsupported transport: {transport}")
-        print("Supported transports: stdio, sse, http, streamable-http")
+        print(f"Unsupported transport: {transport}", file=sys.stderr)
+        print(
+            "Supported transports: stdio, sse, http, streamable-http", file=sys.stderr
+        )
         exit(1)
 
 

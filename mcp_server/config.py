@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 project_root = Path(__file__).parent.parent
 env_file = project_root / ".env"
 
-load_dotenv(env_file, verbose=True, override=True)
+load_dotenv(env_file, verbose=True, override=False)
 
 # HTTP client configuration
 DEFAULT_TIMEOUT = 30.0

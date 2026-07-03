@@ -28,7 +28,7 @@ class DCIComponentService(DCIBaseService):
                 return result.json()
             return result
         except Exception as e:
-            print(f"Error getting component {component_id}: {e}")
+            print(f"Error getting component {component_id}: {e}", file=sys.stderr)
             return None
 
     def query_components(
@@ -111,5 +111,5 @@ class DCIComponentService(DCIBaseService):
                 return data.get("components", []) if isinstance(data, dict) else []
             return result if isinstance(result, list) else []
         except Exception as e:
-            print(f"Error listing components: {e}")
+            print(f"Error listing components: {e}", file=sys.stderr)
             return []

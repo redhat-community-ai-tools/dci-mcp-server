@@ -28,7 +28,7 @@ class DCIPipelineService(DCIBaseService):
                 return result.json()
             return result
         except Exception as e:
-            print(f"Error getting pipeline {pipeline_id}: {e}")
+            print(f"Error getting pipeline {pipeline_id}: {e}", file=sys.stderr)
             return None
 
     def query_pipelines(
@@ -97,7 +97,7 @@ class DCIPipelineService(DCIBaseService):
                 return data.get("pipelines", []) if isinstance(data, dict) else []
             return result if isinstance(result, list) else []
         except Exception as e:
-            print(f"Error listing pipelines: {e}")
+            print(f"Error listing pipelines: {e}", file=sys.stderr)
             return []
 
     def get_pipeline_jobs(self, pipeline_id: str) -> Any:
@@ -118,5 +118,7 @@ class DCIPipelineService(DCIBaseService):
                 return data.get("jobs", []) if isinstance(data, dict) else []
             return result if isinstance(result, list) else []
         except Exception as e:
-            print(f"Error getting jobs for pipeline {pipeline_id}: {e}")
+            print(
+                f"Error getting jobs for pipeline {pipeline_id}: {e}", file=sys.stderr
+            )
             return []
