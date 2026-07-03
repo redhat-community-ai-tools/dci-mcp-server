@@ -17,6 +17,7 @@
 
 import fnmatch
 import logging
+from datetime import UTC
 from typing import Annotated
 
 from ..services.dci_job_service import DCIJobService
@@ -882,6 +883,166 @@ Alternatively, manually create the report with the following structure:
 - Focus on the most interesting and actionable insights
 - Prioritize statistics that reveal patterns and trends
 - Be thorough but concise in the report
+"""
+
+    @mcp.prompt()
+    async def support_case_report(
+        case_number: Annotated[
+            str, "The Red Hat support case number (e.g., 04362611)."
+        ],
+    ) -> str:
+        """
+        Prompt for generating a comprehensive support case report with executive summary.
+
+        Gathers data from the support case, all linked Jira tickets,
+        and their associated PRs/MRs to produce a detailed markdown report.
+
+        Returns:
+            A prompt message with instructions on how to generate a support case report.
+        """
+        from datetime import datetime
+
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+
+        return f"""Generate a comprehensive support case report for Red Hat support case **{case_number}**.
+
+## Instructions
+
+Follow these steps to gather all required data and produce the report.
+
+### Step 1: Gather Support Case Data
+
+1. Use `get_support_case` to retrieve full details for case {case_number}.
+2. Note the account name, severity, product, version, status, problem description, and any workaround.
+3. Use `get_support_case_comments` to retrieve the communication history.
+4. Use `list_support_case_attachments` to check for relevant attachments.
+
+### Step 2: Identify and Traverse Linked Jira Tickets
+
+1. From the support case data, identify all linked Jira/Bugzilla tickets.
+2. For each linked Jira ticket, use `get_jira_ticket` to retrieve full details.
+3. For each ticket, follow **all linked tickets** (parent, blocks, is blocked by, clones, relates to, etc.) and retrieve their details too. Continue transitively until no new tickets are found.
+4. For each ticket, note: key, summary, status, assignee, priority, fix versions, components, description, and links.
+
+### Step 3: Collect Associated PRs and MRs
+
+1. From each Jira ticket's description, comments, and web links, identify any referenced GitHub PRs or GitLab MRs.
+2. For each GitHub PR, use `get_github_issue` to retrieve details (title, author, status, merged date).
+3. For each GitHub PR, use `get_github_pr_diff` to understand the scope of the change (files changed, additions, deletions).
+4. For each GitLab MR, use `search_gitlab_merge_requests` or `get_gitlab_mr_diff` as appropriate.
+5. Classify each PR/MR as: **short-term fix** (hotfix/workaround) or **long-term solution** (comprehensive fix).
+
+### Step 4: Check for Errata/Advisories
+
+1. From Jira tickets or support case comments, identify any referenced errata/advisories (RHSA, RHBA, RHEA).
+2. Use `get_errata` to retrieve advisory details if found.
+
+### Step 5: Build the Report
+
+Write the report in markdown with the following sections:
+
+---
+
+## 1. Executive Summary
+
+Provide a concise overview (5-8 sentences max) covering:
+- **Problem**: What happened, in one sentence.
+- **Impact**: Who was affected and how (customer name, severity, product/version).
+- **Root Cause**: What caused the issue, in one sentence.
+- **Resolution**: How it was fixed and current status.
+- **Key Dates**: When reported, when resolved (or current state).
+
+## 2. Support Case Details
+
+| Field | Value |
+|-------|-------|
+| Case Number | {case_number} |
+| Account | ... |
+| Severity | ... |
+| Product / Version | ... |
+| Status | ... |
+| Created | ... |
+| Last Updated | ... |
+
+- **Problem Description**: Summarize the customer-reported problem.
+- **Workaround**: Any interim workaround applied (if any).
+
+## 3. Root Cause Analysis
+
+- What went wrong and why.
+- Which component or layer was at fault.
+- How the issue escaped to production / was not caught earlier.
+
+## 4. Jira Tickets
+
+For each ticket, provide a subsection:
+
+### PROJ-NNNN: <summary>
+
+| Field | Value |
+|-------|-------|
+| Status | ... |
+| Assignee | ... |
+| Priority | ... |
+| Fix Version(s) | ... |
+| Component(s) | ... |
+
+- **Description**: Brief summary of what this ticket tracks.
+- **Links**: List linked tickets with their relationship type.
+
+## 5. Code Changes (PRs / MRs)
+
+For each PR/MR, provide:
+
+| Field | Value |
+|-------|-------|
+| Repository | owner/repo |
+| PR/MR | #number (with link) |
+| Title | ... |
+| Author | ... |
+| Status | merged / open / closed |
+| Merged Date | ... |
+| Files Changed | N files (+additions, -deletions) |
+| Classification | Short-term fix / Long-term solution |
+
+- **Summary**: What the change does in 2-3 sentences.
+
+## 6. Errata / Advisories
+
+List any associated errata with their ID, synopsis, severity, and status. If none, state "No errata associated with this case."
+
+## 7. Timeline
+
+Provide a chronological table of key events:
+
+| Date | Event |
+|------|-------|
+| YYYY-MM-DD | Case opened by customer |
+| YYYY-MM-DD | Root cause identified |
+| ... | ... |
+
+Include: case creation, key comments, Jira ticket creation, PR submissions, PR merges, fix verifications, errata releases, and case resolution.
+
+## 8. Current Status & Next Steps
+
+- Is the issue fully resolved?
+- Are all fixes merged and released?
+- Any remaining risks or follow-up actions?
+
+---
+
+### Formatting Requirements
+
+- Include hyperlinks to all Jira tickets: `https://redhat.atlassian.net/browse/PROJ-NNNN`
+- Include hyperlinks to all GitHub PRs: `https://github.com/owner/repo/pull/N`
+- Include hyperlinks to all GitLab MRs where applicable.
+- Include hyperlinks to DCI jobs if referenced: `https://distributed-ci.io/jobs/<id>`
+- Use markdown tables for structured data.
+- Use concise language — avoid unnecessary verbosity.
+
+### Output
+
+Save the report as: `/tmp/dci/support-case-{case_number}-{today}.md`
 """
 
 

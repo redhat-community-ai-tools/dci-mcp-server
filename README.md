@@ -134,6 +134,7 @@ There are also parameterized prompts defined in the MCP server:
 - `/dci/weekly <team name/id or remoteci name/id>` conducts a report for the last 7 days stored at `/tmp/dci`.
 - `/dci/biweekly <team name/id or remoteci name/id>` conducts a report for the last 14 days stored at `/tmp/dci`.
 - `/dci/quarterly <remoteci name/id>` conducts a comprehensive quarterly analysis (last 3 months) with statistics about pipelines, topics, failure rates, trends, and component usage. Uses pagination and caching to handle large datasets. Report stored at `/tmp/dci/<remoteci>/quarterly/<date-range>/report.md`.
+- `/dci/support_case_report <case number>` generates a comprehensive support case report. Fetches the support case details, follows all linked Jira tickets (including transitive links), gathers associated PRs/MRs with diffs, and checks for related errata/advisories. The report includes an executive summary, root cause analysis, timeline, code changes classification (short-term vs long-term), corrective measures, and next steps. Report stored at `/tmp/dci/support-case-<case_number>-<YYYY-MM-DD>.md`.
 
 ### Debugging Prompts
 
