@@ -352,7 +352,10 @@ Enabled by default. Set `DATE_TOOLS_ENABLED=false` to disable.
 - `create_jira_ticket(project_key, summary, ...)`: Create a new Jira ticket with optional description, issue type, priority, labels, components, and assignee
 - `update_jira_ticket(ticket_key, ...)`: Update ticket fields (summary, description, priority, labels, components, assignee) or transition status
 - `add_jira_comment(ticket_key, body)`: Add a comment to a ticket
+- `add_jira_issue_link(ticket_key, target_ticket_key, link_type)`: Create a typed link between two tickets (e.g., "Blocks", "Clones", "Duplicates"). Use `list_jira_issue_link_types` to discover available link types
+- `add_jira_weblink(ticket_key, url, title)`: Add a web/remote link to a ticket
 - `list_jira_transitions(ticket_key)`: List available workflow transitions for a ticket
+- `list_jira_issue_link_types()`: List available issue link types with their inward/outward descriptions
 
 **Note**: Jira write tools require both `JIRA_API_TOKEN` and `JIRA_WRITE_ENABLED=true` environment variables.
 

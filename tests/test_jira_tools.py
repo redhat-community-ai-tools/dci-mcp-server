@@ -18,6 +18,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from jira.exceptions import JIRAError
 
 from mcp_server.services.jira_service import JiraService, _simplify_field_value
 from mcp_server.tools.jira_tools import validate_ticket_key
@@ -1198,3 +1199,75 @@ def test_update_issue_skips_resolution_for_non_user_fields():
 
     call_json = svc.jira._session.put.call_args[1]["json"]
     assert call_json["fields"]["customfield_10983"] == "Test doesn't exist"
+
+
+# -- add_issue_link tests --
+
+
+def test_add_issue_link():
+    svc = _make_jira_service()
+    svc.jira.create_issue_link.return_value = None
+
+    result = svc.add_issue_link("Blocks", "TEST-123", "TEST-456")
+
+    svc.jira.create_issue_link.assert_called_once_with(
+        type="Blocks",
+        inwardIssue="TEST-123",
+        outwardIssue="TEST-456",
+    )
+    assert result == {
+        "inward_issue": "TEST-123",
+        "outward_issue": "TEST-456",
+        "link_type": "Blocks",
+    }
+
+
+def test_add_issue_link_api_error():
+    svc = _make_jira_service()
+    error = JIRAError(text="Link type not found")
+    svc.jira.create_issue_link.side_effect = error
+
+    with pytest.raises(Exception, match="Jira API error"):
+        svc.add_issue_link("InvalidType", "TEST-123", "TEST-456")
+
+
+# -- get_issue_link_types tests --
+
+
+def test_get_issue_link_types():
+    svc = _make_jira_service()
+
+    blocks_type = MagicMock()
+    blocks_type.name = "Blocks"
+    blocks_type.inward = "is blocked by"
+    blocks_type.outward = "blocks"
+
+    clones_type = MagicMock()
+    clones_type.name = "Cloners"
+    clones_type.inward = "is cloned by"
+    clones_type.outward = "clones"
+
+    svc.jira.issue_link_types.return_value = [blocks_type, clones_type]
+
+    result = svc.get_issue_link_types()
+
+    assert len(result) == 2
+    assert result[0] == {
+        "name": "Blocks",
+        "inward": "is blocked by",
+        "outward": "blocks",
+    }
+    assert result[1] == {
+        "name": "Cloners",
+        "inward": "is cloned by",
+        "outward": "clones",
+    }
+
+
+def test_get_issue_link_types_empty():
+    svc = _make_jira_service()
+    svc.jira.issue_link_types.return_value = []
+
+    result = svc.get_issue_link_types()
+
+    assert result == []

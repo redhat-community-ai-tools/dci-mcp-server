@@ -145,6 +145,27 @@ def register_jira_introspect_tools(mcp: FastMCP) -> None:
             return json.dumps({"error": str(e)}, indent=2)
 
     @mcp.tool()
+    async def list_jira_issue_link_types() -> str:
+        """List available issue link types for this Jira instance.
+
+        Returns the link types that can be used with add_jira_issue_link,
+        including the inward and outward descriptions for each type.
+
+        For example, a "Blocks" link type has:
+        - inward: "is blocked by"
+        - outward: "blocks"
+
+        Returns:
+            JSON string with list of link types
+        """
+        try:
+            jira_service = JiraService()
+            result = jira_service.get_issue_link_types()
+            return json.dumps(result, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e)}, indent=2)
+
+    @mcp.tool()
     async def list_jira_boards(
         project_key: Annotated[
             str | None,

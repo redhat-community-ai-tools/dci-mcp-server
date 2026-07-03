@@ -302,6 +302,70 @@ def register_jira_write_tools(mcp: FastMCP) -> None:
             return json.dumps({"error": str(e)}, indent=2)
 
     @mcp.tool()
+    async def add_jira_issue_link(
+        ticket_key: Annotated[
+            str,
+            Field(
+                description="Jira ticket key for the inward side of the link "
+                "(e.g., CILAB-1234)"
+            ),
+        ],
+        target_ticket_key: Annotated[
+            str,
+            Field(
+                description="Jira ticket key for the outward side of the link "
+                "(e.g., CILAB-5678)"
+            ),
+        ],
+        link_type: Annotated[
+            str,
+            Field(
+                description='Link type name (e.g., "Blocks"). '
+                "Use list_jira_issue_link_types to discover available types."
+            ),
+        ],
+    ) -> str:
+        """Create an issue link between two Jira tickets.
+
+        Links two tickets with a typed relationship such as "Blocks",
+        "Clones", or "Duplicates". The link is directional: ticket_key
+        is the inward issue and target_ticket_key is the outward issue.
+
+        For example, with link_type="Blocks":
+        - ticket_key "is blocked by" target_ticket_key (inward)
+        - target_ticket_key "blocks" ticket_key (outward)
+
+        Use list_jira_issue_link_types to discover available link type
+        names and their inward/outward descriptions.
+
+        ## Authentication Required
+
+        Requires `JIRA_API_TOKEN` and `JIRA_WRITE_ENABLED=true` environment variables.
+
+        ## Returned Data
+
+        Returns a JSON object with:
+        - **inward_issue**: The inward ticket key
+        - **outward_issue**: The outward ticket key
+        - **link_type**: The link type name used
+
+        Returns:
+            JSON string with link data
+        """
+        try:
+            normalized_key = validate_ticket_key(ticket_key)
+            normalized_target = validate_ticket_key(target_ticket_key)
+            jira_service = JiraService()
+            result = jira_service.add_issue_link(
+                link_type, normalized_key, normalized_target
+            )
+            return json.dumps(result, indent=2)
+        except ValueError as e:
+            return json.dumps({"error": str(e)}, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e)}, indent=2)
+
+    @mcp.tool()
     async def list_jira_custom_field_options(
         ticket_key: Annotated[
             str,
