@@ -110,7 +110,6 @@ ignore = [
 # Bandit configuration
 [tool.bandit]
 exclude_dirs = ["tests", ".venv", "venv", "env", "site-packages"]
-skips = ["B101", "B601", "B104", "B404", "B603", "B311", "B310", "B323", "B110", "B105", "B112"]
 
 # mypy configuration
 [tool.mypy]

@@ -218,3 +218,6 @@ local/
 
 # bandit generated file
 bandit-report.json
+
+# Local report files
+my_report.md

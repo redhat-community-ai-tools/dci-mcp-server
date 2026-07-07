@@ -28,7 +28,7 @@ class DCIRemoteCIService(DCIBaseService):
                 return result.json()
             return result
         except Exception as e:
-            print(f"Error getting remoteci {remoteci_id}: {e}")
+            print(f"Error getting remoteci {remoteci_id}: {e}", file=sys.stderr)
             return None
 
     def query_remotecis(
@@ -97,5 +97,5 @@ class DCIRemoteCIService(DCIBaseService):
                 return data.get("remotecis", []) if isinstance(data, dict) else []
             return result if isinstance(result, list) else []
         except Exception as e:
-            print(f"Error listing remotecis: {e}")
+            print(f"Error listing remotecis: {e}", file=sys.stderr)
             return []

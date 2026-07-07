@@ -28,7 +28,7 @@ class DCIProductService(DCIBaseService):
                 return result.json()
             return result
         except Exception as e:
-            print(f"Error getting product {product_id}: {e}")
+            print(f"Error getting product {product_id}: {e}", file=sys.stderr)
             return None
 
     def query_products(
@@ -97,7 +97,7 @@ class DCIProductService(DCIBaseService):
                 return data.get("products", []) if isinstance(data, dict) else []
             return result if isinstance(result, list) else []
         except Exception as e:
-            print(f"Error listing products: {e}")
+            print(f"Error listing products: {e}", file=sys.stderr)
             return []
 
     def list_product_teams(self, product_id: str) -> Any:
@@ -118,5 +118,5 @@ class DCIProductService(DCIBaseService):
                 return data.get("teams", []) if isinstance(data, dict) else []
             return result if isinstance(result, list) else []
         except Exception as e:
-            print(f"Error getting teams for product {product_id}: {e}")
+            print(f"Error getting teams for product {product_id}: {e}", file=sys.stderr)
             return []

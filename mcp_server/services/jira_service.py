@@ -1,6 +1,7 @@
 """Jira service for ticket data collection."""
 
 import os
+import sys
 from typing import Any
 
 from jira import JIRA
@@ -115,8 +116,8 @@ class JiraService:
             if meta_resp.status_code == 200:
                 meta = meta_resp.json().get("fields", {}).get(field_id, {})
                 multi_select = meta.get("schema", {}).get("type") == "array"
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Error fetching editmeta for {ticket_key}: {e}", file=sys.stderr)
 
         # Collect known values from existing tickets via search
         cf_num = field_id.replace("customfield_", "")

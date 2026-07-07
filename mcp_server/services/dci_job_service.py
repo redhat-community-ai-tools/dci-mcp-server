@@ -16,6 +16,7 @@
 """DCI job service for managing jobs."""
 
 import json
+import sys
 from typing import Any
 
 from dciclient.v1.api import job
@@ -120,7 +121,7 @@ class DCIJobService(DCIBaseService):
                 return data.get("files", []) if isinstance(data, dict) else []
             return result if isinstance(result, list) else []
         except Exception as e:
-            print(f"Error listing files for job {job_id}: {e}")
+            print(f"Error listing files for job {job_id}: {e}", file=sys.stderr)
             return []
 
     def list_job_results(self, job_id: str) -> Any:
@@ -141,5 +142,5 @@ class DCIJobService(DCIBaseService):
                 return data.get("results", []) if isinstance(data, dict) else []
             return result if isinstance(result, list) else []
         except Exception as e:
-            print(f"Error listing results for job {job_id}: {e}")
+            print(f"Error listing results for job {job_id}: {e}", file=sys.stderr)
             return []

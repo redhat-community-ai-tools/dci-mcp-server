@@ -15,6 +15,7 @@
 
 """DCI topic service for managing topics."""
 
+import sys
 from typing import Any
 
 from dciclient.v1.api import topic
@@ -56,7 +57,7 @@ class DCITopicService(DCIBaseService):
                 context, limit=limit, offset=offset, query=query, sort=sort
             ).json()
         except Exception as e:
-            print(f"Error listing topics: {e}")
+            print(f"Error listing topics: {e}", file=sys.stderr)
             return []
 
     def get_topic_components(self, topic_id: str) -> Any:
@@ -77,7 +78,9 @@ class DCITopicService(DCIBaseService):
                 return data.get("components", []) if isinstance(data, dict) else []
             return result if isinstance(result, list) else []
         except Exception as e:
-            print(f"Error getting components for topic {topic_id}: {e}")
+            print(
+                f"Error getting components for topic {topic_id}: {e}", file=sys.stderr
+            )
             return []
 
     def get_topic_jobs_from_components(self, topic_id: str) -> Any:
@@ -98,5 +101,8 @@ class DCITopicService(DCIBaseService):
                 return data.get("jobs", []) if isinstance(data, dict) else []
             return result if isinstance(result, list) else []
         except Exception as e:
-            print(f"Error getting jobs from components for topic {topic_id}: {e}")
+            print(
+                f"Error getting jobs from components for topic {topic_id}: {e}",
+                file=sys.stderr,
+            )
             return []

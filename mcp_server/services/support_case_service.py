@@ -27,7 +27,7 @@ from ..config import DEFAULT_TIMEOUT
 class SupportCaseService:
     """Service class for Red Hat Support Case API interactions."""
 
-    SSO_TOKEN_URL = (
+    SSO_TOKEN_URL = (  # nosec B105
         "https://sso.redhat.com/auth/realms/redhat-external"
         "/protocol/openid-connect/token"
     )

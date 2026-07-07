@@ -1,6 +1,7 @@
 """GitHub service for searching issues and pull requests."""
 
 import os
+import sys
 from datetime import UTC
 from typing import Any
 
@@ -381,8 +382,8 @@ class GitHubService:
 
         except RateLimitExceededException:
             raise
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Error fetching comments: {e}", file=sys.stderr)
 
         return comments
 
