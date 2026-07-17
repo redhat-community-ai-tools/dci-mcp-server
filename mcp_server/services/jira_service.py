@@ -878,6 +878,7 @@ class JiraService:
         child_jql: str,
         parent_link_field: str = "parent",
         child_link_field: str = "parentEpic",
+        intermediate_jql: str | None = None,
         max_results: int = 200,
     ) -> dict[str, Any]:
         """Traverse a 2-level Jira hierarchy and return leaf tickets with ancestry.
@@ -920,6 +921,8 @@ class JiraService:
             int_to_gp: dict[str, str] = {}
             for gp_key in gp_keys:
                 jql = f"{parent_link_field} = {gp_key}"
+                if intermediate_jql:
+                    jql += f" AND {intermediate_jql}"
                 issues = self._search_all(jql, "summary,status")
                 for issue in issues:
                     int_data = {
