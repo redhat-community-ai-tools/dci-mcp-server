@@ -25,6 +25,8 @@ dependencies = [
     "jira>=3.8.0",
     "pygithub>=2.8.1",
     "python-gitlab>=5.1.0",
+    "httplib2>=0.32.0",
+    "pyasn1>=0.6.4",
 ]
 
 [project.scripts]
