@@ -350,6 +350,13 @@ def register_jira_tools(mcp: FastMCP) -> None:
                 description='Jira field linking leaf tickets to intermediates (default: "parentEpic")'
             ),
         ] = "parentEpic",
+        intermediate_jql: Annotated[
+            str | None,
+            Field(
+                description="Optional JQL filter applied to intermediate-level tickets. "
+                'Example: "labels = my-label"'
+            ),
+        ] = None,
         max_results: Annotated[
             int,
             Field(
@@ -363,7 +370,7 @@ def register_jira_tools(mcp: FastMCP) -> None:
 
         Performs a top-down search through three levels of Jira tickets:
         1. **Grandparents** (level 0): Found via `parent_jql`
-        2. **Intermediates** (level 1): Found via `{parent_link_field} = <grandparent key>`
+        2. **Intermediates** (level 1): Found via `{parent_link_field} = <grandparent key>` (optionally filtered by `intermediate_jql`)
         3. **Leaves** (level 2): Found via `{child_link_field} = <intermediate key> AND {child_jql}`
 
         Each leaf ticket includes its full ancestry (parent and grandparent keys,
@@ -396,6 +403,7 @@ def register_jira_tools(mcp: FastMCP) -> None:
                 child_jql=child_jql,
                 parent_link_field=parent_link_field,
                 child_link_field=child_link_field,
+                intermediate_jql=intermediate_jql,
                 max_results=max_results,
             )
             return json.dumps(results, indent=2)
