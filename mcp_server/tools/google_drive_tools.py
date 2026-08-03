@@ -222,9 +222,124 @@ def register_google_drive_tools(mcp: FastMCP) -> None:
                 return json.dumps(
                     {
                         "found": False,
-                        "message": f"Folder '{folder_name}' not found in Google Drive{' or shared drives' if include_shared_drives else ''}",
+                        "message": f"Folder '{folder_name}' not found",
                     },
                     indent=2,
                 )
+        except Exception as e:
+            return json.dumps({"error": str(e)}, indent=2)
+
+    @mcp.tool()
+    async def read_google_doc(
+        file_id: Annotated[
+            str,
+            Field(description="The ID of the Google Doc to read (found in the URL)"),
+        ]
+    ) -> str:
+        """
+        Read the text content of a Google Doc.
+        
+        This tool extracts the plain text from a Google Doc given its ID.
+        Useful for reading existing meeting notes, templates, or reports.
+        
+        Returns:
+            JSON string containing the text content or an error message.
+        """
+        try:
+            service = GoogleDriveService()
+            text_content = service.read_google_doc(file_id)
+            return json.dumps({"content": text_content, "id": file_id}, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e)}, indent=2)
+
+    @mcp.tool()
+    async def read_google_sheet(
+        spreadsheet_id: Annotated[
+            str,
+            Field(
+                description="The ID of the Google Spreadsheet to read (found in the URL between /d/ and /edit)"
+            ),
+        ],
+        sheet_name: Annotated[
+            str | None,
+            Field(
+                description="Name of the specific sheet/tab to read. Reads the first sheet if omitted."
+            ),
+        ] = None,
+        cell_range: Annotated[
+            str | None,
+            Field(
+                description="A1 notation range to limit what is read (e.g. 'A1:D10'). Reads all data if omitted."
+            ),
+        ] = None,
+    ) -> str:
+        """
+        Read data from a Google Spreadsheet.
+
+        Returns the spreadsheet content as structured JSON with headers, rows,
+        and a CSV representation. Also lists all available sheet/tab names
+        in the spreadsheet so you can query specific tabs.
+
+        Returns:
+            JSON string with sheet metadata, headers, rows, and CSV content.
+        """
+        try:
+            service = GoogleDriveService()
+            result = service.read_google_sheet(spreadsheet_id, sheet_name, cell_range)
+            return json.dumps(result, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e)}, indent=2)
+
+    @mcp.tool()
+    async def append_to_google_doc(
+        file_id: Annotated[
+            str,
+            Field(description="The ID of the Google Doc to append to"),
+        ],
+        text_content: Annotated[
+            str,
+            Field(description="The text to append to the end of the document"),
+        ]
+    ) -> str:
+        """
+        Append text to the end of an existing Google Doc.
+        
+        This tool inserts new text at the very end of the document.
+        Useful for adding new meeting notes to a running document.
+        
+        Returns:
+            JSON string with status information.
+        """
+        try:
+            service = GoogleDriveService()
+            result = service.append_to_google_doc(file_id, text_content)
+            return json.dumps(result, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e)}, indent=2)
+
+    @mcp.tool()
+    async def prepend_to_google_doc(
+        file_id: Annotated[
+            str,
+            Field(description="The ID of the Google Doc to prepend to"),
+        ],
+        text_content: Annotated[
+            str,
+            Field(description="The text to insert at the beginning of the document"),
+        ]
+    ) -> str:
+        """
+        Insert text at the beginning of an existing Google Doc.
+        
+        This tool inserts new text at the very top of the document.
+        Useful for adding the newest weekly report to the top of a running document.
+        
+        Returns:
+            JSON string with status information.
+        """
+        try:
+            service = GoogleDriveService()
+            result = service.prepend_to_google_doc(file_id, text_content)
+            return json.dumps(result, indent=2)
         except Exception as e:
             return json.dumps({"error": str(e)}, indent=2)

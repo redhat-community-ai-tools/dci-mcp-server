@@ -12,14 +12,17 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from googleapiclient.http import MediaIoBaseUpload
+from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
 
 
 class GoogleDriveService:
     """Service for interacting with Google Drive API."""
 
     # If modifying these scopes, delete the file token.json.
-    SCOPES = ["https://www.googleapis.com/auth/drive.file"]
+    SCOPES = [
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/documents"
+    ]
 
     def __init__(
         self, credentials_path: str | None = None, token_path: str | None = None
@@ -68,6 +71,8 @@ class GoogleDriveService:
             os.chmod(self.token_path, 0o600)
 
         self.service = build("drive", "v3", credentials=creds)
+        self.docs_service = build("docs", "v1", credentials=creds)
+        self.sheets_service = build("sheets", "v4", credentials=creds)
 
     def markdown_to_html(self, markdown_content: str) -> str:
         """
@@ -90,6 +95,144 @@ class GoogleDriveService:
             ]
         )
         return md.convert(markdown_content)
+
+    def read_google_doc(self, file_id: str) -> str:
+        """Read a Google Doc and return its text content."""
+        try:
+            request = self.service.files().export_media(fileId=file_id, mimeType='text/plain')
+            fh = io.BytesIO()
+            downloader = MediaIoBaseDownload(fh, request)
+            done = False
+            while done is False:
+                status, done = downloader.next_chunk()
+            return fh.getvalue().decode('utf-8')
+        except HttpError as error:
+            raise Exception(f"Error reading Google Doc: {error.resp.status} - {error.content}") from error
+
+    def read_google_sheet(
+        self,
+        spreadsheet_id: str,
+        sheet_name: str | None = None,
+        cell_range: str | None = None,
+    ) -> dict:
+        """Read data from a Google Spreadsheet.
+
+        Args:
+            spreadsheet_id: The spreadsheet ID (from the URL).
+            sheet_name: Specific sheet/tab name. Reads the first sheet if omitted.
+            cell_range: A1 notation range (e.g. "A1:D10"). Reads all data if omitted.
+
+        Returns:
+            Dict with sheet metadata, headers, rows, and a CSV representation.
+        """
+        try:
+            metadata = (
+                self.sheets_service.spreadsheets()
+                .get(spreadsheetId=spreadsheet_id)
+                .execute()
+            )
+            title = metadata.get("properties", {}).get("title", "")
+            sheets = metadata.get("sheets", [])
+
+            if not sheet_name and sheets:
+                sheet_name = sheets[0]["properties"]["title"]
+
+            range_notation = f"'{sheet_name}'"
+            if cell_range:
+                range_notation = f"'{sheet_name}'!{cell_range}"
+
+            result = (
+                self.sheets_service.spreadsheets()
+                .values()
+                .get(spreadsheetId=spreadsheet_id, range=range_notation)
+                .execute()
+            )
+
+            values = result.get("values", [])
+            headers = values[0] if values else []
+            rows = values[1:] if len(values) > 1 else []
+
+            # Pad short rows to match header length
+            for i, row in enumerate(rows):
+                if len(row) < len(headers):
+                    rows[i] = row + [""] * (len(headers) - len(row))
+
+            csv_lines = []
+            if headers:
+                csv_lines.append(",".join(f'"{h}"' for h in headers))
+            for row in rows:
+                csv_lines.append(",".join(f'"{c}"' for c in row))
+
+            available_sheets = [s["properties"]["title"] for s in sheets]
+
+            return {
+                "spreadsheet_title": title,
+                "sheet_name": sheet_name,
+                "available_sheets": available_sheets,
+                "headers": headers,
+                "row_count": len(rows),
+                "rows": rows,
+                "csv": "\n".join(csv_lines),
+            }
+        except HttpError as error:
+            raise Exception(
+                f"Error reading Google Sheet: {error.resp.status} - {error.content}"
+            ) from error
+
+    def append_to_google_doc(self, file_id: str, text_content: str) -> dict:
+        """Append text to the end of a Google Doc."""
+        try:
+            doc = self.docs_service.documents().get(documentId=file_id).execute()
+            body_content = doc.get('body', {}).get('content', [])
+            end_index = body_content[-1].get('endIndex', 2) - 1
+            
+            requests = [
+                {
+                    'insertText': {
+                        'location': {
+                            'index': max(1, end_index)
+                        },
+                        'text': "\\n" + text_content
+                    }
+                }
+            ]
+            
+            response = self.docs_service.documents().batchUpdate(
+                documentId=file_id, body={'requests': requests}
+            ).execute()
+            
+            return {
+                "id": file_id,
+                "url": f"https://docs.google.com/document/d/{file_id}/edit",
+                "status": "success",
+                "appended_chars": len(text_content)
+            }
+        except HttpError as error:
+            raise Exception(f"Error appending to Google Doc: {error.resp.status} - {error.content}") from error
+
+    def prepend_to_google_doc(self, file_id: str, text_content: str) -> dict:
+        """Insert text at the beginning of a Google Doc."""
+        try:
+            requests = [
+                {
+                    'insertText': {
+                        'location': {
+                            'index': 1
+                        },
+                        'text': text_content + "\\n\\n"
+                    }
+                }
+            ]
+            response = self.docs_service.documents().batchUpdate(
+                documentId=file_id, body={'requests': requests}
+            ).execute()
+            return {
+                "id": file_id,
+                "url": f"https://docs.google.com/document/d/{file_id}/edit",
+                "status": "success"
+            }
+        except HttpError as error:
+            raise Exception(f"Error prepending to Google Doc: {error.resp.status} - {error.content}") from error
 
     def find_folder_by_name(
         self, folder_name: str, include_shared_drives: bool = True

@@ -520,6 +520,7 @@ class JiraService:
         labels: list[str] | None = None,
         components: list[str] | None = None,
         assignee: str | None = None,
+        security_level: str | None = None,
     ) -> dict[str, Any]:
         """
         Create a new Jira issue.
@@ -543,6 +544,8 @@ class JiraService:
                 fields["components"] = [{"name": c} for c in components]
             if assignee is not None:
                 fields["assignee"] = self._resolve_assignee(assignee)
+            if security_level is not None:
+                fields["security"] = {"name": security_level}
 
             issue = self.jira.create_issue(fields=fields)
             return {
@@ -566,6 +569,7 @@ class JiraService:
         assignee: str | None = None,
         transition: str | None = None,
         custom_fields: dict[str, Any] | None = None,
+        security_level: str | None = None,
     ) -> dict[str, Any]:
         """
         Update an existing Jira issue.
@@ -573,6 +577,7 @@ class JiraService:
         Args:
             custom_fields: Dict mapping customfield_NNNNN IDs (or human-readable
                 names) to values. Supports Forge/Connect app fields.
+            security_level: Security level name (e.g., "Red Hat Employee").
 
         Returns:
             Dictionary with updated issue information
@@ -594,6 +599,9 @@ class JiraService:
                 fields["components"] = [{"name": c} for c in components]
             if assignee is not None:
                 fields["assignee"] = self._resolve_assignee(assignee)
+
+            if security_level is not None:
+                fields["security"] = {"name": security_level}
 
             # Resolve human-readable custom field names to IDs
             if custom_fields:

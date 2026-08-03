@@ -53,6 +53,12 @@ def register_jira_write_tools(mcp: FastMCP) -> None:
                 description="Assignee username (Jira Server/DC) or account ID (Jira Cloud)"
             ),
         ] = None,
+        security_level: Annotated[
+            str | None,
+            Field(
+                description="Security level name (e.g., 'Red Hat Employee'). Must match a level defined in the project's security scheme."
+            ),
+        ] = None,
     ) -> str:
         """Create a new Jira ticket.
 
@@ -84,6 +90,7 @@ def register_jira_write_tools(mcp: FastMCP) -> None:
                 labels=labels,
                 components=components,
                 assignee=assignee,
+                security_level=security_level,
             )
             return json.dumps(result, indent=2)
         except Exception as e:
@@ -150,6 +157,12 @@ def register_jira_write_tools(mcp: FastMCP) -> None:
                 )
             ),
         ] = None,
+        security_level: Annotated[
+            str | None,
+            Field(
+                description="Security level name (e.g., 'Red Hat Employee'). Must match a level defined in the project's security scheme."
+            ),
+        ] = None,
     ) -> str:
         """Update an existing Jira ticket.
 
@@ -192,6 +205,7 @@ def register_jira_write_tools(mcp: FastMCP) -> None:
                     assignee,
                     transition,
                     custom_fields,
+                    security_level,
                 ]
             ):
                 return json.dumps(
@@ -210,6 +224,7 @@ def register_jira_write_tools(mcp: FastMCP) -> None:
                 assignee=assignee,
                 transition=transition,
                 custom_fields=custom_fields,
+                security_level=security_level,
             )
             return json.dumps(result, indent=2)
         except ValueError as e:
