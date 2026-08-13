@@ -17,6 +17,7 @@
 
 import fnmatch
 import logging
+import re
 from datetime import UTC
 from typing import Annotated
 
@@ -116,7 +117,7 @@ def _fetch_job_metadata(job_id: str) -> dict | None:
             query=f"(id='{job_id}')",
             limit=1,
             includes="id,tags,components.name,components.type,components.version,"
-            "pipeline.name,status_reason,status,topic.name,comment",
+            "pipeline.name,status_reason,status,topic.name,comment,url",
         )
         hits = result.get("hits", {}).get("hits", [])
         if not hits:
@@ -130,6 +131,7 @@ def _fetch_job_metadata(job_id: str) -> dict | None:
             "status": src.get("status", ""),
             "topic_name": (src.get("topic") or {}).get("name", ""),
             "comment": src.get("comment", ""),
+            "url": src.get("url", ""),
         }
     except Exception:
         logger.debug("Failed to fetch metadata for job %s", job_id, exc_info=True)
@@ -181,6 +183,45 @@ def _fetch_job_files(job_id: str) -> list[dict] | None:
     except Exception:
         logger.debug("Failed to fetch files for job %s", job_id, exc_info=True)
         return None
+
+
+_GITHUB_PR_RE = re.compile(r"https?://github\.com/([^/]+/[^/]+)/pull/(\d+)")
+_GITLAB_MR_RE = re.compile(r"https?://[^/]+/(.+?)/-/merge_requests/(\d+)")
+
+
+def _fetch_pr_dependencies(url: str) -> list[str]:
+    """Fetch a PR/MR description and extract ``Depends-On:`` URLs.
+
+    Returns a list of dependency URLs.  Returns ``[]`` on any failure
+    or when the URL is not a recognised PR/MR.
+    """
+    description = ""
+    gh_match = _GITHUB_PR_RE.match(url)
+    gl_match = _GITLAB_MR_RE.match(url) if not gh_match else None
+
+    try:
+        if gh_match:
+            from ..services.github_service import GitHubService
+
+            gh_svc = GitHubService()
+            data = gh_svc.get_issue(
+                gh_match.group(1), int(gh_match.group(2)), max_comments=0
+            )
+            description = data.get("body", "") or ""
+        elif gl_match:
+            from ..services.gitlab_service import GitLabService
+
+            gl_svc = GitLabService()
+            project = gl_svc.gl.projects.get(gl_match.group(1))
+            mr = project.mergerequests.get(int(gl_match.group(2)))
+            description = getattr(mr, "description", "") or ""
+        else:
+            return []
+    except Exception:
+        logger.debug("Failed to fetch PR description for %s", url, exc_info=True)
+        return []
+
+    return re.findall(r"^Depends-On:\s*(https?://\S+)", description, re.MULTILINE)
 
 
 def _classify_job_type(tags: list[str]) -> str:
@@ -261,7 +302,7 @@ def _prioritize_files(
             buckets["P1"].append(f)
         elif fnmatch.fnmatch(name, "logjuicer_omg*"):
             buckets["P3"].append(f)
-        elif fnmatch.fnmatch(name, "logjuicer*"):
+        elif fnmatch.fnmatch(name, "logjuicer*") or name == "diff-jobs.txt":
             buckets["P2"].append(f)
         elif mime == "application/junit":
             buckets["P4"].append(f)
@@ -416,6 +457,7 @@ def _build_file_section(
         "certsuite.log": "certsuite execution logs",
         "certsuite-stdout.log": "certsuite stdout (version, test summary)",
         "claim.json": "certsuite test claim report",
+        "diff-jobs.txt": "component differences (OCP, RPM, git) between this job and a reference job",
     }
 
     def _describe(f: dict) -> str:
@@ -458,9 +500,10 @@ def _build_file_section(
             p1_description,
         ),
         "P2": (
-            "Logjuicer diffs (non must_gather files)",
+            "Logjuicer diffs and component diffs",
             "Diffs comparing this job's files against the last successful "
-            "run. Identify what changed.",
+            "run. `diff-jobs.txt` shows component differences (OCP, RPM, git). "
+            "Identify what changed.",
         ),
         "P3": (
             "Logjuicer diffs (must_gather)",
@@ -591,6 +634,7 @@ def register_prompts(mcp):
         status = (metadata or {}).get("status", "unknown")
         topic_name = (metadata or {}).get("topic_name", "unknown")
         comment = (metadata or {}).get("comment", "")
+        url = (metadata or {}).get("url", "")
 
         job_type = _classify_job_type(tags)
 
@@ -611,6 +655,7 @@ def register_prompts(mcp):
 | **Job type** | {job_type} |
 | **Tags** | {", ".join(tags) if tags else "none"} |
 | **Components** | {comp_summary or "none"} |
+| **URL** | {f"[{url}]({url})" if url else "none"} |
 """
         if status_reason:
             job_context += f"""
@@ -639,6 +684,22 @@ def register_prompts(mcp):
         # -- Job-type guidance -------------------------------------------------
         type_guidance = _build_job_type_guidance(job_type, components)
 
+        # -- diff-jobs.txt instructions -----------------------------------------
+        has_diff_jobs = files is not None and any(
+            f.get("name") == "diff-jobs.txt" for f in files
+        )
+        if has_diff_jobs:
+            diff_jobs_instructions = """
+**Component diff validation (`diff-jobs.txt`):**
+This job has a `diff-jobs.txt` file that lists differences in DCI components (OCP versions, RPMs, git commits) compared to a reference job. Use it to **validate your root cause hypothesis**:
+1. Download `diff-jobs.txt` early in your investigation.
+2. After forming your initial hypothesis, check whether any component change listed in `diff-jobs.txt` could explain the failure.
+3. If a component change correlates with the failure, investigate whether it is a known regression or expected behavior change.
+4. If your root cause does NOT relate to any component change, explicitly state why the component differences are unrelated.
+"""
+        else:
+            diff_jobs_instructions = ""
+
         # -- must_gather instructions -------------------------------------------
         if has_must_gather:
             must_gather_instructions = """
@@ -658,6 +719,38 @@ must_gather captures cluster state at a point in time. Use it to find evidence t
 """
         else:
             must_gather_instructions = ""
+
+        # -- PR URL instruction -------------------------------------------------
+        if url and ("/pull/" in url or "/merge_requests/" in url):
+            try:
+                depends_on = _fetch_pr_dependencies(url)
+            except Exception:
+                logger.debug(
+                    "Failed to fetch PR dependencies for %s", url, exc_info=True
+                )
+                depends_on = []
+            all_prs = [url] + depends_on
+            if len(all_prs) > 1:
+                pr_list = "\n".join(f"  - [{pr}]({pr})" for pr in all_prs)
+                pr_url_instructions = f"""
+**Pull Request context:**
+This job tested the following set of PRs (main PR + `Depends-On` dependencies):
+{pr_list}
+
+1. Retrieve the diff for **each** PR listed above to understand all code changes under test.
+2. Assess whether the failure is caused by any of these PR changes or is a pre-existing issue unrelated to the PRs.
+3. Include this assessment in your report, listing all PRs that were part of this test.
+"""
+            else:
+                pr_url_instructions = f"""
+**Pull Request context:**
+This job is associated with a PR: [{url}]({url}).
+1. Retrieve the PR diff to understand what code changes were being tested.
+2. Assess whether the failure is caused by the PR changes or is a pre-existing issue unrelated to the PR.
+3. Include this assessment in your report.
+"""
+        else:
+            pr_url_instructions = ""
 
         # -- Jira ticket instruction -------------------------------------------
         if comment:
@@ -684,7 +777,7 @@ Follow the prioritized file list above. For each file:
 1. Download it using its **file ID** (provided above).
 2. Analyze it according to its role described in the file list.
 3. For each difference flagged by logjuicer files, determine whether it is a **cause**, a **consequence**, or **unrelated** to the failure.
-{must_gather_instructions}
+{diff_jobs_instructions}{must_gather_instructions}{pr_url_instructions}
 **Avoid** looking at DCI task files, `failed_task.txt`, or `play_recap` — they duplicate ansible.log content.
 
 Do not hesitate to download any extra files from the "Other files" or "Supporting files" sections that may be relevant.
