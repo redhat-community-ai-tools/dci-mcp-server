@@ -21,8 +21,10 @@ import pytest
 
 from mcp_server.prompts.prompts import (
     _build_file_section,
+    _build_frontmatter,
     _build_job_type_guidance,
     _classify_job_type,
+    _extract_ocp_version,
     _fetch_job_files,
     _fetch_job_metadata,
     _prioritize_files,
@@ -319,6 +321,88 @@ class TestBuildFileSection:
 
 
 # ---------------------------------------------------------------------------
+# _extract_ocp_version
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestExtractOcpVersion:
+    """Tests for _extract_ocp_version()."""
+
+    def test_returns_version_when_present(self):
+        components = [{"type": "ocp", "name": "OCP-4.16", "version": "4.16.3"}]
+        assert _extract_ocp_version(components) == "4.16.3"
+
+    def test_falls_back_to_name_when_no_version(self):
+        components = [{"type": "ocp", "name": "OCP-4.16", "version": ""}]
+        assert _extract_ocp_version(components) == "OCP-4.16"
+
+    def test_returns_unknown_when_no_ocp_component(self):
+        components = [{"type": "storage", "name": "ocs", "version": "4.0"}]
+        assert _extract_ocp_version(components) == "unknown"
+
+    def test_returns_unknown_for_empty_list(self):
+        assert _extract_ocp_version([]) == "unknown"
+
+    def test_ignores_non_ocp_types(self):
+        components = [
+            {"type": "storage", "name": "ocs", "version": "4.0"},
+            {"type": "ocp", "name": "OCP-4.17", "version": "4.17.1"},
+        ]
+        assert _extract_ocp_version(components) == "4.17.1"
+
+
+# ---------------------------------------------------------------------------
+# _build_frontmatter
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestBuildFrontmatter:
+    """Tests for _build_frontmatter()."""
+
+    def test_delimiters_present(self):
+        fm = _build_frontmatter("job-1", "2026-08-15", "lab-x", "team-y", "4.16.3")
+        assert fm.startswith("---\n")
+        assert "---\n" in fm[4:]  # closing delimiter
+
+    def test_required_fields_present(self):
+        fm = _build_frontmatter("job-1", "2026-08-15", "lab-x", "team-y", "4.16.3")
+        assert "job_id: job-1" in fm
+        assert "date: 2026-08-15" in fm
+        assert "lab: lab-x" in fm
+        assert "team: team-y" in fm
+        assert "component: 4.16.3" in fm
+
+    def test_default_category_is_tbd(self):
+        fm = _build_frontmatter("job-1", "2026-08-15", "lab-x", "team-y", "4.16.3")
+        assert "category: TBD" in fm
+
+    def test_default_status_is_agent_draft(self):
+        fm = _build_frontmatter("job-1", "2026-08-15", "lab-x", "team-y", "4.16.3")
+        assert "status: agent-draft" in fm
+
+    def test_custom_category_and_status(self):
+        fm = _build_frontmatter(
+            "job-1",
+            "2026-08-15",
+            "lab-x",
+            "team-y",
+            "4.16.3",
+            category="Infrastructure",
+            status="reviewed",
+        )
+        assert "category: Infrastructure" in fm
+        assert "status: reviewed" in fm
+
+    def test_unknown_defaults_for_static_prompt(self):
+        fm = _build_frontmatter("job-xyz", "unknown", "unknown", "unknown", "unknown")
+        assert "job_id: job-xyz" in fm
+        assert "date: unknown" in fm
+        assert "lab: unknown" in fm
+
+
+# ---------------------------------------------------------------------------
 # _fetch_job_metadata (with mocked service)
 # ---------------------------------------------------------------------------
 
@@ -345,6 +429,9 @@ class TestFetchJobMetadata:
                             "status_reason": "Task failed",
                             "status": "failure",
                             "topic": {"name": "OCP-4.16"},
+                            "remoteci": {"name": "lab-dallas"},
+                            "team": {"name": "partner-team"},
+                            "created_at": "2026-08-15T10:30:00.000Z",
                         }
                     }
                 ]
@@ -355,6 +442,9 @@ class TestFetchJobMetadata:
         assert result["tags"] == ["daily", "install_type:acm"]
         assert result["pipeline_name"] == "acm-deploy"
         assert result["status"] == "failure"
+        assert result["lab"] == "lab-dallas"
+        assert result["team"] == "partner-team"
+        assert result["date"] == "2026-08-15"
 
     @patch("mcp_server.prompts.prompts.DCIJobService")
     def test_empty_hits_returns_none(self, mock_cls):
@@ -438,6 +528,9 @@ class TestRcaPromptIntegration:
             "status_reason": "Task 'deploy' failed",
             "status": "failure",
             "topic_name": "OCP-4.16",
+            "lab": "lab-dallas",
+            "team": "partner-team",
+            "date": "2026-08-15",
         }
         mock_files.return_value = [
             {"id": "f1", "name": "ansible.log", "size": 4096},
@@ -466,6 +559,15 @@ class TestRcaPromptIntegration:
         rca_fn = prompts_registered["rca"]
         result = await rca_fn("job-abc-123")
 
+        # Frontmatter checks
+        assert result.startswith("---\n")
+        assert "job_id: job-abc-123" in result
+        assert "date: 2026-08-15" in result
+        assert "lab: lab-dallas" in result
+        assert "team: partner-team" in result
+        assert "component: 4.16.3" in result
+        assert "category: TBD" in result
+        assert "status: agent-draft" in result
         # Dynamic content checks
         assert "job-abc-123" in result
         assert "acm-deploy" in result
@@ -508,6 +610,13 @@ class TestRcaPromptIntegration:
         rca_fn = prompts_registered["rca"]
         result = await rca_fn("job-xyz-789")
 
+        # Frontmatter should be present with unknown defaults
+        assert result.startswith("---\n")
+        assert "job_id: job-xyz-789" in result
+        assert "date: unknown" in result
+        assert "lab: unknown" in result
+        assert "team: unknown" in result
+        assert "component: unknown" in result
         # Static prompt should still work
         assert "job-xyz-789" in result
         assert "5 Whys" in result
@@ -544,6 +653,12 @@ class TestRcaPromptIntegration:
         rca_fn = prompts_registered["rca"]
         result = await rca_fn("job-partial")
 
+        # Frontmatter should be present with unknown defaults
+        assert result.startswith("---\n")
+        assert "job_id: job-partial" in result
+        assert "lab: unknown" in result
+        assert "team: unknown" in result
+        assert "component: unknown" in result
         # Should have dynamic file section
         assert "Available Files" in result
         assert "f1" in result

@@ -109,7 +109,7 @@ def _fetch_job_metadata(job_id: str) -> dict | None:
 
     Returns:
         A dict with keys: tags, components, pipeline_name, status_reason,
-        status, topic_name.  Returns None on any failure.
+        status, topic_name, lab, team, date.  Returns None on any failure.
     """
     try:
         service = DCIJobService()
@@ -117,12 +117,15 @@ def _fetch_job_metadata(job_id: str) -> dict | None:
             query=f"(id='{job_id}')",
             limit=1,
             includes="id,tags,components.name,components.type,components.version,"
-            "pipeline.name,status_reason,status,topic.name,comment,url",
+            "pipeline.name,status_reason,status,topic.name,comment,url,"
+            "remoteci.name,team.name,created_at",
         )
         hits = result.get("hits", {}).get("hits", [])
         if not hits:
             return None
         src = hits[0].get("_source", hits[0])
+        raw_date = src.get("created_at", "")
+        date = raw_date[:10] if raw_date else "unknown"
         return {
             "tags": src.get("tags", []),
             "components": src.get("components", []),
@@ -132,10 +135,65 @@ def _fetch_job_metadata(job_id: str) -> dict | None:
             "topic_name": (src.get("topic") or {}).get("name", ""),
             "comment": src.get("comment", ""),
             "url": src.get("url", ""),
+            "lab": (src.get("remoteci") or {}).get("name", "unknown"),
+            "team": (src.get("team") or {}).get("name", "unknown"),
+            "date": date,
         }
     except Exception:
         logger.debug("Failed to fetch metadata for job %s", job_id, exc_info=True)
         return None
+
+
+def _extract_ocp_version(components: list[dict]) -> str:
+    """Return the OCP version string from a list of job components.
+
+    Searches for the component with type 'ocp' and returns its version
+    field, falling back to its name field.  Returns 'unknown' when no
+    OCP component is found or when both fields are empty.
+    """
+    for c in components:
+        if c.get("type") == "ocp":
+            return c.get("version") or c.get("name") or "unknown"
+    return "unknown"
+
+
+def _build_frontmatter(
+    job_id: str,
+    date: str,
+    lab: str,
+    team: str,
+    component: str,
+    category: str = "TBD",
+    status: str = "agent-draft",
+) -> str:
+    """Build a YAML frontmatter block for an RCA report.
+
+    Returns a string delimited by ``---`` lines suitable for prepending
+    to a markdown report.
+
+    Args:
+        job_id:    DCI job identifier.
+        date:      Job creation date (YYYY-MM-DD or 'unknown').
+        lab:       Remote CI / lab name.
+        team:      DCI team name.
+        component: Primary OCP component version string.
+        category:  Failure category (default 'TBD', to be filled by agent).
+        status:    Draft status tag (default 'agent-draft').
+
+    Returns:
+        A ``---\\n...\\n---\\n`` YAML frontmatter string.
+    """
+    return (
+        "---\n"
+        f"job_id: {job_id}\n"
+        f"date: {date}\n"
+        f"lab: {lab}\n"
+        f"team: {team}\n"
+        f"component: {component}\n"
+        f"category: {category}\n"
+        f"status: {status}\n"
+        "---\n"
+    )
 
 
 def _fetch_job_files(job_id: str) -> list[dict] | None:
@@ -585,7 +643,16 @@ def _build_file_section(
 
 def _static_rca_prompt(dci_job_id: str) -> str:
     """Return the static fallback RCA prompt when pre-fetching fails."""
-    return f"""Conduct a root cause analysis (RCA) on the following DCI job: {dci_job_id}. Store all the downloaded files at /tmp/dci/{dci_job_id}/, so as not to download them twice. Create a report with your findings at /tmp/dci/rca-{dci_job_id}.md. Be sure to include details about the timeline of events and the DCI job information in the report, such as the components, the topic, and the pipeline name. If there is a CILAB-<num> comment, replace it with https://redhat.atlassian.net/browse/CILAB-<num>. Include a hyperlink in the form https://distributed-ci.io/jobs/<job id> each time you refer to the DCI job ID.
+    frontmatter = _build_frontmatter(
+        job_id=dci_job_id,
+        date="unknown",
+        lab="unknown",
+        team="unknown",
+        component="unknown",
+    )
+    return (
+        frontmatter
+        + f"""Conduct a root cause analysis (RCA) on the following DCI job: {dci_job_id}. Store all the downloaded files at /tmp/dci/{dci_job_id}/, so as not to download them twice. Create a report with your findings at /tmp/dci/rca-{dci_job_id}.md. Be sure to include details about the timeline of events and the DCI job information in the report, such as the components, the topic, and the pipeline name. If there is a CILAB-<num> comment, replace it with https://redhat.atlassian.net/browse/CILAB-<num>. Include a hyperlink in the form https://distributed-ci.io/jobs/<job id> each time you refer to the DCI job ID.
 
 ## Step 1: Evidence Gathering
 
@@ -600,6 +667,7 @@ Avoid looking at the DCI task files or failed_task.txt or play_recap, as they co
 Do not hesitate to download any extra files that you think are relevant to the RCA.
 
 {_RCA_METHODOLOGY}"""
+    )
 
 
 def register_prompts(mcp):
@@ -762,8 +830,25 @@ This job is associated with a PR: [{url}]({url}).
         else:
             jira_instruction = ""
 
+        # -- Frontmatter -------------------------------------------------------
+        ocp_version = _extract_ocp_version(components)
+        lab = (metadata or {}).get("lab", "unknown")
+        team = (metadata or {}).get("team", "unknown")
+        date = (metadata or {}).get("date", "unknown")
+        frontmatter = _build_frontmatter(
+            job_id=dci_job_id,
+            date=date,
+            lab=lab,
+            team=team,
+            component=ocp_version,
+        )
+
         # -- Assemble full prompt ----------------------------------------------
-        return f"""Conduct a root cause analysis (RCA) on DCI job [{dci_job_id}](https://distributed-ci.io/jobs/{dci_job_id}).
+        return (
+            frontmatter
+            + f"""Conduct a root cause analysis (RCA) on DCI job [{dci_job_id}](https://distributed-ci.io/jobs/{dci_job_id}).
+
+> **Agent instruction:** Copy the YAML frontmatter block above to the top of the report at `/tmp/dci/rca-{dci_job_id}.md`, then replace `category: TBD` with the correct failure category once identified. Valid categories: Infrastructure, Configuration, Software Bug, Environment, Timing/Race Condition.
 
 Store all downloaded files at `/tmp/dci/{dci_job_id}/` to avoid re-downloading.
 Create a report at `/tmp/dci/rca-{dci_job_id}.md`.
@@ -783,6 +868,7 @@ Follow the prioritized file list above. For each file:
 Do not hesitate to download any extra files from the "Other files" or "Supporting files" sections that may be relevant.
 
 {_RCA_METHODOLOGY}{jira_instruction}"""
+        )
 
     @mcp.prompt()
     async def weekly(
