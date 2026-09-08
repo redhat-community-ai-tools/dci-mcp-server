@@ -103,6 +103,26 @@ class DCIJobService(DCIBaseService):
         except Exception as e:
             return {"error": str(e), "message": "Failed to list jobs."}
 
+    def get_job(self, job_id: str) -> dict:
+        """
+        Get the full record for a single job.
+
+        Includes the embedded components, files, jobstates, tags, results,
+        and keys_values as returned by the DCI API.
+
+        Args:
+            job_id: The ID of the job
+
+        Returns:
+            The full job record as ``{"job": {...}}``, or an empty dict on error.
+        """
+        try:
+            context = self._get_dci_context()
+            return job.get(context, job_id).json()
+        except Exception as e:
+            print(f"Error getting job {job_id}: {e}", file=sys.stderr)
+            return {}
+
     def list_job_files(self, job_id: str) -> Any:
         """
         List files associated with a specific job.

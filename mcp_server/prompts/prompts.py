@@ -16,18 +16,28 @@
 """Prompts for the DCI MCP server."""
 
 import fnmatch
+import json
 import logging
+import os
 import re
+import tarfile
 from datetime import UTC
 from typing import Annotated
 
+from ..services.dci_file_service import DCIFileService
 from ..services.dci_job_service import DCIJobService
 
 logger = logging.getLogger(__name__)
 
+
 # Shared RCA methodology text (Steps 2-4) used by both the static
-# fallback prompt and the dynamic prompt to avoid duplication.
-_RCA_METHODOLOGY = """## Step 2: Root Cause Analysis using the 5 Whys Method
+# fallback prompt and the dynamic prompt to avoid duplication.  The report
+# frontmatter template is injected into Step 4 so it sits with the rest of
+# the report-structure guidance.
+def _rca_methodology(frontmatter: str) -> str:
+    """Return the shared RCA methodology (Steps 2-4) with ``frontmatter``
+    embedded in the Step 4 report template."""
+    return f"""## Step 2: Root Cause Analysis using the 5 Whys Method
 
 After gathering evidence, apply the "5 Whys" technique to drill down to the true root cause. Do not stop at the first error you find — that is usually a symptom, not the cause.
 
@@ -89,9 +99,14 @@ Before finalizing your root cause, actively try to DISPROVE it:
 
 ## Step 4: Report
 
-Structure the report with these sections:
+Begin the report with this YAML frontmatter, replacing `category: TBD` with the correct failure category once identified (valid categories: Infrastructure, Configuration, Software Bug, Environment, Timing/Race Condition):
 
-1. **Job Information**: components, topic, pipeline, timeline of events
+```yaml
+{frontmatter}```
+
+Then structure the report with these sections:
+
+1. **Job Information**: components, topic, pipeline, the DCI `status_reason` verbatim, and the timeline of events
 2. **Failure Symptom**: what the user would observe
 3. **Causal Chain (5 Whys)**: the full chain from symptom to root cause, with log evidence at each level
 4. **Root Cause**: the deepest actionable cause identified
@@ -358,9 +373,9 @@ def _prioritize_files(
 
         if name == "ansible.log":
             buckets["P1"].append(f)
-        elif fnmatch.fnmatch(name, "logjuicer_omg*"):
+        elif fnmatch.fnmatch(name, "*logjuicer_omg*"):
             buckets["P3"].append(f)
-        elif fnmatch.fnmatch(name, "logjuicer*") or name == "diff-jobs.txt":
+        elif fnmatch.fnmatch(name, "*logjuicer*") or name == "diff-jobs.txt":
             buckets["P2"].append(f)
         elif mime == "application/junit":
             buckets["P4"].append(f)
@@ -376,6 +391,144 @@ def _prioritize_files(
             buckets["P8"].append(f)
 
     return buckets
+
+
+# Priority buckets whose files are always useful and cheap enough to
+# pre-download at render time.  P5 (must_gather) is handled separately by
+# _autodownload_must_gather because its archives need extraction.
+_TRIAGE_BUCKETS = ("P1", "P2", "P3", "P4", "P6")
+
+
+def _autodownload_triage_files(
+    job_id: str, buckets: dict[str, list[dict]]
+) -> list[str]:
+    """Pre-download the triage files to ``/tmp/dci/<job_id>/``.
+
+    Runs only under the stdio transport, where the MCP server and the agent
+    share a filesystem so the downloaded files are readable by the agent.  In
+    SSE/HTTP mode this is a no-op and the prompt falls back to per-file IDs.
+
+    Downloads are best-effort: any failure is logged and skipped so prompt
+    rendering never fails because of I/O.  Idempotent — files already on disk
+    are kept, not re-downloaded.
+
+    Returns:
+        The names of the files present locally after this call (empty when
+        skipped or on total failure).
+    """
+    if os.environ.get("MCP_TRANSPORT", "stdio") != "stdio":
+        return []
+
+    service = DCIFileService()
+    downloaded: list[str] = []
+    for bucket_key in _TRIAGE_BUCKETS:
+        for f in buckets.get(bucket_key, []):
+            name = f.get("name", "")
+            file_id = f.get("id", "")
+            if not name or not file_id:
+                continue
+            dest = service.DOWNLOAD_ROOT / job_id / name
+            if dest.exists():
+                downloaded.append(name)
+                continue
+            try:
+                service.download_file(job_id, file_id, f"{job_id}/{name}")
+                downloaded.append(name)
+            except Exception:
+                logger.debug(
+                    "Failed to auto-download %s for job %s", name, job_id, exc_info=True
+                )
+    return downloaded
+
+
+def _dump_job_metadata(job_id: str) -> bool:
+    """Dump the full DCI job record to ``/tmp/dci/<job_id>/job-metadata.json``.
+
+    Gives the agent the complete job data (components with versions/URLs, tags,
+    jobstates, keys_values, results, file list) without extra API round-trips.
+    Same gating as :func:`_autodownload_triage_files`: stdio only, best-effort,
+    idempotent.
+
+    Returns:
+        True when the metadata file is present locally after this call.
+    """
+    if os.environ.get("MCP_TRANSPORT", "stdio") != "stdio":
+        return False
+
+    dest = DCIFileService.DOWNLOAD_ROOT / job_id / "job-metadata.json"
+    if dest.exists():
+        return True
+    try:
+        data = DCIJobService().get_job(job_id)
+        if not data:
+            return False
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        with open(dest, "w") as out:
+            json.dump(data, out)
+        return True
+    except Exception:
+        logger.debug("Failed to dump job metadata for %s", job_id, exc_info=True)
+        return False
+
+
+def _autodownload_must_gather(job_id: str, buckets: dict[str, list[dict]]) -> list[str]:
+    """Download and extract the P5 must_gather archives at render time.
+
+    must_gather is consulted for verification in essentially every RCA, so
+    front-loading the download + `tar` extraction here saves the agent that
+    (slow) mechanical work.  Each ``*.tar.gz`` is extracted into
+    ``/tmp/dci/<job_id>/<archive-basename>/`` with the redundant top-level
+    ``must_gather/`` wrapper stripped, so the resulting directory is directly
+    usable with ``omc use``.  Extraction uses ``filter="data"`` to prevent
+    path-traversal from a malicious archive.
+
+    Same gating as :func:`_autodownload_triage_files`: stdio only, best-effort,
+    idempotent.
+
+    Returns:
+        The extracted directory names (relative to ``/tmp/dci/<job_id>/``).
+    """
+    if os.environ.get("MCP_TRANSPORT", "stdio") != "stdio":
+        return []
+
+    service = DCIFileService()
+    root = service.DOWNLOAD_ROOT / job_id
+    extracted: list[str] = []
+    for f in buckets.get("P5", []):
+        name = f.get("name", "")
+        file_id = f.get("id", "")
+        if not name.endswith(".tar.gz") or not file_id:
+            continue
+        label = name[: -len(".tar.gz")]
+        dest_dir = root / label
+        if dest_dir.exists():
+            extracted.append(label)
+            continue
+        archive = root / name
+        try:
+            if not archive.exists():
+                service.download_file(job_id, file_id, f"{job_id}/{name}")
+            with tarfile.open(archive) as tf:
+                members = tf.getmembers()
+                tops = {m.name.split("/", 1)[0] for m in members if m.name}
+                wrapper = tops.pop() if len(tops) == 1 else ""
+                prefix = f"{wrapper}/" if wrapper else ""
+                for m in members:
+                    if wrapper and m.name == wrapper:
+                        continue  # skip the redundant top-level wrapper dir
+                    if prefix and m.name.startswith(prefix):
+                        m.name = m.name[len(prefix) :]
+                    if m.name:
+                        tf.extract(m, dest_dir, filter="data")
+            extracted.append(label)
+        except Exception:
+            logger.debug(
+                "Failed to prepare must_gather %s for job %s",
+                name,
+                job_id,
+                exc_info=True,
+            )
+    return extracted
 
 
 def _build_job_type_guidance(job_type: str, components: list[dict]) -> str:
@@ -470,6 +623,8 @@ def _build_file_section(
     *,
     status_reason: str = "",
     job_type: str = "standard",
+    staged_mg: list[str] | None = None,
+    job_id: str = "",
 ) -> str:
     """Build the file inventory section of the RCA prompt.
 
@@ -546,10 +701,12 @@ def _build_file_section(
         return f"  - `{f['name']}` (id: `{f['id']}`, {size_str}{mime_str}){suffix}"
 
     p1_description = (
-        "Start here. Use `status_reason` (shown above) to jump to the "
-        "failure point in the Ansible run."
+        "Authoritative full run log, but large — **do not read it whole**. "
+        "After triaging logjuicer, grep the failing task from `status_reason` "
+        "with context (see Step 1)."
         if status_reason
-        else "Start here. Read through the Ansible run to find the failure point."
+        else "Authoritative full run log, but large — **do not read it whole**. "
+        "Grep the failing task with context (see Step 1)."
     )
 
     bucket_labels = {
@@ -558,10 +715,13 @@ def _build_file_section(
             p1_description,
         ),
         "P2": (
-            "Logjuicer diffs and component diffs",
-            "Diffs comparing this job's files against the last successful "
-            "run. `diff-jobs.txt` shows component differences (OCP, RPM, git). "
-            "Identify what changed.",
+            "Logjuicer diffs and component diffs (read these first)",
+            "Small diffs vs the last successful run — read these before "
+            "`ansible.log` for cheap triage; they often already contain the "
+            "root cause. Note: logjuicer echoes `status_reason` (its presence "
+            "is not independent evidence) and may include noise or leaked "
+            "secrets, so confirm findings against `ansible.log`. "
+            "`diff-jobs.txt` shows component differences (OCP, RPM, git).",
         ),
         "P3": (
             "Logjuicer diffs (must_gather)",
@@ -574,8 +734,14 @@ def _build_file_section(
         ),
         "P5": (
             "must_gather archives",
-            "Cluster state snapshots. Extract with `tar -xf <file>` and inspect "
-            "with `omc use <extracted_dir>`.",
+            (
+                "Cluster state snapshots. Already downloaded and extracted for "
+                "you — the extracted directory for each archive is shown below; "
+                "run `omc use <dir>` on it."
+                if staged_mg
+                else "Cluster state snapshots. Extract with `tar -xf <file>` and "
+                "inspect with `omc use <extracted_dir>`."
+            ),
         ),
         "P6": (
             "Event logs",
@@ -625,7 +791,13 @@ def _build_file_section(
         lines.append(f"\n### {seq}. {label}\n")
         lines.append(f"{description}\n")
         for f in bucket_files:
-            lines.append(_fmt(f, _acm_annotation(f, bucket_key)))
+            annotation = _acm_annotation(f, bucket_key)
+            if bucket_key == "P5" and staged_mg and job_id:
+                label = f.get("name", "").removesuffix(".tar.gz")
+                if label in staged_mg:
+                    note = f"extracted at `/tmp/dci/{job_id}/{label}/`"
+                    annotation = f"{annotation}; {note}" if annotation else note
+            lines.append(_fmt(f, annotation))
 
     if spoke_prefixes:
         lines.append(
@@ -650,13 +822,13 @@ def _static_rca_prompt(dci_job_id: str) -> str:
         team="unknown",
         component="unknown",
     )
-    return (
-        frontmatter
-        + f"""Conduct a root cause analysis (RCA) on the following DCI job: {dci_job_id}. Store all the downloaded files at /tmp/dci/{dci_job_id}/, so as not to download them twice. Create a report with your findings at /tmp/dci/rca-{dci_job_id}.md. Be sure to include details about the timeline of events and the DCI job information in the report, such as the components, the topic, and the pipeline name. If there is a CILAB-<num> comment, replace it with https://redhat.atlassian.net/browse/CILAB-<num>. Include a hyperlink in the form https://distributed-ci.io/jobs/<job id> each time you refer to the DCI job ID.
+    return f"""Conduct a root cause analysis (RCA) on the following DCI job: {dci_job_id}. Store all the downloaded files at /tmp/dci/{dci_job_id}/, so as not to download them twice. Create a report with your findings at /tmp/dci/rca-{dci_job_id}.md.
+
+Be sure to include details about the timeline of events and the DCI job information in the report, such as the components, the topic, and the pipeline name. If there is a CILAB-<num> comment, replace it with https://redhat.atlassian.net/browse/CILAB-<num>. Include a hyperlink in the form https://distributed-ci.io/jobs/<job id> each time you refer to the DCI job ID.
 
 ## Step 1: Evidence Gathering
 
-First step is to review ansible.log (overview of the CI job execution). Then the logjuicer.txt (for regular files) and logjuicer_omg.txt (for must_gather) files that compare the logs from a previous successful run. For each difference flagged by logjuicer, determine whether it is a cause, a consequence, or unrelated to the failure.
+First, triage with the logjuicer diff files (`logjuicer.txt` for regular files, `logjuicer_omg.txt` for must_gather): small diffs against a previous successful run that often already contain the root cause. Then confirm in `ansible.log` — **do not read it whole** (it is frequently 1-2 million tokens): grep the failing task (from `status_reason`) with context, e.g. `grep -n -B5 -A80 "<failing task>" ansible.log`, and widen the window if the `fatal: ... FAILED! => {{...}}` result is cut off. For each difference flagged by logjuicer, determine whether it is a cause, a consequence, or unrelated to the failure. If no logjuicer file exists, go straight to the targeted `ansible.log` grep.
 
 Later always download events.txt if it is available to understand the timeline.
 
@@ -666,8 +838,7 @@ Avoid looking at the DCI task files or failed_task.txt or play_recap, as they co
 
 Do not hesitate to download any extra files that you think are relevant to the RCA.
 
-{_RCA_METHODOLOGY}"""
-    )
+{_rca_methodology(frontmatter)}"""
 
 
 def register_prompts(mcp):
@@ -733,13 +904,27 @@ def register_prompts(mcp):
 ```
 """
 
+        # -- Full job metadata dump (stdio only; best-effort) ------------------
+        staged_metadata = _dump_job_metadata(dci_job_id)
+
         # -- File inventory section --------------------------------------------
         has_must_gather = False
+        staged_files: list[str] = []
+        staged_mg: list[str] = []
         if files is not None:
             buckets = _prioritize_files(files)
             has_must_gather = bool(buckets.get("P5"))
+            # Pre-download the triage files and extract must_gather (stdio only;
+            # best-effort) before building the file section so it can point at
+            # the extracted directories.
+            staged_files = _autodownload_triage_files(dci_job_id, buckets)
+            staged_mg = _autodownload_must_gather(dci_job_id, buckets)
             file_section = _build_file_section(
-                buckets, status_reason=status_reason, job_type=job_type
+                buckets,
+                status_reason=status_reason,
+                job_type=job_type,
+                staged_mg=staged_mg,
+                job_id=dci_job_id,
             )
         else:
             file_section = (
@@ -770,18 +955,28 @@ This job has a `diff-jobs.txt` file that lists differences in DCI components (OC
 
         # -- must_gather instructions -------------------------------------------
         if has_must_gather:
-            must_gather_instructions = """
-**MANDATORY — must_gather inspection:**
-You MUST download and inspect ALL must_gather archives listed above. Do NOT skip this step.
-1. Download each must_gather archive using its file ID.
+            if staged_mg:
+                mg_dirs = "\n".join(
+                    f"   - `/tmp/dci/{dci_job_id}/{d}/`" for d in staged_mg
+                )
+                mg_access = f"""The must_gather archives have already been downloaded and extracted for you. Point `omc` at each extracted directory:
+{mg_dirs}
+Run `omc use <dir>` for each, then investigate."""
+            else:
+                mg_access = """1. Download each must_gather archive using its file ID.
 2. Extract it: `tar -xf <file>`
 3. Inspect with: `omc use <extracted_dir>`
-4. Use `omc` to investigate cluster state as **primary evidence** in your causal chain, not just for verification. Check:
+Then investigate:"""
+            must_gather_instructions = f"""
+**MANDATORY — must_gather inspection:**
+You MUST inspect ALL must_gather archives listed above. Do NOT skip this step.
+{mg_access}
+- Use `omc` to investigate cluster state as **primary evidence** in your causal chain, not just for verification. Check:
    - Node conditions and resource usage (`omc get nodes -o wide`, `omc describe node`)
    - Pod status across namespaces (`omc get pods -A`, focus on failing/pending/evicted pods)
    - ClusterOperator health (`omc get co`)
    - Any resources specific to the failure mode (see job-type guidance above)
-5. Integrate must_gather findings directly into your 5 Whys causal chain — cite `omc` output as evidence alongside log files.
+- Integrate must_gather findings directly into your 5 Whys causal chain — cite `omc` output as evidence alongside log files.
 
 must_gather captures cluster state at a point in time. Use it to find evidence that **supports or refutes** your hypotheses, not just to confirm what the logs already told you.
 """
@@ -843,12 +1038,28 @@ This job is associated with a PR: [{url}]({url}).
             component=ocp_version,
         )
 
-        # -- Assemble full prompt ----------------------------------------------
-        return (
-            frontmatter
-            + f"""Conduct a root cause analysis (RCA) on DCI job [{dci_job_id}](https://distributed-ci.io/jobs/{dci_job_id}).
+        # -- Staging note (were triage files pre-downloaded?) ------------------
+        if staged_files:
+            staged_note = (
+                f"The triage files have been pre-downloaded to "
+                f"`/tmp/dci/{dci_job_id}/` — read them there. If a file you need "
+                f"is missing, download it by its **file ID** from the list above.\n\n"
+            )
+        else:
+            staged_note = (
+                f"Download each file you need by its **file ID** from the list "
+                f"above, storing it under `/tmp/dci/{dci_job_id}/`.\n\n"
+            )
+        if staged_metadata:
+            staged_note += (
+                f"The full job record is available at "
+                f"`/tmp/dci/{dci_job_id}/job-metadata.json` (components with "
+                f"versions/URLs, tags, jobstates, keys_values, results, file "
+                f"list). Query it with `jq` for any detail not shown above.\n\n"
+            )
 
-> **Agent instruction:** Copy the YAML frontmatter block above to the top of the report at `/tmp/dci/rca-{dci_job_id}.md`, then replace `category: TBD` with the correct failure category once identified. Valid categories: Infrastructure, Configuration, Software Bug, Environment, Timing/Race Condition.
+        # -- Assemble full prompt ----------------------------------------------
+        return f"""Conduct a root cause analysis (RCA) on DCI job [{dci_job_id}](https://distributed-ci.io/jobs/{dci_job_id}).
 
 Store all downloaded files at `/tmp/dci/{dci_job_id}/` to avoid re-downloading.
 Create a report at `/tmp/dci/rca-{dci_job_id}.md`.
@@ -858,17 +1069,22 @@ Create a report at `/tmp/dci/rca-{dci_job_id}.md`.
 {type_guidance}
 ## Step 1: Evidence Gathering
 
-Follow the prioritized file list above. For each file:
-1. Download it using its **file ID** (provided above).
-2. Analyze it according to its role described in the file list.
-3. For each difference flagged by logjuicer files, determine whether it is a **cause**, a **consequence**, or **unrelated** to the failure.
+{staged_note}**Do not read `ansible.log` in full** — it is frequently 1-2 million tokens. Investigate in this order:
+
+1. **Start from `status_reason`** (in the Job Context above): it names the failing task and is the most reliable pointer to where the run failed.
+2. **Triage with logjuicer** (`logjuicer*.txt`, and `logjuicer_omg*.txt` for must_gather) when present: these are small diffs against the last successful run and often already contain the root cause. Caveats: logjuicer echoes `status_reason` verbatim (its mere presence is not independent evidence) and may include noise or leaked secrets — treat it as a lead and confirm against `ansible.log`.
+3. **Read the failing block in `ansible.log` with context** — locate it, then read a generous window; do not ingest the whole file and do not rely on the matched line alone. An Ansible failure spans the `TASK [role : name]` header through the `fatal: [host]: FAILED! => {{...}}` result that carries the real error/`stdout`:
+   - locate: `grep -n "<failing task from status_reason>" /tmp/dci/{dci_job_id}/ansible.log`
+   - read context: `grep -n -B5 -A80 "<failing task>" /tmp/dci/{dci_job_id}/ansible.log`
+   - if the `fatal:`/`FAILED!` result or its `stdout`/`msg` is cut off, widen the window (increase `-A`, or read further); if the task name matches many times (per-host or retries), narrow by grepping `fatal:` / `FAILED!` near it.
+4. **For each difference flagged by logjuicer**, determine whether it is a **cause**, a **consequence**, or **unrelated** to the failure.
+5. **Fallbacks**: if no logjuicer file exists, go straight to the targeted `ansible.log` grep. If the failing task is censored (`no_log: true`), escalate to `logjuicer_omg.txt`, `events.txt`, and the must_gather archives (`omc`).
 {diff_jobs_instructions}{must_gather_instructions}{pr_url_instructions}
 **Avoid** looking at DCI task files, `failed_task.txt`, or `play_recap` — they duplicate ansible.log content.
 
-Do not hesitate to download any extra files from the "Other files" or "Supporting files" sections that may be relevant.
+Do not hesitate to read any extra files from the "Other files" or "Supporting files" sections that may be relevant (download them by file ID if not already present).
 
-{_RCA_METHODOLOGY}{jira_instruction}"""
-        )
+{_rca_methodology(frontmatter)}{jira_instruction}"""
 
     @mcp.prompt()
     async def weekly(
