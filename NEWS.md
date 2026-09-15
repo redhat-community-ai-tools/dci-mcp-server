@@ -1,5 +1,15 @@
 # DCI MCP Server - Change Log
 
+## [2026-09-08]
+
+### Improvements
+
+- `/dci/rca`: cut token cost by no longer reading `ansible.log` whole. The prompt now guides a hybrid triage (status_reason → logjuicer → targeted `ansible.log` grep with context)
+- `/dci/rca`: pre-download triage files (ansible.log, logjuicer, junit, events, diff-jobs) to `/tmp/dci/<job_id>/` at render time (stdio only)
+- `/dci/rca`: download and extract must_gather archives at render time into `/tmp/dci/<job_id>/<archive>/` (wrapper dir stripped, ready for `omc use`), so the agent no longer spends time downloading and untarring them mid-investigation
+- `/dci/rca`: dump the full DCI job record to `/tmp/dci/<job_id>/job-metadata.json` at render time so the agent can query components, tags, jobstates, keys_values, and results with `jq` without extra API calls
+- Add `DCIJobService.get_job(job_id)` returning the full embedded job record
+
 ## [2026-07-03]
 
 ### New Features

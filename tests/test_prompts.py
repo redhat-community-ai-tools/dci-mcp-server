@@ -118,6 +118,14 @@ class TestPrioritizeFiles:
         result = _prioritize_files([self._f("logjuicer_omg_SNO.txt")])
         assert len(result["P3"]) == 1
 
+    def test_logjuicer_omg_sno_prefix_is_p3(self):
+        result = _prioritize_files([self._f("SNO_logjuicer_omg.txt")])
+        assert len(result["P3"]) == 1
+
+    def test_logjuicer_sno_prefix_is_p2(self):
+        result = _prioritize_files([self._f("SNO_logjuicer.txt")])
+        assert len(result["P2"]) == 1
+
     def test_junit_mime_is_p4(self):
         result = _prioritize_files(
             [self._f("dci-openshift-agent", mime="application/junit")]
@@ -560,7 +568,8 @@ class TestRcaPromptIntegration:
         result = await rca_fn("job-abc-123")
 
         # Frontmatter checks
-        assert result.startswith("---\n")
+        assert result.startswith("Conduct a root cause analysis")
+        assert "```yaml\n---\n" in result  # frontmatter is a report template
         assert "job_id: job-abc-123" in result
         assert "date: 2026-08-15" in result
         assert "lab: lab-dallas" in result
@@ -611,7 +620,8 @@ class TestRcaPromptIntegration:
         result = await rca_fn("job-xyz-789")
 
         # Frontmatter should be present with unknown defaults
-        assert result.startswith("---\n")
+        assert result.startswith("Conduct a root cause analysis")
+        assert "```yaml\n---\n" in result  # frontmatter is a report template
         assert "job_id: job-xyz-789" in result
         assert "date: unknown" in result
         assert "lab: unknown" in result
@@ -654,7 +664,8 @@ class TestRcaPromptIntegration:
         result = await rca_fn("job-partial")
 
         # Frontmatter should be present with unknown defaults
-        assert result.startswith("---\n")
+        assert result.startswith("Conduct a root cause analysis")
+        assert "```yaml\n---\n" in result  # frontmatter is a report template
         assert "job_id: job-partial" in result
         assert "lab: unknown" in result
         assert "team: unknown" in result
