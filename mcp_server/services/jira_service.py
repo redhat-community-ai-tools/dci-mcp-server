@@ -8,6 +8,34 @@ from jira import JIRA
 from jira.exceptions import JIRAError
 
 
+def _format_jira_error(e: JIRAError) -> str:
+    """Return a JIRAError message enriched with HTTP status and Retry-After.
+
+    ``JIRAError.text`` alone hides the HTTP status code, so a transient
+    rate-limit (429) is indistinguishable from a permission error (403) in the
+    surfaced message. This adds the status code (and ``Retry-After`` when the
+    server sent one) and logs 4xx/5xx responses to stderr so write failures are
+    visible in the server logs.
+    """
+    retry_after = None
+    response = getattr(e, "response", None)
+    if response is not None:
+        try:
+            retry_after = response.headers.get("Retry-After")
+        except Exception:
+            retry_after = None
+    parts = []
+    if e.status_code:
+        parts.append(f"HTTP {e.status_code}")
+    if retry_after:
+        parts.append(f"Retry-After {retry_after}")
+    detail = f"[{', '.join(parts)}] " if parts else ""
+    msg = f"{detail}{e.text}"
+    if e.status_code and 400 <= e.status_code < 600:
+        print(f"Jira API error: {msg}", file=sys.stderr)
+    return msg
+
+
 def _simplify_field_value(value: Any) -> Any:
     """Simplify a raw Jira field value for readability.
 
@@ -352,7 +380,7 @@ class JiraService:
             return ticket_data
 
         except JIRAError as e:
-            raise Exception(f"Jira API error: {e.text}") from e
+            raise Exception(f"Jira API error: {_format_jira_error(e)}") from e
         except Exception as e:
             raise Exception(f"Error retrieving ticket {ticket_key}: {str(e)}") from e
 
@@ -551,7 +579,7 @@ class JiraService:
                 "url": f"{self.jira_url}/browse/{issue.key}",
             }
         except JIRAError as e:
-            raise Exception(f"Jira API error: {e.text}") from e
+            raise Exception(f"Jira API error: {_format_jira_error(e)}") from e
         except Exception as e:
             raise Exception(f"Error creating issue: {str(e)}") from e
 
@@ -658,7 +686,7 @@ class JiraService:
 
             return result
         except JIRAError as e:
-            raise Exception(f"Jira API error: {e.text}") from e
+            raise Exception(f"Jira API error: {_format_jira_error(e)}") from e
         except ValueError:
             raise
         except Exception as e:
@@ -681,7 +709,7 @@ class JiraService:
                 "created": comment.created,
             }
         except JIRAError as e:
-            raise Exception(f"Jira API error: {e.text}") from e
+            raise Exception(f"Jira API error: {_format_jira_error(e)}") from e
         except Exception as e:
             raise Exception(f"Error adding comment to {ticket_key}: {str(e)}") from e
 
@@ -699,7 +727,7 @@ class JiraService:
                 "title": title,
             }
         except JIRAError as e:
-            raise Exception(f"Jira API error: {e.text}") from e
+            raise Exception(f"Jira API error: {_format_jira_error(e)}") from e
         except Exception as e:
             raise Exception(f"Error adding web link to {ticket_key}: {str(e)}") from e
 
@@ -729,7 +757,7 @@ class JiraService:
                 "link_type": link_type,
             }
         except JIRAError as e:
-            raise Exception(f"Jira API error: {e.text}") from e
+            raise Exception(f"Jira API error: {_format_jira_error(e)}") from e
         except Exception as e:
             raise Exception(
                 f"Error creating issue link between "
@@ -753,7 +781,7 @@ class JiraService:
                 for lt in link_types
             ]
         except JIRAError as e:
-            raise Exception(f"Jira API error: {e.text}") from e
+            raise Exception(f"Jira API error: {_format_jira_error(e)}") from e
         except Exception as e:
             raise Exception(f"Error fetching issue link types: {str(e)}") from e
 
@@ -768,7 +796,7 @@ class JiraService:
             transitions = self.jira.transitions(ticket_key)
             return [{"id": t["id"], "name": t["name"]} for t in transitions]
         except JIRAError as e:
-            raise Exception(f"Jira API error: {e.text}") from e
+            raise Exception(f"Jira API error: {_format_jira_error(e)}") from e
         except Exception as e:
             raise Exception(
                 f"Error getting transitions for {ticket_key}: {str(e)}"
@@ -836,7 +864,7 @@ class JiraService:
             }
 
         except JIRAError as e:
-            raise Exception(f"Jira search error: {e.text}") from e
+            raise Exception(f"Jira search error: {_format_jira_error(e)}") from e
         except Exception as e:
             raise Exception(f"Error searching tickets: {str(e)}") from e
 
@@ -994,7 +1022,7 @@ class JiraService:
             }
 
         except JIRAError as e:
-            raise Exception(f"Jira search error: {e.text}") from e
+            raise Exception(f"Jira search error: {_format_jira_error(e)}") from e
         except Exception as e:
             raise Exception(f"Error in child ticket search: {str(e)}") from e
 
@@ -1019,7 +1047,7 @@ class JiraService:
                 "url": f"{self.jira_url}/browse/{project.key}",
             }
         except JIRAError as e:
-            raise Exception(f"Jira project error: {e.text}") from e
+            raise Exception(f"Jira project error: {_format_jira_error(e)}") from e
         except Exception as e:
             raise Exception(f"Error retrieving project {project_key}: {str(e)}") from e
 
@@ -1041,7 +1069,7 @@ class JiraService:
                 "url": getattr(f, "viewUrl", None),
             }
         except JIRAError as e:
-            raise Exception(f"Jira API error: {e.text}") from e
+            raise Exception(f"Jira API error: {_format_jira_error(e)}") from e
         except Exception as e:
             raise Exception(f"Error retrieving filter {filter_id}: {str(e)}") from e
 
@@ -1065,7 +1093,7 @@ class JiraService:
                 for f in filters
             ]
         except JIRAError as e:
-            raise Exception(f"Jira API error: {e.text}") from e
+            raise Exception(f"Jira API error: {_format_jira_error(e)}") from e
         except Exception as e:
             raise Exception(f"Error retrieving favourite filters: {str(e)}") from e
 
@@ -1096,7 +1124,7 @@ class JiraService:
                 for f in data.get("values", [])
             ]
         except JIRAError as e:
-            raise Exception(f"Jira API error: {e.text}") from e
+            raise Exception(f"Jira API error: {_format_jira_error(e)}") from e
         except Exception as e:
             raise Exception(
                 f"Error searching filters by name '{filter_name}': {str(e)}"
@@ -1121,7 +1149,7 @@ class JiraService:
                 for c in components
             ]
         except JIRAError as e:
-            raise Exception(f"Jira API error: {e.text}") from e
+            raise Exception(f"Jira API error: {_format_jira_error(e)}") from e
         except Exception as e:
             raise Exception(
                 f"Error retrieving components for {project_key}: {str(e)}"
@@ -1148,7 +1176,7 @@ class JiraService:
                 for v in versions
             ]
         except JIRAError as e:
-            raise Exception(f"Jira API error: {e.text}") from e
+            raise Exception(f"Jira API error: {_format_jira_error(e)}") from e
         except Exception as e:
             raise Exception(
                 f"Error retrieving versions for {project_key}: {str(e)}"
@@ -1172,7 +1200,7 @@ class JiraService:
                 for it in issue_types
             ]
         except JIRAError as e:
-            raise Exception(f"Jira API error: {e.text}") from e
+            raise Exception(f"Jira API error: {_format_jira_error(e)}") from e
         except Exception as e:
             raise Exception(
                 f"Error retrieving issue types for {project_key}: {str(e)}"
@@ -1213,7 +1241,7 @@ class JiraService:
                 ],
             }
         except JIRAError as e:
-            raise Exception(f"Jira API error: {e.text}") from e
+            raise Exception(f"Jira API error: {_format_jira_error(e)}") from e
         except Exception as e:
             raise Exception(f"Error retrieving boards: {str(e)}") from e
 
@@ -1254,7 +1282,7 @@ class JiraService:
                 ],
             }
         except JIRAError as e:
-            raise Exception(f"Jira API error: {e.text}") from e
+            raise Exception(f"Jira API error: {_format_jira_error(e)}") from e
         except Exception as e:
             raise Exception(
                 f"Error retrieving sprints for board {board_id}: {str(e)}"

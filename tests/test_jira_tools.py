@@ -20,7 +20,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 from jira.exceptions import JIRAError
 
-from mcp_server.services.jira_service import JiraService, _simplify_field_value
+from mcp_server.services.jira_service import (
+    JiraService,
+    _format_jira_error,
+    _simplify_field_value,
+)
 from mcp_server.tools.jira_tools import validate_ticket_key
 
 # -- _simplify_field_value tests --
@@ -589,6 +593,38 @@ def test_get_ticket_data_includes_total_comments():
     assert result["comments"][1]["id"] == "2"
 
 
+# -- _format_jira_error tests --
+
+
+def test_format_jira_error_adds_status_code():
+    e = JIRAError(status_code=403, text="you don't have permission")
+    assert _format_jira_error(e) == "[HTTP 403] you don't have permission"
+
+
+def test_format_jira_error_adds_retry_after():
+    e = JIRAError(status_code=429, text="too many requests")
+    e.response = MagicMock()
+    e.response.headers = {"Retry-After": "30"}
+    assert _format_jira_error(e) == "[HTTP 429, Retry-After 30] too many requests"
+
+
+def test_format_jira_error_without_status_code_is_unchanged():
+    e = JIRAError(text="connection reset")
+    assert _format_jira_error(e) == "connection reset"
+
+
+def test_format_jira_error_logs_4xx_to_stderr(capsys):
+    e = JIRAError(status_code=429, text="too many requests")
+    _format_jira_error(e)
+    assert "[HTTP 429]" in capsys.readouterr().err
+
+
+def test_format_jira_error_does_not_log_when_no_status(capsys):
+    e = JIRAError(text="connection reset")
+    _format_jira_error(e)
+    assert capsys.readouterr().err == ""
+
+
 # -- create_issue tests --
 
 
@@ -642,6 +678,16 @@ def test_create_issue_with_optional_fields():
     assert call_fields["components"] == [{"name": "comp1"}]
     assert call_fields["assignee"] == {"accountId": "abc123"}
     assert result["key"] == "TEST-1000"
+
+
+def test_create_issue_surfaces_status_code_on_jira_error():
+    svc = _make_jira_service()
+    svc.jira.create_issue.side_effect = JIRAError(
+        status_code=429, text="too many requests"
+    )
+
+    with pytest.raises(Exception, match=r"Jira API error: \[HTTP 429\]"):
+        svc.create_issue("TEST", "New ticket")
 
 
 # -- update_issue tests --
