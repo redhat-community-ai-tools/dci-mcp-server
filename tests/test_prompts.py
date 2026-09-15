@@ -15,6 +15,7 @@
 
 """Unit tests for RCA prompt helpers and dynamic prompt generation."""
 
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -408,6 +409,21 @@ class TestBuildFrontmatter:
         assert "job_id: job-xyz" in fm
         assert "date: unknown" in fm
         assert "lab: unknown" in fm
+
+    def test_default_status_reason_is_unknown(self):
+        fm = _build_frontmatter("job-1", "2026-08-15", "lab-x", "team-y", "4.16.3")
+        assert 'status_reason: "unknown"' in fm
+
+    def test_status_reason_is_yaml_safe(self):
+        # status_reason is verbatim DCI text and may carry colons/quotes/newlines;
+        # it is JSON-encoded into a single-line scalar (valid YAML) so it cannot
+        # break the frontmatter block.
+        reason = 'Task "deploy" failed: rc=1\nfatal: boom'
+        fm = _build_frontmatter(
+            "job-1", "2026-08-15", "lab-x", "team-y", "4.16.3", status_reason=reason
+        )
+        assert f"status_reason: {json.dumps(reason)}" in fm
+        assert "\nfatal: boom" not in fm  # newline must be escaped, not literal
 
 
 # ---------------------------------------------------------------------------

@@ -178,6 +178,7 @@ def _build_frontmatter(
     lab: str,
     team: str,
     component: str,
+    status_reason: str = "unknown",
     category: str = "TBD",
     status: str = "agent-draft",
 ) -> str:
@@ -187,17 +188,20 @@ def _build_frontmatter(
     to a markdown report.
 
     Args:
-        job_id:    DCI job identifier.
-        date:      Job creation date (YYYY-MM-DD or 'unknown').
-        lab:       Remote CI / lab name.
-        team:      DCI team name.
-        component: Primary OCP component version string.
-        category:  Failure category (default 'TBD', to be filled by agent).
-        status:    Draft status tag (default 'agent-draft').
+        job_id:        DCI job identifier.
+        date:          Job creation date (YYYY-MM-DD or 'unknown').
+        lab:           Remote CI / lab name.
+        team:          DCI team name.
+        component:     Primary OCP component version string.
+        status_reason: DCI ``status_reason`` verbatim (default 'unknown').
+        category:      Failure category (default 'TBD', to be filled by agent).
+        status:        Draft status tag (default 'agent-draft').
 
     Returns:
         A ``---\\n...\\n---\\n`` YAML frontmatter string.
     """
+    # status_reason is verbatim DCI text and may contain colons, quotes, or
+    # newlines; JSON-encode it into a YAML-safe scalar (YAML is a JSON superset).
     return (
         "---\n"
         f"job_id: {job_id}\n"
@@ -205,6 +209,7 @@ def _build_frontmatter(
         f"lab: {lab}\n"
         f"team: {team}\n"
         f"component: {component}\n"
+        f"status_reason: {json.dumps(status_reason or 'unknown')}\n"
         f"category: {category}\n"
         f"status: {status}\n"
         "---\n"
@@ -1036,6 +1041,7 @@ This job is associated with a PR: [{url}]({url}).
             lab=lab,
             team=team,
             component=ocp_version,
+            status_reason=status_reason,
         )
 
         # -- Staging note (were triage files pre-downloaded?) ------------------
