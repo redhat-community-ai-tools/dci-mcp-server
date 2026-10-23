@@ -1,8 +1,9 @@
 {
-    "jobs-1776673202.390706": {
+    "jobs-1792693482.324964": {
         "mappings": {
             "_meta": {
-                "first_sync_date": "2025-04-21T08:06:39.581282"
+                "first_sync_date": "2025-10-23T18:51:04.362159",
+                "last_sync_date": "2026-10-23T10:10:54.568299"
             },
             "dynamic_templates": [
                 {
@@ -20,6 +21,16 @@
                         },
                         "match_mapping_type": "object",
                         "path_match": "nodes.*"
+                    }
+                },
+                {
+                    "tests_properties_to_nested": {
+                        "mapping": {
+                            "type": "nested"
+                        },
+                        "match": "properties",
+                        "match_mapping_type": "object",
+                        "path_match": "tests.*"
                     }
                 }
             ],
@@ -214,11 +225,607 @@
                 },
                 "nodes": {
                     "properties": {
+                        "filename": {
+                            "type": "keyword"
+                        },
                         "hardware": {
+                            "properties": {
+                                "bios_date": {
+                                    "type": "keyword"
+                                },
+                                "bios_type": {
+                                    "type": "keyword"
+                                },
+                                "bios_vendor": {
+                                    "type": "keyword"
+                                },
+                                "bios_version": {
+                                    "type": "keyword"
+                                },
+                                "bmc": {
+                                    "properties": {
+                                        "vendor": {
+                                            "type": "keyword"
+                                        },
+                                        "version": {
+                                            "type": "keyword"
+                                        }
+                                    },
+                                    "type": "nested"
+                                },
+                                "cpu_frequency_mhz": {
+                                    "type": "long"
+                                },
+                                "cpu_model": {
+                                    "type": "keyword"
+                                },
+                                "cpu_sockets": {
+                                    "type": "long"
+                                },
+                                "cpu_total_cores": {
+                                    "type": "long"
+                                },
+                                "cpu_total_threads": {
+                                    "type": "long"
+                                },
+                                "cpu_vendor": {
+                                    "type": "keyword"
+                                },
+                                "file_id": {
+                                    "type": "keyword"
+                                },
+                                "filename": {
+                                    "type": "keyword"
+                                },
+                                "memory_dimm_count": {
+                                    "type": "long"
+                                },
+                                "memory_total_gb": {
+                                    "type": "float"
+                                },
+                                "network_interfaces": {
+                                    "properties": {
+                                        "autonegotiation": {
+                                            "type": "boolean"
+                                        },
+                                        "businfo": {
+                                            "type": "keyword"
+                                        },
+                                        "description": {
+                                            "type": "keyword"
+                                        },
+                                        "device_id": {
+                                            "type": "keyword"
+                                        },
+                                        "driver": {
+                                            "type": "keyword"
+                                        },
+                                        "driver_version": {
+                                            "type": "keyword"
+                                        },
+                                        "duplex": {
+                                            "type": "keyword"
+                                        },
+                                        "firmware": {
+                                            "type": "keyword"
+                                        },
+                                        "firmware_bootcode": {
+                                            "type": "keyword"
+                                        },
+                                        "firmware_ncsi": {
+                                            "type": "keyword"
+                                        },
+                                        "firmware_nvm": {
+                                            "type": "keyword"
+                                        },
+                                        "firmware_psid": {
+                                            "type": "keyword"
+                                        },
+                                        "firmware_version": {
+                                            "type": "keyword"
+                                        },
+                                        "is_virtual_function": {
+                                            "type": "boolean"
+                                        },
+                                        "link_status": {
+                                            "type": "boolean"
+                                        },
+                                        "logical_name": {
+                                            "type": "keyword"
+                                        },
+                                        "model": {
+                                            "type": "keyword"
+                                        },
+                                        "speed_mbps": {
+                                            "type": "long"
+                                        },
+                                        "vendor": {
+                                            "type": "keyword"
+                                        },
+                                        "vendor_id": {
+                                            "type": "keyword"
+                                        }
+                                    },
+                                    "type": "nested"
+                                },
+                                "node": {
+                                    "type": "keyword"
+                                },
+                                "pci_accelerators": {
+                                    "properties": {
+                                        "businfo": {
+                                            "type": "keyword"
+                                        },
+                                        "description": {
+                                            "type": "keyword"
+                                        },
+                                        "device_id": {
+                                            "type": "keyword"
+                                        },
+                                        "is_virtual_function": {
+                                            "type": "boolean"
+                                        },
+                                        "model": {
+                                            "type": "keyword"
+                                        },
+                                        "vendor": {
+                                            "type": "keyword"
+                                        },
+                                        "vendor_id": {
+                                            "type": "keyword"
+                                        }
+                                    },
+                                    "type": "nested"
+                                },
+                                "pci_network_controllers": {
+                                    "properties": {
+                                        "businfo": {
+                                            "type": "keyword"
+                                        },
+                                        "description": {
+                                            "type": "keyword"
+                                        },
+                                        "device_id": {
+                                            "type": "keyword"
+                                        },
+                                        "is_virtual_function": {
+                                            "type": "boolean"
+                                        },
+                                        "logical_name": {
+                                            "type": "keyword"
+                                        },
+                                        "model": {
+                                            "type": "keyword"
+                                        },
+                                        "vendor": {
+                                            "type": "keyword"
+                                        },
+                                        "vendor_id": {
+                                            "type": "keyword"
+                                        }
+                                    },
+                                    "type": "nested"
+                                },
+                                "pci_other_devices": {
+                                    "properties": {
+                                        "businfo": {
+                                            "type": "keyword"
+                                        },
+                                        "description": {
+                                            "type": "keyword"
+                                        },
+                                        "device_id": {
+                                            "type": "keyword"
+                                        },
+                                        "is_virtual_function": {
+                                            "type": "boolean"
+                                        },
+                                        "logical_name": {
+                                            "type": "keyword"
+                                        },
+                                        "model": {
+                                            "type": "keyword"
+                                        },
+                                        "vendor": {
+                                            "type": "keyword"
+                                        },
+                                        "vendor_id": {
+                                            "type": "keyword"
+                                        }
+                                    },
+                                    "type": "nested"
+                                },
+                                "pci_storage_controllers": {
+                                    "properties": {
+                                        "businfo": {
+                                            "type": "keyword"
+                                        },
+                                        "description": {
+                                            "type": "keyword"
+                                        },
+                                        "device_id": {
+                                            "type": "keyword"
+                                        },
+                                        "is_virtual_function": {
+                                            "type": "boolean"
+                                        },
+                                        "logical_name": {
+                                            "type": "keyword"
+                                        },
+                                        "model": {
+                                            "type": "keyword"
+                                        },
+                                        "vendor": {
+                                            "type": "keyword"
+                                        },
+                                        "vendor_id": {
+                                            "type": "keyword"
+                                        }
+                                    },
+                                    "type": "nested"
+                                },
+                                "pci_usb_controllers": {
+                                    "properties": {
+                                        "businfo": {
+                                            "type": "keyword"
+                                        },
+                                        "description": {
+                                            "type": "keyword"
+                                        },
+                                        "device_id": {
+                                            "type": "keyword"
+                                        },
+                                        "is_virtual_function": {
+                                            "type": "boolean"
+                                        },
+                                        "model": {
+                                            "type": "keyword"
+                                        },
+                                        "vendor": {
+                                            "type": "keyword"
+                                        },
+                                        "vendor_id": {
+                                            "type": "keyword"
+                                        }
+                                    },
+                                    "type": "nested"
+                                },
+                                "storage_devices": {
+                                    "properties": {
+                                        "businfo": {
+                                            "type": "keyword"
+                                        },
+                                        "description": {
+                                            "type": "keyword"
+                                        },
+                                        "model": {
+                                            "type": "keyword"
+                                        },
+                                        "size_gb": {
+                                            "type": "float"
+                                        },
+                                        "type": {
+                                            "type": "keyword"
+                                        },
+                                        "vendor": {
+                                            "type": "keyword"
+                                        },
+                                        "version": {
+                                            "type": "keyword"
+                                        }
+                                    },
+                                    "type": "nested"
+                                },
+                                "system_family": {
+                                    "type": "keyword"
+                                },
+                                "system_model": {
+                                    "type": "keyword"
+                                },
+                                "system_sku": {
+                                    "type": "keyword"
+                                },
+                                "system_vendor": {
+                                    "type": "keyword"
+                                }
+                            },
                             "type": "nested"
                         },
                         "kernel": {
+                            "properties": {
+                                "file_id": {
+                                    "type": "keyword"
+                                },
+                                "filename": {
+                                    "type": "keyword"
+                                },
+                                "node": {
+                                    "type": "keyword"
+                                },
+                                "params": {
+                                    "properties": {
+                                        "BOOT_IMAGE": {
+                                            "type": "keyword"
+                                        },
+                                        "acpi_power_meter": {
+                                            "properties": {
+                                                "force_cap_on": {
+                                                    "type": "keyword"
+                                                }
+                                            },
+                                            "type": "nested"
+                                        },
+                                        "amd_pstate": {
+                                            "type": "keyword"
+                                        },
+                                        "audit": {
+                                            "type": "keyword"
+                                        },
+                                        "boot": {
+                                            "type": "keyword"
+                                        },
+                                        "cgroup_no_v1": {
+                                            "type": "keyword"
+                                        },
+                                        "console": {
+                                            "type": "keyword"
+                                        },
+                                        "crashkernel": {
+                                            "type": "keyword"
+                                        },
+                                        "default_hugepagesz": {
+                                            "type": "keyword"
+                                        },
+                                        "dis_ucode_ldr": {
+                                            "type": "keyword"
+                                        },
+                                        "earlycon": {
+                                            "type": "keyword"
+                                        },
+                                        "efi": {
+                                            "type": "keyword"
+                                        },
+                                        "enforcing": {
+                                            "type": "keyword"
+                                        },
+                                        "hugepages": {
+                                            "type": "keyword"
+                                        },
+                                        "hugepagesz": {
+                                            "type": "keyword"
+                                        },
+                                        "i40e": {
+                                            "properties": {
+                                                "rh_phys_port_name": {
+                                                    "type": "keyword"
+                                                }
+                                            },
+                                            "type": "nested"
+                                        },
+                                        "ice": {
+                                            "properties": {
+                                                "max_vfs": {
+                                                    "type": "keyword"
+                                                },
+                                                "rh_phys_port_name": {
+                                                    "type": "keyword"
+                                                }
+                                            },
+                                            "type": "nested"
+                                        },
+                                        "idis_ucode_ldr": {
+                                            "type": "keyword"
+                                        },
+                                        "idle": {
+                                            "type": "keyword"
+                                        },
+                                        "ignition": {
+                                            "properties": {
+                                                "firstboot": {
+                                                    "type": "keyword"
+                                                },
+                                                "platform": {
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "keyword"
+                                                        }
+                                                    },
+                                                    "type": "nested"
+                                                }
+                                            },
+                                            "type": "nested"
+                                        },
+                                        "intel_idle": {
+                                            "properties": {
+                                                "max_cstate": {
+                                                    "type": "keyword"
+                                                }
+                                            },
+                                            "type": "nested"
+                                        },
+                                        "intel_iommu": {
+                                            "type": "keyword"
+                                        },
+                                        "intel_pstate": {
+                                            "type": "keyword"
+                                        },
+                                        "iommu": {
+                                            "type": "keyword"
+                                        },
+                                        "ip": {
+                                            "type": "keyword"
+                                        },
+                                        "irqaffinity": {
+                                            "type": "keyword"
+                                        },
+                                        "isolcpus": {
+                                            "type": "keyword"
+                                        },
+                                        "kthread_cpus": {
+                                            "type": "keyword"
+                                        },
+                                        "mce": {
+                                            "type": "keyword"
+                                        },
+                                        "module_blacklist": {
+                                            "type": "keyword"
+                                        },
+                                        "nmi_watchdog": {
+                                            "type": "keyword"
+                                        },
+                                        "nohz": {
+                                            "type": "keyword"
+                                        },
+                                        "nohz_full": {
+                                            "type": "keyword"
+                                        },
+                                        "nosoftlockup": {
+                                            "type": "keyword"
+                                        },
+                                        "nvme": {
+                                            "properties": {
+                                                "poll_queues": {
+                                                    "type": "keyword"
+                                                },
+                                                "use_threaded_interrupts": {
+                                                    "type": "keyword"
+                                                }
+                                            },
+                                            "type": "nested"
+                                        },
+                                        "ostree": {
+                                            "type": "keyword"
+                                        },
+                                        "pci": {
+                                            "type": "keyword"
+                                        },
+                                        "processor": {
+                                            "properties": {
+                                                "max_cstate": {
+                                                    "type": "keyword"
+                                                }
+                                            },
+                                            "type": "nested"
+                                        },
+                                        "psi": {
+                                            "type": "keyword"
+                                        },
+                                        "random": {
+                                            "properties": {
+                                                "trust_cpu": {
+                                                    "type": "keyword"
+                                                }
+                                            },
+                                            "type": "nested"
+                                        },
+                                        "rcu_nocbs": {
+                                            "type": "keyword"
+                                        },
+                                        "rcupdate": {
+                                            "properties": {
+                                                "rcu_normal_after_boot": {
+                                                    "type": "keyword"
+                                                }
+                                            },
+                                            "type": "nested"
+                                        },
+                                        "rcutree": {
+                                            "properties": {
+                                                "kthread_prio": {
+                                                    "type": "keyword"
+                                                },
+                                                "nohz_full_patience_delay": {
+                                                    "type": "keyword"
+                                                }
+                                            },
+                                            "type": "nested"
+                                        },
+                                        "rd": {
+                                            "properties": {
+                                                "driver": {
+                                                    "properties": {
+                                                        "pre": {
+                                                            "type": "keyword"
+                                                        }
+                                                    },
+                                                    "type": "nested"
+                                                },
+                                                "luks": {
+                                                    "properties": {
+                                                        "name": {
+                                                            "type": "keyword"
+                                                        }
+                                                    },
+                                                    "type": "nested"
+                                                }
+                                            },
+                                            "type": "nested"
+                                        },
+                                        "root": {
+                                            "type": "keyword"
+                                        },
+                                        "rootflags": {
+                                            "type": "keyword"
+                                        },
+                                        "rw": {
+                                            "type": "keyword"
+                                        },
+                                        "selinux": {
+                                            "type": "keyword"
+                                        },
+                                        "skew_tick": {
+                                            "type": "keyword"
+                                        },
+                                        "systemd": {
+                                            "properties": {
+                                                "cpu_affinity": {
+                                                    "type": "keyword"
+                                                },
+                                                "legacy_systemd_cgroup_controller": {
+                                                    "type": "keyword"
+                                                },
+                                                "unified_cgroup_hierarchy": {
+                                                    "type": "keyword"
+                                                }
+                                            },
+                                            "type": "nested"
+                                        },
+                                        "tsc": {
+                                            "type": "keyword"
+                                        },
+                                        "tuned": {
+                                            "properties": {
+                                                "non_isolcpus": {
+                                                    "type": "keyword"
+                                                }
+                                            },
+                                            "type": "nested"
+                                        },
+                                        "vfio_pci": {
+                                            "properties": {
+                                                "disable_idle_d3": {
+                                                    "type": "keyword"
+                                                },
+                                                "enable_sriov": {
+                                                    "type": "keyword"
+                                                }
+                                            },
+                                            "type": "nested"
+                                        }
+                                    },
+                                    "type": "nested"
+                                },
+                                "version": {
+                                    "type": "keyword"
+                                }
+                            },
                             "type": "nested"
+                        },
+                        "node": {
+                            "type": "keyword"
+                        },
+                        "role": {
+                            "type": "keyword"
                         }
                     },
                     "type": "nested"
@@ -445,7 +1052,8 @@
                                         "value": {
                                             "type": "keyword"
                                         }
-                                    }
+                                    },
+                                    "type": "nested"
                                 },
                                 "skipped": {
                                     "type": "long"
@@ -467,6 +1075,17 @@
                                         "name": {
                                             "type": "keyword"
                                         },
+                                        "properties": {
+                                            "properties": {
+                                                "name": {
+                                                    "type": "keyword"
+                                                },
+                                                "value": {
+                                                    "type": "keyword"
+                                                }
+                                            },
+                                            "type": "nested"
+                                        },
                                         "time": {
                                             "type": "float"
                                         },
@@ -478,6 +1097,9 @@
                                         }
                                     },
                                     "type": "nested"
+                                },
+                                "testcases_time": {
+                                    "type": "flattened"
                                 },
                                 "tests": {
                                     "type": "long"
