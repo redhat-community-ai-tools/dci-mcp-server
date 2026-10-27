@@ -105,8 +105,8 @@ The Jira integration works seamlessly with DCI job data. You can:
 
    # Extract ticket keys from comments
    for job in jobs:
-       if job.get('comment'):
-           ticket_key = job['comment']  # e.g., "CILAB-1234"
+       if job.get("comment"):
+           ticket_key = job["comment"]  # e.g., "CILAB-1234"
            ticket_data = await get_jira_ticket(ticket_key)
    ```
 
@@ -127,7 +127,7 @@ When a DCI job fails with a Jira ticket reference:
 job = await search_dci_jobs("id='job-id-here'")
 
 # Extract the Jira ticket from the comment
-ticket_key = job['comment']  # e.g., "CILAB-1234"
+ticket_key = job["comment"]  # e.g., "CILAB-1234"
 
 # Get detailed ticket information
 ticket_data = await get_jira_ticket(ticket_key)
@@ -158,15 +158,15 @@ Examine the changelog and comments for a ticket:
 ticket_data = await get_jira_ticket("CILAB-1234", max_comments=20)
 
 # Review recent comments
-for comment in ticket_data['comments']:
+for comment in ticket_data["comments"]:
     print(f"{comment['author']}: {comment['body']}")
     print(f"Date: {comment['created']}")
 
 # Review changelog
-for change in ticket_data['changelog']:
+for change in ticket_data["changelog"]:
     print(f"Changed by: {change['author']}")
     print(f"Date: {change['created']}")
-    for item in change['items']:
+    for item in change["items"]:
         print(f"  {item['field']}: {item['from_string']} -> {item['to_string']}")
 ```
 
@@ -177,19 +177,21 @@ Traverse a Jira hierarchy (e.g. TELCOSTRAT requirements → CNF Epics → CNF St
 ```python
 result = await search_jira_child_tickets(
     parent_jql="project = TELCOSTRAT AND fixVersion = openshift-4.20",
-    child_jql='project = CNF AND (summary ~ Automation OR summary ~ Regression)',
-    parent_link_field="parent",       # Epics link to TELCOSTRAT via "parent"
-    child_link_field="parentEpic",    # Stories link to Epics via "parentEpic"
+    child_jql="project = CNF AND (summary ~ Automation OR summary ~ Regression)",
+    parent_link_field="parent",  # Epics link to TELCOSTRAT via "parent"
+    child_link_field="parentEpic",  # Stories link to Epics via "parentEpic"
 )
 
 # Top-level requirements
-for gp in result['grandparent_tickets']:
+for gp in result["grandparent_tickets"]:
     print(f"{gp['key']}: {gp['summary']} ({gp['status']})")
 
 # Leaf tickets with full ancestry
-for ticket in result['tickets']:
+for ticket in result["tickets"]:
     print(f"{ticket['key']}: {ticket['summary']}")
-    print(f"  Requirement: {ticket['grandparent_key']} - {ticket['grandparent_summary']}")
+    print(
+        f"  Requirement: {ticket['grandparent_key']} - {ticket['grandparent_summary']}"
+    )
     print(f"  Epic: {ticket['parent_key']}")
 ```
 
@@ -226,6 +228,7 @@ Enable debug logging to troubleshoot issues:
 
 ```python
 import logging
+
 logging.basicConfig(level=logging.DEBUG)
 ```
 

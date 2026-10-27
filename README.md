@@ -178,21 +178,21 @@ To use Google Drive features, follow the [Google Drive Setup Guide](GOOGLE_DRIVE
 result = await convert_dci_report_to_google_doc(
     report_path="/tmp/dci/the_weekly_report_2025-09-09.md",
     doc_title="The Weekly Report - September 2025",
-    folder_name="DCI Reports"
+    folder_name="DCI Reports",
 )
 
 # Create a Google Doc from markdown content in a folder by ID
 result = await create_google_doc_from_markdown(
     markdown_content="# My Report\n\nThis is a **test** document.",
     doc_title="My Custom Report",
-    folder_id="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+    folder_id="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
 )
 
 # Create a Google Doc from a file in a folder by name
 result = await create_google_doc_from_file(
     file_path="/path/to/report.md",
     doc_title="My Report",
-    folder_name="Project Documents"
+    folder_name="Project Documents",
 )
 ```
 
@@ -237,8 +237,8 @@ project_info = await get_jira_project_info("CILAB")
 # Extract Jira tickets from DCI job comments
 jobs_with_tickets = await search_dci_jobs("comment=~'.*CILAB.*'")
 for job in jobs_with_tickets:
-    if job.get('comment'):
-        ticket_data = await get_jira_ticket(job['comment'])
+    if job.get("comment"):
+        ticket_data = await get_jira_ticket(job["comment"])
 ```
 
 ## GitHub Integration

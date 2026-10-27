@@ -99,9 +99,10 @@ class JiraService:
         if not self._is_cloud:
             return {"name": assignee}
 
+        params: dict[str, str | int] = {"query": assignee, "maxResults": 1}
         users = self.jira._session.get(
             f"{self.jira_url}/rest/api/2/user/search",
-            params={"query": assignee, "maxResults": 1},
+            params=params,
         ).json()
         if users:
             return {"accountId": users[0]["accountId"]}
@@ -154,14 +155,15 @@ class JiraService:
             f"AND cf[{cf_num}] is not EMPTY "
             f"ORDER BY updated DESC"
         )
+        params: dict[str, str | int] = {
+            "jql": jql,
+            "maxResults": 100,
+            "fields": field_id,
+            "expand": "renderedFields",
+        }
         resp = self.jira._session.get(
             f"{self.jira_url}/rest/api/3/search/jql",
-            params={
-                "jql": jql,
-                "maxResults": 100,
-                "fields": field_id,
-                "expand": "renderedFields",
-            },
+            params=params,
         )
         if resp.status_code != 200:
             raise Exception(

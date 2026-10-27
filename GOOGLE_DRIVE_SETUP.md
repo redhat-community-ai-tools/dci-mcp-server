@@ -189,14 +189,14 @@ The Google Drive tools support two ways to specify where documents should be cre
 result = await convert_dci_report_to_google_doc(
     report_path="/tmp/dci/the_weekly_report_2025-09-09.md",
     doc_title="The Weekly Report - September 2025",
-    folder_name="DCI Reports"
+    folder_name="DCI Reports",
 )
 
 # Or using folder ID
 result = await convert_dci_report_to_google_doc(
     report_path="/tmp/dci/the_weekly_report_2025-09-09.md",
     doc_title="The Weekly Report - September 2025",
-    folder_id="1BxiMVs0XXXXXMdKvBdBZjgmUUqptlbs74OgvE2upms"
+    folder_id="1BxiMVs0XXXXXMdKvBdBZjgmUUqptlbs74OgvE2upms",
 )
 ```
 
@@ -222,7 +222,7 @@ This is a **markdown** report with:
 result = await create_google_doc_from_markdown(
     markdown_content=markdown_content,
     doc_title="My Custom Report",
-    folder_name="Project Documents"
+    folder_name="Project Documents",
 )
 ```
 
@@ -286,7 +286,7 @@ To modify scopes, edit `mcp_server/services/google_drive_service.py`:
 ```python
 SCOPES = [
     "https://www.googleapis.com/auth/drive.file",
-    "https://www.googleapis.com/auth/drive.readonly"  # Add read-only access
+    "https://www.googleapis.com/auth/drive.readonly",  # Add read-only access
 ]
 ```
 

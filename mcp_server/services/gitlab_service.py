@@ -2,7 +2,7 @@
 
 import os
 import sys
-from typing import Any
+from typing import Any, cast
 from urllib.parse import urlparse
 
 from gitlab import Gitlab
@@ -311,7 +311,7 @@ class GitLabService:
             changes_kwargs: dict[str, Any] = {}
             if context_lines is not None:
                 changes_kwargs["query_data"] = {"context_lines": context_lines}
-            changes_data = mr.changes(**changes_kwargs)
+            changes_data = cast(dict[str, Any], mr.changes(**changes_kwargs))
             file_changes = changes_data.get("changes", [])
             total_files = len(file_changes)
 
