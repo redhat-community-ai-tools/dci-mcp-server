@@ -15,16 +15,13 @@ Le paramètre `fields` permet de réduire la taille des réponses :
 
 ```python
 # Au lieu de récupérer tout :
-search_dci_jobs(
-    query="(status='failure')",
-    limit=200
-)  # → 10 MB
+search_dci_jobs(query="(status='failure')", limit=200)  # → 10 MB
 
 # Récupérer seulement les champs nécessaires :
 search_dci_jobs(
     query="(status='failure')",
     fields=["id", "status", "created_at", "components.version"],
-    limit=200
+    limit=200,
 )  # → 1 MB (10x plus petit)
 ```
 
@@ -47,17 +44,16 @@ Les agrégations ES calculent les statistiques côté serveur.
 ```python
 # 1. Récupérer 200 jobs complets
 result = search_dci_jobs(
-    query="((tests.testsuites.testcases.name=~'.*PTP.*LOCKED.*'))",
-    limit=200
+    query="((tests.testsuites.testcases.name=~'.*PTP.*LOCKED.*'))", limit=200
 )
 
 # 2. Analyser en Python
-for job in result['hits']:
-    for test in job['tests']:
-        for testsuite in test['testsuites']:
-            for testcase in testsuite['testcases']:
-                if 'PTP' in testcase['name']:
-                    stats[testcase['action']] += 1
+for job in result["hits"]:
+    for test in job["tests"]:
+        for testsuite in test["testsuites"]:
+            for testcase in testsuite["testcases"]:
+                if "PTP" in testcase["name"]:
+                    stats[testcase["action"]] += 1
 ```
 
 **Requête optimale avec agrégations** :
@@ -152,10 +148,7 @@ for job in result['hits']:
 **Actuel** :
 ```python
 # Récupérer 83 jobs avec nodes.hardware → 5 MB
-result = search_dci_jobs(
-    query="(nodes.hardware.cpu_vendor='Intel')",
-    limit=100
-)
+result = search_dci_jobs(query="(nodes.hardware.cpu_vendor='Intel')", limit=100)
 # Analyser en Python...
 ```
 
@@ -232,8 +225,8 @@ def aggregate(context, query, aggs, **kwargs):
         Aggregation results
     """
     uri = "%s/analytics/jobs" % context.dci_cs_api
-    kwargs['query'] = query
-    kwargs['aggs'] = aggs
+    kwargs["query"] = query
+    kwargs["aggs"] = aggs
     r = context.session.post(uri, json=kwargs)
     return r
 ```
@@ -249,6 +242,7 @@ def aggregate_jobs(self, query: str, aggregations: dict) -> dict:
         return job.aggregate(context, query=query, aggs=aggregations).json()
     except Exception as e:
         return {"error": str(e)}
+
 
 # mcp_server/tools/job_tools.py
 @mcp.tool()
@@ -280,10 +274,7 @@ async def aggregate_dci_jobs(
 ### Avant (inefficace)
 ```python
 # Récupère 200 jobs × 50 KB = 10 MB
-jobs = search_dci_jobs(
-    query="(status='failure')",
-    limit=200
-)
+jobs = search_dci_jobs(query="(status='failure')", limit=200)
 
 # Compte en Python
 stats = {"by_status": {}, "by_version": {}}
@@ -299,8 +290,8 @@ stats = aggregate_dci_jobs(
     query="(status='failure')",
     aggregations={
         "by_status": {"terms": {"field": "status"}},
-        "by_version": {"terms": {"field": "components.version"}}
-    }
+        "by_version": {"terms": {"field": "components.version"}},
+    },
 )
 # Résultat déjà calculé !
 ```
