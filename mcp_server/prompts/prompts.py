@@ -877,7 +877,6 @@ def register_prompts(mcp):
         status_reason = (metadata or {}).get("status_reason", "")
         status = (metadata or {}).get("status", "unknown")
         topic_name = (metadata or {}).get("topic_name", "unknown")
-        comment = (metadata or {}).get("comment", "")
         url = (metadata or {}).get("url", "")
 
         job_type = _classify_job_type(tags)
@@ -1020,16 +1019,6 @@ This job is associated with a PR: [{url}]({url}).
         else:
             pr_url_instructions = ""
 
-        # -- Jira ticket instruction -------------------------------------------
-        if comment:
-            jira_instruction = (
-                f"\nCheck that the associated Jira ticket "
-                f"[{comment}](https://redhat.atlassian.net/browse/{comment}) "
-                f"is consistent with your findings.\n"
-            )
-        else:
-            jira_instruction = ""
-
         # -- Frontmatter -------------------------------------------------------
         ocp_version = _extract_ocp_version(components)
         lab = (metadata or {}).get("lab", "unknown")
@@ -1090,7 +1079,7 @@ Create a report at `/tmp/dci/rca-{dci_job_id}.md`.
 
 Do not hesitate to read any extra files from the "Other files" or "Supporting files" sections that may be relevant (download them by file ID if not already present).
 
-{_rca_methodology(frontmatter)}{jira_instruction}"""
+{_rca_methodology(frontmatter)}"""
 
     @mcp.prompt()
     async def weekly(
