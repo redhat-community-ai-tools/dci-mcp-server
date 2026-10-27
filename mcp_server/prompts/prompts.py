@@ -62,6 +62,10 @@ At each level, cite the specific log file and relevant log lines as evidence.
 
 If any level is "Inferred" (no direct log evidence), explicitly state what evidence is missing and what you searched for.
 
+**Root cause depth**: the Root Cause you report is the deepest level backed by **Direct** evidence. If the chain continues past that point through Inferred links, report the deeper explanation separately as the *likely underlying cause (inferred)* — do not present it as the root cause.
+
+**Wait/retry tasks**: when the failing task is a polling loop (e.g. "Check if time is up", "Wait for ..."), the logs contain every intermediate state of the poll, so an intermediate state is not evidence. Report the **last polled state** and how many **consecutive polls ended on it** (e.g. "45% installing for the last 19 polls"), and base the causal chain on where the run stopped.
+
 ### Categorize potential causes
 
 Before narrowing down, consider causes across these categories to avoid tunnel vision:
@@ -109,10 +113,34 @@ Then structure the report with these sections:
 1. **Job Information**: components, topic, pipeline, the DCI `status_reason` verbatim, and the timeline of events
 2. **Failure Symptom**: what the user would observe
 3. **Causal Chain (5 Whys)**: the full chain from symptom to root cause, with log evidence at each level
-4. **Root Cause**: the deepest actionable cause identified
+4. **Root Cause**: the deepest cause backed by direct log evidence; if relevant, add the likely underlying cause (inferred) with the evidence that is missing to confirm it
 5. **Contributing Factors**: conditions that enabled or worsened the failure
 6. **Confidence Level**: high, medium, or low — based on the strength of available evidence
 7. **Recommendations**: what should be done to prevent recurrence
+8. **Machine-readable summary**: end the report with a `## Machine-readable summary` section containing exactly one fenced YAML block with these keys (tools parse it, so keep the keys and value formats):
+
+```yaml
+root_cause: "<one sentence: the deepest cause backed by direct log evidence>"
+likely_underlying_cause: "<deeper cause supported only by inferred links, or none>"
+category: <same value as in the frontmatter>
+confidence: <HIGH | MEDIUM | LOW>
+failed_task: "<the failing task, as named in status_reason>"
+distinguishing_signal:
+  file: "<log file name, e.g. ansible.log>"
+  text: "<shortest verbatim text from that file that identifies this root cause beyond the failing task name>"
+evidence:
+  - file: "<log file name>"
+    line: <line number, or null>
+    text: "<verbatim text from the file>"
+    type: <direct | inferred | refuted>
+missing_evidence:
+  - "<log or file needed to confirm the root cause that was absent or empty>"
+polling:
+  last_state: "<last polled value>"
+  trailing_polls: <number of consecutive polls that ended on it>
+```
+
+Rules for this block: copy every `text` value verbatim from the file (no paraphrase), as a quoted YAML string. Set `distinguishing_signal: null` when no log text tells this cause apart from the failing task alone (e.g. only a generic timeout or "No route to host"). List alternatives you refuted as `type: refuted`. Use `missing_evidence: []` when nothing was missing, and `polling: null` unless the failing task is a wait/retry loop.
 """
 
 
