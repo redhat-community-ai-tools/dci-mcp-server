@@ -29,6 +29,8 @@ from mcp_server.prompts.prompts import (
     _fetch_job_files,
     _fetch_job_metadata,
     _prioritize_files,
+    _rca_methodology,
+    _static_rca_prompt,
 )
 
 # ---------------------------------------------------------------------------
@@ -691,6 +693,42 @@ class TestRcaPromptIntegration:
         assert "f1" in result
         # Should have job context even with defaults
         assert "Job Context" in result
+
+
+# ---------------------------------------------------------------------------
+# RCA methodology: machine-readable summary
+# ---------------------------------------------------------------------------
+
+SUMMARY_KEYS = (
+    "root_cause:",
+    "likely_underlying_cause:",
+    "confidence:",
+    "failed_task:",
+    "distinguishing_signal:",
+    "evidence:",
+    "missing_evidence:",
+    "polling:",
+)
+
+
+@pytest.mark.unit
+class TestRcaMachineReadableSummary:
+    """The RCA report must end with a parseable summary block."""
+
+    def test_methodology_requests_summary_block(self):
+        text = _rca_methodology("---\nfm\n---\n")
+        assert "## Machine-readable summary" in text
+        for key in SUMMARY_KEYS:
+            assert key in text
+
+    def test_static_prompt_requests_summary_block(self):
+        text = _static_rca_prompt("job-1")
+        assert "## Machine-readable summary" in text
+
+    def test_root_cause_depth_and_polling_rules(self):
+        text = _rca_methodology("---\nfm\n---\n")
+        assert "deepest level backed by **Direct** evidence" in text
+        assert "last polled state" in text
 
 
 # test_prompts.py ends here
