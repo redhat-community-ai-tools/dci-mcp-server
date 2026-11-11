@@ -207,6 +207,7 @@ def _build_frontmatter(
     team: str,
     component: str,
     status_reason: str = "unknown",
+    job_type: str = "unknown",
     category: str = "TBD",
     status: str = "agent-draft",
 ) -> str:
@@ -222,6 +223,8 @@ def _build_frontmatter(
         team:          DCI team name.
         component:     Primary OCP component version string.
         status_reason: DCI ``status_reason`` verbatim (default 'unknown').
+        job_type:      Job type from _classify_job_type() (default 'unknown').
+                       Recorded to help debug type-guidance mismatches.
         category:      Failure category (default 'TBD', to be filled by agent).
         status:        Draft status tag (default 'agent-draft').
 
@@ -238,6 +241,7 @@ def _build_frontmatter(
         f"team: {team}\n"
         f"component: {component}\n"
         f"status_reason: {json.dumps(status_reason or 'unknown')}\n"
+        f"job_type: {job_type}\n"
         f"category: {category}\n"
         f"status: {status}\n"
         "---\n"
@@ -344,7 +348,16 @@ def _classify_job_type(tags: list[str]) -> str:
         return "ztp"
     if any("upgrade" in t for t in tag_set):
         return "upgrade"
-    if "agent:openshift-app" in tag_set or any("day2" in t for t in tag_set):
+    # Some teams install clusters with the app agent; their install jobs are
+    # tagged "deploy" or "installation" and must not be treated as day-2.
+    is_app_install = "agent:openshift-app" in tag_set and bool(
+        tag_set & {"deploy", "installation"}
+    )
+    if not is_app_install and (
+        "agent:openshift-app" in tag_set
+        or "stage:workload" in tag_set
+        or any("day2" in t for t in tag_set)
+    ):
         return "day2"
     if any("sno" in t for t in tag_set) or "spoke" in tag_set:
         return "sno"
@@ -564,12 +577,28 @@ def _autodownload_must_gather(job_id: str, buckets: dict[str, list[dict]]) -> li
     return extracted
 
 
-def _build_job_type_guidance(job_type: str, components: list[dict]) -> str:
+_IBU_GUIDANCE = """
+### Image-Based Upgrade (IBU)
+
+This is an image-based upgrade: the SNO node switches to a new OS image built from a seed image (a snapshot of another cluster already at the target version). This is driven by the Lifecycle Agent, not by a normal ClusterVersion upgrade.
+- Check the `ImageBasedUpgrade` resource (`omc get ibu upgrade -o yaml`): find the stage (Idle → Prep → Upgrade → Rollback) and the failed condition.
+- Check the Lifecycle Agent logs in the `openshift-lifecycle-agent` namespace.
+- Prep failures: seed image pull, disk space under `/var/lib/containers`, image pre-caching.
+- Upgrade failures: the node reboots into the new image. Check whether it came back and whether an automatic rollback happened.
+- Seed compatibility: the seed image must come from a cluster with the same OCP version as the target and the same hardware and configuration.
+- If OADP backup/restore is used, check the `Backup`/`Restore` resources in `openshift-adp`.
+"""
+
+
+def _build_job_type_guidance(
+    job_type: str, components: list[dict], tags: list[str] | None = None
+) -> str:
     """Return job-type-specific RCA guidance text.
 
     Args:
         job_type: one of the values returned by _classify_job_type().
         components: list of component dicts (name, type, version).
+        tags: job tags, used to refine the guidance (e.g. ``ibu`` upgrades).
 
     Returns:
         A markdown section string, or empty string for 'standard' jobs.
@@ -624,7 +653,7 @@ This job is an **upgrade pipeline** — focus on the version transition.
 - Look for **degraded ClusterOperators** after the upgrade.
 - Check **MachineConfigPool** status — nodes may be stuck updating.
 - Review **etcd** health and leader election during the upgrade window.
-"""
+""" + (_IBU_GUIDANCE if "ibu" in {t.lower() for t in tags or []} else "")
 
     if job_type == "day2":
         return """
@@ -967,7 +996,7 @@ def register_prompts(mcp):
             )
 
         # -- Job-type guidance -------------------------------------------------
-        type_guidance = _build_job_type_guidance(job_type, components)
+        type_guidance = _build_job_type_guidance(job_type, components, tags)
 
         # -- diff-jobs.txt instructions -----------------------------------------
         has_diff_jobs = files is not None and any(
@@ -1059,6 +1088,7 @@ This job is associated with a PR: [{url}]({url}).
             team=team,
             component=ocp_version,
             status_reason=status_reason,
+            job_type=job_type,
         )
 
         # -- Staging note (were triage files pre-downloaded?) ------------------
