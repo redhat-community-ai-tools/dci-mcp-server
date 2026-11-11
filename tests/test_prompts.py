@@ -63,6 +63,25 @@ class TestClassifyJobType:
     def test_day2_agent_tag(self):
         assert _classify_job_type(["agent:openshift-app"]) == "day2"
 
+    def test_app_agent_deploy_is_install(self):
+        tags = ["agent:openshift-app", "deploy"]
+        assert _classify_job_type(tags) == "standard"
+
+    def test_app_agent_installation_is_install(self):
+        tags = ["agent:openshift-app", "installation", "ibi"]
+        assert _classify_job_type(tags) == "standard"
+
+    def test_app_agent_install_sno(self):
+        tags = ["agent:openshift-app", "installation", "sno"]
+        assert _classify_job_type(tags) == "sno"
+
+    def test_app_agent_deploy_ztp_stays_ztp(self):
+        tags = ["agent:openshift-app", "deploy", "ztp", "stage:install"]
+        assert _classify_job_type(tags) == "ztp"
+
+    def test_workload_stage_without_agent_tag_is_day2(self):
+        assert _classify_job_type(["stage:workload", "inventory:lab-1"]) == "day2"
+
     def test_day2_explicit_tag(self):
         assert _classify_job_type(["day2-workload"]) == "day2"
 
@@ -271,6 +290,18 @@ class TestBuildJobTypeGuidance:
         guidance = _build_job_type_guidance("upgrade", components)
         assert "4.16.3" in guidance
 
+    def test_upgrade_guidance_without_ibu_tag_has_no_ibu_section(self):
+        guidance = _build_job_type_guidance("upgrade", [], ["stage:upgrade"])
+        assert "ImageBasedUpgrade" not in guidance
+
+    def test_ibu_upgrade_guidance_adds_ibu_section(self):
+        guidance = _build_job_type_guidance(
+            "upgrade", [], ["stage:upgrade", "ibu", "seed"]
+        )
+        assert "ClusterVersion" in guidance
+        assert "ImageBasedUpgrade" in guidance
+        assert "openshift-lifecycle-agent" in guidance
+
     def test_day2_guidance_mentions_day2(self):
         guidance = _build_job_type_guidance("day2", [])
         assert "day-2" in guidance.lower() or "day2" in guidance.lower()
@@ -415,6 +446,16 @@ class TestBuildFrontmatter:
     def test_default_status_reason_is_unknown(self):
         fm = _build_frontmatter("job-1", "2026-08-15", "lab-x", "team-y", "4.16.3")
         assert 'status_reason: "unknown"' in fm
+
+    def test_default_job_type_is_unknown(self):
+        fm = _build_frontmatter("job-1", "2026-08-15", "lab-x", "team-y", "4.16.3")
+        assert "job_type: unknown" in fm
+
+    def test_job_type_recorded(self):
+        fm = _build_frontmatter(
+            "job-1", "2026-08-15", "lab-x", "team-y", "4.16.3", job_type="ztp"
+        )
+        assert "job_type: ztp" in fm
 
     def test_status_reason_is_yaml_safe(self):
         # status_reason is verbatim DCI text and may carry colons/quotes/newlines;
@@ -593,6 +634,7 @@ class TestRcaPromptIntegration:
         assert "lab: lab-dallas" in result
         assert "team: partner-team" in result
         assert "component: 4.16.3" in result
+        assert "job_type: acm" in result
         assert "category: TBD" in result
         assert "status: agent-draft" in result
         # Dynamic content checks
