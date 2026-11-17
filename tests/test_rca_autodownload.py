@@ -323,3 +323,47 @@ def test_file_section_falls_back_to_tar_when_not_staged():
 
 
 # test_rca_autodownload.py ends here
+
+
+# The download directory can be shared with the MCP client in SSE/HTTP mode too
+# (e.g. the same volume mounted in both containers): then pre-downloads help.
+
+
+@pytest.mark.unit
+def test_sse_with_shared_download_dir_downloads(monkeypatch, mock_service):
+    monkeypatch.setenv("MCP_TRANSPORT", "sse")
+    monkeypatch.setenv("DCI_DOWNLOAD_DIR_SHARED", "true")
+
+    result = prompts_mod._autodownload_triage_files(JOB_ID, BUCKETS)
+
+    assert set(result) == TRIAGE_NAMES
+
+
+@pytest.mark.unit
+def test_metadata_sse_with_shared_download_dir(monkeypatch, mock_job_service):
+    monkeypatch.setenv("MCP_TRANSPORT", "sse")
+    monkeypatch.setenv("DCI_DOWNLOAD_DIR_SHARED", "true")
+    inst, tmp_path = mock_job_service
+
+    assert prompts_mod._dump_job_metadata(JOB_ID) is True
+    assert (tmp_path / JOB_ID / "job-metadata.json").exists()
+
+
+@pytest.mark.unit
+def test_must_gather_sse_with_shared_download_dir(monkeypatch, mock_mg_service):
+    monkeypatch.setenv("MCP_TRANSPORT", "sse")
+    monkeypatch.setenv("DCI_DOWNLOAD_DIR_SHARED", "true")
+    inst, tmp_path = mock_mg_service
+
+    result = prompts_mod._autodownload_must_gather(JOB_ID, MG_BUCKETS)
+
+    assert set(result) == {"must_gather", "SNO_must_gather"}
+
+
+@pytest.mark.unit
+def test_sse_with_shared_download_dir_false_skips(monkeypatch, mock_service):
+    monkeypatch.setenv("MCP_TRANSPORT", "sse")
+    monkeypatch.setenv("DCI_DOWNLOAD_DIR_SHARED", "false")
+
+    assert prompts_mod._autodownload_triage_files(JOB_ID, BUCKETS) == []
+    mock_service.download_file.assert_not_called()
