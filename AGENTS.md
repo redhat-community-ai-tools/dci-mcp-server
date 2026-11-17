@@ -287,6 +287,7 @@ A full RCA evaluation runs Claude on a real DCI job, letting it download files, 
 - Store secrets in `.env`; never commit it. Use `env.example` as a template.
 - **GitLab host allowlist**: `GITLAB_TOKEN` is only sent to the host in `GITLAB_URL` (default `gitlab.com`) plus any hosts in `GITLAB_ALLOWED_HOSTS`. The `gitlab_url` tool parameter is LLM-controlled — never send tokens to arbitrary hosts.
 - **Download directory jail**: `download_dci_file` confines writes to `DCI_DOWNLOAD_DIR` (default `/tmp/dci`). Google Drive upload tools can only read files from this directory. Absolute paths outside the root are rejected.
+- **Render-time pre-downloads**: `/dci/rca` pre-downloads into the download directory only when the agent can read it: under stdio, or in SSE/HTTP mode with `DCI_DOWNLOAD_DIR_SHARED=true` (`_downloads_reach_agent()` in `mcp_server/prompts/prompts.py`).
 - **SSL verification**: `GITLAB_SSL_VERIFY=false` is not supported. Use a CA bundle path (e.g., `/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem`).
 - **Diagnostic output must go to stderr**: In stdio mode, stdout is the MCP JSON-RPC channel. Any `print()` in `mcp_server/` must use `file=sys.stderr` — bare `print()` corrupts the protocol stream.
 - **No global bandit skips**: Bandit checks must not be disabled globally in `pyproject.toml`. Suppress individual false positives with `# nosec BnNN` at the exact line.

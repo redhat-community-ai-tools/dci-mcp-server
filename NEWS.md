@@ -1,5 +1,11 @@
 # DCI MCP Server - Change Log
 
+## [2026-11-17]
+
+### Improvements
+
+- `/dci/rca`: pre-download triage files, the job metadata and must_gather in SSE/HTTP mode too when `DCI_DOWNLOAD_DIR_SHARED=true` says the download directory is shared with the MCP client (e.g. a volume mounted in both containers)
+
 ## [2026-09-08]
 
 ### Improvements

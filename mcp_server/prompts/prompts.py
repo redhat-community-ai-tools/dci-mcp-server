@@ -439,6 +439,19 @@ def _prioritize_files(
     return buckets
 
 
+def _downloads_reach_agent() -> bool:
+    """Whether files downloaded at render time are readable by the agent.
+
+    True under the stdio transport (the server and the agent share a
+    filesystem), or when ``DCI_DOWNLOAD_DIR_SHARED=true`` says the download
+    directory is shared with the agent in SSE/HTTP mode (e.g. the same volume
+    mounted in both containers).
+    """
+    if os.environ.get("MCP_TRANSPORT", "stdio") == "stdio":
+        return True
+    return os.environ.get("DCI_DOWNLOAD_DIR_SHARED", "").lower() == "true"
+
+
 # Priority buckets whose files are always useful and cheap enough to
 # pre-download at render time.  P5 (must_gather) is handled separately by
 # _autodownload_must_gather because its archives need extraction.
@@ -450,9 +463,9 @@ def _autodownload_triage_files(
 ) -> list[str]:
     """Pre-download the triage files to ``/tmp/dci/<job_id>/``.
 
-    Runs only under the stdio transport, where the MCP server and the agent
-    share a filesystem so the downloaded files are readable by the agent.  In
-    SSE/HTTP mode this is a no-op and the prompt falls back to per-file IDs.
+    Runs only when the downloaded files are readable by the agent (see
+    :func:`_downloads_reach_agent`); otherwise this is a no-op and the prompt
+    falls back to per-file IDs.
 
     Downloads are best-effort: any failure is logged and skipped so prompt
     rendering never fails because of I/O.  Idempotent — files already on disk
@@ -462,7 +475,7 @@ def _autodownload_triage_files(
         The names of the files present locally after this call (empty when
         skipped or on total failure).
     """
-    if os.environ.get("MCP_TRANSPORT", "stdio") != "stdio":
+    if not _downloads_reach_agent():
         return []
 
     service = DCIFileService()
@@ -492,13 +505,13 @@ def _dump_job_metadata(job_id: str) -> bool:
 
     Gives the agent the complete job data (components with versions/URLs, tags,
     jobstates, keys_values, results, file list) without extra API round-trips.
-    Same gating as :func:`_autodownload_triage_files`: stdio only, best-effort,
-    idempotent.
+    Same gating as :func:`_autodownload_triage_files`: only when downloads
+    reach the agent, best-effort, idempotent.
 
     Returns:
         True when the metadata file is present locally after this call.
     """
-    if os.environ.get("MCP_TRANSPORT", "stdio") != "stdio":
+    if not _downloads_reach_agent():
         return False
 
     dest = DCIFileService.DOWNLOAD_ROOT / job_id / "job-metadata.json"
@@ -528,13 +541,13 @@ def _autodownload_must_gather(job_id: str, buckets: dict[str, list[dict]]) -> li
     usable with ``omc use``.  Extraction uses ``filter="data"`` to prevent
     path-traversal from a malicious archive.
 
-    Same gating as :func:`_autodownload_triage_files`: stdio only, best-effort,
-    idempotent.
+    Same gating as :func:`_autodownload_triage_files`: only when downloads
+    reach the agent, best-effort, idempotent.
 
     Returns:
         The extracted directory names (relative to ``/tmp/dci/<job_id>/``).
     """
-    if os.environ.get("MCP_TRANSPORT", "stdio") != "stdio":
+    if not _downloads_reach_agent():
         return []
 
     service = DCIFileService()
@@ -965,7 +978,7 @@ def register_prompts(mcp):
 ```
 """
 
-        # -- Full job metadata dump (stdio only; best-effort) ------------------
+        # -- Full job metadata dump (when downloads reach the agent) -----------
         staged_metadata = _dump_job_metadata(dci_job_id)
 
         # -- File inventory section --------------------------------------------
@@ -975,8 +988,8 @@ def register_prompts(mcp):
         if files is not None:
             buckets = _prioritize_files(files)
             has_must_gather = bool(buckets.get("P5"))
-            # Pre-download the triage files and extract must_gather (stdio only;
-            # best-effort) before building the file section so it can point at
+            # Pre-download the triage files and extract must_gather (when
+            # downloads reach the agent; best-effort) before building the file section so it can point at
             # the extracted directories.
             staged_files = _autodownload_triage_files(dci_job_id, buckets)
             staged_mg = _autodownload_must_gather(dci_job_id, buckets)
