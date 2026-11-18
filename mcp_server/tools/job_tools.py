@@ -459,11 +459,13 @@ def register_job_tools(mcp: FastMCP) -> None:
                 aggs=aggs,
             )
 
-            # manage error message from the service
+            # manage error message from the service: keep the cause, so a
+            # transient gateway error can be told from bad credentials
             if "message" in result:
-                return json.dumps(
-                    {"error": result.get("message", "Unknown error")}, indent=2
-                )
+                failure = {"error": result.get("message", "Unknown error")}
+                if result.get("error"):
+                    failure["cause"] = result["error"]
+                return json.dumps(failure, indent=2)
 
             # If aggregations were requested, return both aggregations and hits
             if aggs is not None:

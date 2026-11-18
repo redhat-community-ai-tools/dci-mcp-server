@@ -68,7 +68,7 @@ class DCIJobService(DCIBaseService):
             if aggs is not None:
                 # Wrap in {"aggs": ...} as expected by dci-control-server
                 kwargs["json-aggs"] = json.dumps({"aggs": aggs})
-            return job.search(context, **kwargs).json()
+            return self.decoded(job.search(context, **kwargs))
         except Exception as e:
             return {"error": str(e), "message": "Failed to list jobs."}
 
@@ -93,13 +93,15 @@ class DCIJobService(DCIBaseService):
         """
         try:
             context = self._get_dci_context()
-            return job.list(
-                context,
-                query=query,
-                limit=limit,
-                offset=offset,
-                sort=sort,
-            ).json()
+            return self.decoded(
+                job.list(
+                    context,
+                    query=query,
+                    limit=limit,
+                    offset=offset,
+                    sort=sort,
+                )
+            )
         except Exception as e:
             return {"error": str(e), "message": "Failed to list jobs."}
 
@@ -118,7 +120,7 @@ class DCIJobService(DCIBaseService):
         """
         try:
             context = self._get_dci_context()
-            return job.get(context, job_id).json()
+            return self.decoded(job.get(context, job_id))
         except Exception as e:
             print(f"Error getting job {job_id}: {e}", file=sys.stderr)
             return {}
@@ -137,7 +139,7 @@ class DCIJobService(DCIBaseService):
             context = self._get_dci_context()
             result = job.list_files(context, job_id)
             if hasattr(result, "json"):
-                data = result.json()
+                data = self.decoded(result)
                 return data.get("files", []) if isinstance(data, dict) else []
             return result if isinstance(result, list) else []
         except Exception as e:
@@ -158,7 +160,7 @@ class DCIJobService(DCIBaseService):
             context = self._get_dci_context()
             result = job.list_results(context, job_id)
             if hasattr(result, "json"):
-                data = result.json()
+                data = self.decoded(result)
                 return data.get("results", []) if isinstance(data, dict) else []
             return result if isinstance(result, list) else []
         except Exception as e:

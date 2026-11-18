@@ -1,5 +1,11 @@
 # DCI MCP Server - Change Log
 
+## [2026-11-19]
+
+### Improvements
+
+- DCI failures now reach the agent with their cause: `search_dci_jobs` kept only "Failed to list jobs." and dropped the service's `error`, and a non-JSON body (a gateway or proxy HTML error page) was reported as the bare "Expecting value: line 1 column 1". Errors now name the HTTP status and quote the body, so a transient outage can be told from bad credentials
+
 ## [2026-11-17]
 
 ### Improvements
