@@ -253,7 +253,7 @@ The library functions `render_prompt(name, **kwargs)` and `list_prompts()` in `m
 Eval tests (`tests/test_evals.py`) verify that Claude correctly selects and uses MCP tools when given natural language prompts. They use `claude -p` (non-interactive mode) to run the full stack end-to-end.
 
 - Run evals: `uv run pytest -m eval -v`.
-- Override model: `EVAL_MODEL=haiku uv run pytest -m eval -v` (default: sonnet).
+- Override model: `EVAL_MODEL=haiku uv run pytest -m eval -v` (default: `claude-sonnet-5`, pinned in `tests/test_evals.py`; the `sonnet` alias resolves to whatever the CLI defaults to, which a deployment may not serve).
 - Each eval case declares a `requires` field (`date`, `dci`, `jira`, `github`, `gitlab`, `support_case`). Cases are auto-skipped when credentials are missing from `.env`.
 - To add a new eval case, append to the `EVAL_CASES` list in `tests/test_evals.py` with: `id`, `prompt`, `requires`, `allowed_tools`, `expected_tools`, and optionally `expected_params` and `answer_contains`.
 - **When an eval fails with "Too many turns"**: This means the LLM retried because its first query failed — the tool description or examples are misleading. **Never** bump `max_turns` to work around the failure. Instead, reproduce the failure, capture the wrong query the LLM tried first, and fix the tool description (docstring, field description, or inline examples) so the LLM constructs the correct query on the first attempt.

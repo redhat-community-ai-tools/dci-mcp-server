@@ -22,6 +22,10 @@ from dotenv import load_dotenv
 project_root = Path(__file__).parent.parent
 load_dotenv(project_root / ".env", override=True)
 
+# Pinned rather than the "sonnet" alias, which the CLI resolves to whatever its
+# own default is — a model a given deployment may not serve.
+EVAL_MODEL_DEFAULT = "claude-sonnet-5"
+
 CREDENTIAL_CHECKS = {
     "date": lambda: True,
     "dci": lambda: bool(
@@ -61,7 +65,7 @@ def run_eval(prompt, allowed_tools):
         "stream-json",
         "--verbose",
         "--model",
-        os.getenv("EVAL_MODEL", "sonnet"),
+        os.getenv("EVAL_MODEL", EVAL_MODEL_DEFAULT),
         "--no-session-persistence",
         "--bare",
         "--strict-mcp-config",
